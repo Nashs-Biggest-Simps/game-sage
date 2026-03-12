@@ -20,6 +20,7 @@
 	<title>GameSage</title>
 	<link rel="icon" href="logo.png" />
 	<script src="https://kit.fontawesome.com/5cf062dc93.js" crossorigin="anonymous"></script>
+	<meta name='impact-site-verification' value='d1575fe7-a813-4dfd-9b87-47ec3fcc7e89'>
 </svelte:head>
 
 <div class="app">
