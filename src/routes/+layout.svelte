@@ -1,6 +1,5 @@
 <script>
 	import '$lib/main.css';
-	import favicon from '$lib/assets/icon.png';
 	import TopNavbar from '$lib/components/TopNavbar.svelte';
 	import LeftNavbar from '$lib/components/LeftNavbar.svelte';
 	import { resolve } from '$app/paths';
@@ -18,16 +17,24 @@
 </script>
 
 <svelte:head>
-	<title>LSU Steam App</title>
-	<link rel="icon" href={favicon} />
+	<title>GameSage</title>
+	<link rel="icon" href="logo.png" />
 	<script src="https://kit.fontawesome.com/5cf062dc93.js" crossorigin="anonymous"></script>
 </svelte:head>
 
-
-<div class="content">
-	{@render children()}
+<div class="app">
+	<div class="left-navbar">
+		<LeftNavbar />
+	</div>
+	
+	<div class="content">
+		{@render children()}
+	</div>
 </div>
 
 <style>
-	
+	.app{
+		display: grid;
+		grid-template-columns: 20rem calc(100vw - 20rem);
+	}
 </style>

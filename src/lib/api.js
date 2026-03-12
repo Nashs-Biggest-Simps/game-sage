@@ -1,33 +1,29 @@
 // API Handler File
 import { db } from "$lib/data"
 
-const key = "20C1F35B7542A2AA3770FBCA32674486"
-let sid = null
-const unsub = db.subscribe(data => {
-    if (data?.sid) sid = data.sid
-})
-unsub()
+export async function getGameDetails(appId) {
+    const [detailsRes, reviewRes] = await Promise.all([
+        fetch(`https://store.steampowered.com/api/appdetails?appids=${appId}`),
+        fetch(`https://store.steampowered.com/appreviews/${appId}?json=1&language=all`)
+    ])
 
-async function callAPI(url) {
-    if (!sid) return
-    return fetch(url)
-        .then(response => {
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            return response.json();
-        })
-        .then(data => {
-            return data;
-        })
-        .catch(error => {
-            console.error("Fetch error:", error);
-            throw error;
-        });
-}
+    const detailsData = await detailsRes.json()
+    const reviewData = await reviewRes.json()
+    const game = detailsData[appId].data
+    const reviews = reviewData.query_summary
 
-export const apiLib = {
-    getPlayerSummaries: async () => {
-        let url = "http://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=" + key + "&steamids=" + sid
-        return await callAPI(url)
+    return {
+        title: game.name,
+        genres: game.genres?.map(g => g.description) ?? [],
+        tags: game.categories?.map(c => c.description) ?? [],
+        developer: game.developers?.[0] ?? "Unknown",
+        rating: {
+            label: reviews.review_score_desc,
+            score: reviews.review_score,
+            positive: reviews.total_positive,
+            negative: reviews.total_negative,
+            total: reviews.total_reviews,
+        },
+        releaseDate: game.release_date?.date ?? "Unknown",
     }
 }
-

@@ -1,30 +1,24 @@
 <!-- created by Aaron Meche -->
 <script>
-    import { checkForUser } from "$lib/auth";
-    import { onMount } from "svelte";
+    import { resolve } from "$app/paths";
+    import LeftHalf from "$lib/components/Home/LeftHalf.svelte";
+    import RightHalf from "$lib/components/Home/RightHalf.svelte";
 
-    onMount(() => {
-        console.log(checkForUser())
-    })
 
 </script>
 
 <!--  -->
 
 <div class="page">
-    <div class="heading">Main Page</div>
-    <div class="message">This is the main page of this web application</div>
+    <LeftHalf />
+    <RightHalf />
 </div>
 
 <!--  -->
 
 <style>
     .page{
-        padding: 2rem;
-    }
-    .page .heading{
-        margin-bottom: 0.5rem;
-        font-size: 24pt;
-        font-weight: 600;
+        display: grid;
+        grid-template-columns: 3fr 2fr;
     }
 </style>

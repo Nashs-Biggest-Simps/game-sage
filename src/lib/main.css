@@ -4,8 +4,8 @@
 }
 
 :root{
-	--hue: 220;
-	--sat: 6%;
+	--hue: 240;
+	--sat: 8%;
 	--strt: 94%;
 	--diff: -6%;
 
@@ -49,12 +49,30 @@ body{
     margin: 0;
     background: var(--bg);
     font-size: 1rem;
-    font-family: Figtree !important;
+    font-family: Figtree;
     color: var(--contrast);
-    overflow: hidden;
 }
 
 a,button,input{
     all: unset;
     display: block;
+}
+
+.horizontal-scroll{
+    display: flex;
+    background: none;
+    overflow-x: scroll;
+    overflow-y: hidden;
+    font-size: 0;
+    white-space: nowrap;
+}
+.horizontal-scroll > *{
+    display: inline-block;
+    font-size: initial;
+}
+.horizontal-scroll::-webkit-scrollbar{
+    display: none;
+}
+.horizontal-scroll::-moz-progress-bar{
+    display: none;
 }
