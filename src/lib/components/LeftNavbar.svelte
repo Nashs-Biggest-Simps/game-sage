@@ -16,10 +16,10 @@
 <!--  -->
 
 <div class="wrapper">
-	<div class="logo">
+	<a href={resolve("/")} class="logo">
 		<i class="fa-solid fa-hat-wizard"></i>
 		GameSage
-	</div>
+	</a>
 
 	<div class="nav-buttons">
 		<LeftNavbarItem icon="home" route="/" label="Home" />
