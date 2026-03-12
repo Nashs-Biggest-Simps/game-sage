@@ -1,4 +1,3 @@
-<!-- created by Aaron Meche -->
 <script>
     import { goto } from "$app/navigation";
     import { resolve } from "$app/paths";

@@ -1,4 +1,3 @@
-<!-- created by Aaron Meche -->
 <script>
     import RecommendGridItem from '$lib/components/Suggest/RecommendGridItem.svelte'
     import { beforeUpdate } from 'svelte';

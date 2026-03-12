@@ -1,4 +1,3 @@
-<!-- created by Aaron Meche -->
 <script>
 
     let { name, message } = $props()

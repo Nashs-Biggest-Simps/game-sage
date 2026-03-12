@@ -1,4 +1,3 @@
-<!-- created by Aaron Meche -->
 <script>
     import CurrentlyPlayingItem from "$lib/components/Home/CurrentlyPlayingItem.svelte";
 

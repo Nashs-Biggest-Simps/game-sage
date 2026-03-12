@@ -76,3 +76,24 @@ a,button,input{
 .horizontal-scroll::-moz-progress-bar{
     display: none;
 }
+
+
+/* Red Alert */
+.alert{
+    padding: 0.8rem 1.2rem;
+    margin-bottom: 1.2rem;
+    background: hsl(0, 50%, 20%, 50%);
+    outline: solid 2pt hsl(0, 50%, 40%);
+    border-radius: 0.4rem;
+    line-height: 1.5;
+}
+
+/* Orange Warning */
+.warning{
+    padding: 0.8rem 1.2rem;
+    margin-bottom: 1.2rem;
+    background: hsl(30, 50%, 20%, 50%);
+    outline: solid 2pt hsl(30, 50%, 40%);
+    border-radius: 0.4rem;
+    line-height: 1.5;
+}

@@ -1,4 +1,3 @@
-<!-- created by Aaron Meche -->
 <script>
     import FriendActivityItem from "$lib/components/Home/FriendActivityItem.svelte";
 

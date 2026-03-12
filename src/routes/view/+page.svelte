@@ -1,4 +1,3 @@
-<!-- created by Aaron Meche -->
 <script>
     import { page } from '$app/stores';
     import { getGameDetails } from '$lib/api'

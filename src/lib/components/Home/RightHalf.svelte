@@ -1,4 +1,3 @@
-<!-- created by Aaron Meche -->
 <script>
     import FriendActivity from "$lib/components/Home/FriendActivity.svelte";
     import CurrentlyPlaying from "$lib/components/Home/CurrentlyPlaying.svelte"

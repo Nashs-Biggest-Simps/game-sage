@@ -1,4 +1,3 @@
-<!-- created by Aaron Meche -->
 <script>
     import { resolve } from '$app/paths';
     import { db } from '$lib/data'

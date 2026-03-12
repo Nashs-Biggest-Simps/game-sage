@@ -2,12 +2,16 @@
     import RecommendGrid from "$lib/components/Suggest/RecommendGrid.svelte";
 
 
+
+    let items = new Array(30)
 </script>
 
 <!--  -->
 
-<div class='page'>
-    <div class="warning">This list of games is hardcoded and predetermined.</div>
+<div class="page">
+    <div class="alert">
+        This page was copied from the Suggestions page. This list of games is hardcoded and predetermined.
+    </div>
     <div class="horizontal-scroll filter-wrapper">
         <button class="filter">Display: All ▼</button>
         <button class="filter">Genre: All ▼</button>
@@ -16,7 +20,7 @@
         <button class="filter">Max Price: None ▼</button>
         <button class="filter">Sort: Relevance ▼</button>
     </div>
-    <div class="title">Recommended Games</div>
+    <div class="title">Your Library</div>
     <RecommendGrid />
 </div>
 
