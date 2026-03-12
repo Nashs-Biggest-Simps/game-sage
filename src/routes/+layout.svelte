@@ -37,4 +37,9 @@
 		display: grid;
 		grid-template-columns: 20rem calc(100vw - 20rem);
 	}
+
+	.content{
+        padding-top: 3.6rem;
+        padding-right: 1.2rem;
+    }
 </style>

@@ -21,10 +21,6 @@
 <!--  -->
 
 <style>
-    .right{
-        padding-block: 2rem;
-    }
-
     .right section{
         padding: 2rem;
     }

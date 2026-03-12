@@ -16,7 +16,7 @@
         <button class="filter">Max Price: None ▼</button>
         <button class="filter">Sort: Relevance ▼</button>
     </div>
-    <div class="title">Recommended</div>
+    <div class="title">Recommended Games</div>
     <RecommendGrid />
 </div>
 
@@ -25,10 +25,6 @@
 <style>
     .page{
         width: 100%;
-    }
-
-    .filter-wrapper{
-        padding: 1.6rem 0.4rem;
     }
 
     .filter{
@@ -46,7 +42,9 @@
     }
 
     .title{
-        margin: 1rem 0.8rem;
+        margin-top: 1.8rem;
+        margin-left: 0.4rem;
+        margin-bottom: 0.4rem;
         font-size: 2rem;
         font-weight: 700;
     }

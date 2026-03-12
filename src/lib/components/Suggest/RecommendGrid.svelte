@@ -46,7 +46,6 @@
     .grid{
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
-        padding: 0.8rem;
         row-gap: 1.2rem;
     }
 

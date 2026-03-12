@@ -17,7 +17,13 @@
 <!--  -->
 
 <div class='page'>
-    <div class="game-title">{name}</div>
+    <div class="game-title">
+        <!-- svelte-ignore a11y_consider_explicit_label -->
+        <button onclick={() => history.back()}>
+            <i class="fa-solid fa-arrow-left"></i>
+        </button>
+        {name}
+    </div>
     <div class="content">
         <img class="thumbnail" src="https://cdn.akamai.steamstatic.com/steam/apps/{appid}/capsule_616x353.jpg" alt="">
         <div class="action-buttons horizontal-scroll">
@@ -47,15 +53,35 @@
 <style>
     .page{
         display: grid;
-        grid-template-columns: 3fr 2fr;
-        padding: 3.6rem 1.2rem;
-        gap: 0.8rem 1.2rem;
+        grid-template-columns: 5fr 3fr;
+        gap: 1.2rem;
     }
 
     .game-title{
+        display: flex;
+        align-items: center;
         grid-column: span 2;
         font-size: 1.6rem;
         font-weight: 600;
+    }
+
+    .game-title button{
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 125%;
+        aspect-ratio: 1 / 1;
+        background: var(--l1);
+        outline: solid 1pt var(--l2);
+        font-size: 1rem;
+        margin-right: 1rem;
+        border-radius: 100%;
+        cursor: pointer;
+    }
+
+    .game-title button:hover{
+        background: var(--l2);
+        outline-color: var(--l4);
     }
 
     .thumbnail{

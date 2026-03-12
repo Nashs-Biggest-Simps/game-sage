@@ -16,13 +16,12 @@
 
 <style>
     .left{
-        padding: 2rem;
         text-align: center;
     }
 
     .left .title{
-        margin-block: 2rem;
-        font-size: 3rem;
+        margin-bottom: 1.6rem;
+        font-size: 3.2rem;
         font-weight: 700;
     }
 
