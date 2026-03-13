@@ -26,7 +26,7 @@
     --green: hsl(120, 40%, 80%);
     --red: hsl(0, 40%, 80%);
 
-	--inline-moat: 15vw;
+	--inline-moat: 8vw;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -35,12 +35,13 @@
 		--diff: 6%;
         --green: hsl(120, 40%, 20%);
         --red: hsl(0, 40%, 20%);
+	    --accent: hsl(var(--hue), 48%, 64%);
 	}
 }
 
 @media (orientation: portrait) {
     :root{
-        --inline-moat: 5vw;
+        --inline-moat: 4vw;
     }
 }
 

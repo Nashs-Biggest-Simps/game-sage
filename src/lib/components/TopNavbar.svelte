@@ -3,57 +3,54 @@
 	import { page } from '$app/state'
 	import { db } from '$lib/data'
     import { onMount } from 'svelte';
+    import TopNavbarItem from '$lib/components/TopNavbarItem.svelte';
 </script>
 
 <!--  -->
 
-<input type="text" name="Search Bar" id="search_bar" placeholder="Search for something...">
-<div class="buttons">
-	<!-- svelte-ignore a11y_consider_explicit_label -->
-	<button on:click={() => window.location.reload()}><i class="fa-solid fa-arrow-rotate-right"></i> Reload</button>
+<div class="wrapper">
+	<a href={resolve("/")} class="logo">
+		<i class="fa-solid fa-hat-wizard"></i>
+		GameSage
+	</a>
+
+	<div class="nav-buttons">
+		<TopNavbarItem route="library" icon="grip" text="Library"/>
+		<TopNavbarItem route="suggest" icon="wand-magic-sparkles" text="Suggested"/>
+		<TopNavbarItem route="reviews" icon="star" text="Reviews"/>
+		<TopNavbarItem route="profile" icon="user" text="nonoobu_8"/>
+	</div>
 </div>
 
 <!--  -->
 
 <style>
-    #search_bar{
-		padding: 0.25rem 1rem;
-		margin: 0 0.5rem;
-		background: var(--l1);
-		outline: solid 1pt var(--l3);
-		font-size: 10pt;
-		border-radius: 100vh;
+	.wrapper{
+		height: 4rem;
+		display: grid;
+		grid-template-columns: auto min-content;
+		align-items: center;
+		padding: 1rem 0;
 	}
-
-	#search_bar:focus{
-		background: var(--l2);
-		outline-color: var(--l5);
-	}
-
-	.buttons{
+    .logo{
+		width: fit-content;
 		display: flex;
 		align-items: center;
-	}
-
-	a, button{
-		display: inline-flex;
-		align-items: center;
-		padding: 0.5rem 1.5rem;
-		border-radius: 100vh;
+		font-size: 1.6rem;
+		font-weight: 600;
 		cursor: pointer;
 	}
 
-	a > i, button > i{
-		margin-right: 0.25rem;
+	.logo:hover{
+		text-decoration: underline;
 	}
 
-	a:hover, button:hover{
-		background: var(--l1);
-		color: var(--accent);
-		outline: solid 1pt var(--l4);
+	.logo i{
+		margin-right: 0.5rem;
 	}
 
-	a.active{
-		color: var(--accent);
+	.nav-buttons{
+		display: flex;
+		align-items: center;
 	}
 </style>

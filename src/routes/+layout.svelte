@@ -13,6 +13,8 @@
 		
 	})
 
+	const leftNavBarBool = false
+
 
 </script>
 
@@ -23,10 +25,16 @@
 	<meta name='impact-site-verification' value='d1575fe7-a813-4dfd-9b87-47ec3fcc7e89'>
 </svelte:head>
 
-<div class="app">
-	<div class="left-navbar">
-		<LeftNavbar />
-	</div>
+<div class="app {leftNavBarBool ? "leftbar" : "topbar"}">
+	{#if leftNavBarBool}
+		<div class="left-navbar">
+			<LeftNavbar />
+		</div>
+	{:else}
+		<div class="top-navbar">
+			<TopNavbar />
+		</div>
+	{/if}
 	
 	<div class="content">
 		{@render children()}
@@ -34,13 +42,18 @@
 </div>
 
 <style>
-	.app{
+
+	.app.leftbar{
 		display: grid;
 		grid-template-columns: 20rem calc(100vw - 20rem);
 	}
 
-	.content{
+	.app.leftbar .content{
         padding-top: 3.6rem;
         padding-right: 1.2rem;
     }
+
+	.app.topbar{
+		padding-inline: var(--inline-moat);
+	}
 </style>

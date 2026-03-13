@@ -1,4 +1,5 @@
 <script>
+    import FilterStack from "$lib/components/Suggest/FilterStack.svelte";
     import RecommendGrid from "$lib/components/Suggest/RecommendGrid.svelte";
 
 
@@ -7,24 +8,22 @@
 <!--  -->
 
 <div class='page'>
-    <div class="warning">This list of games is hardcoded and predetermined.</div>
-    <div class="horizontal-scroll filter-wrapper">
-        <button class="filter">Display: All ▼</button>
-        <button class="filter">Genre: All ▼</button>
-        <button class="filter">Platform: All ▼</button>
-        <button class="filter">Max Playtime: None ▼</button>
-        <button class="filter">Max Price: None ▼</button>
-        <button class="filter">Sort: Relevance ▼</button>
+    <!-- <div class="warning">This list of games is hardcoded and predetermined.</div> -->
+    <div class="filter-stack">
+        <FilterStack />
     </div>
-    <div class="title">Recommended Games</div>
-    <RecommendGrid />
+    <div class="game-stack">
+        <div class="title">Recommended Games</div>
+        <RecommendGrid />
+    </div>
 </div>
 
 <!--  -->
 
 <style>
     .page{
-        width: 100%;
+        display: grid;
+        grid-template-columns: 1fr 3fr;
     }
 
     .filter{

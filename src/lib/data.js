@@ -1,11 +1,21 @@
 import { writable } from 'svelte/store'
 
+let default_filters = {
+    "Display": "All",
+    "Genre": "All",
+    "Platform": "All",
+    "Max_Playtime": "None",
+    "Max_Price": "None",
+    "Sort": "Relevance"
+}
+
 let initial_db = {
     user: {},
+    filters: default_filters,
     sid: null
 }
 
-const app_title = "steam.0002"
+const app_title = "steam.0004"
 const storage_ref = `localDB-${app_title}`
 
 const storage = {
