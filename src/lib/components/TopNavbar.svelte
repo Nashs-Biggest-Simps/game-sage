@@ -2,13 +2,22 @@
 	import { resolve } from '$app/paths'
 	import { page } from '$app/state'
 	import { db } from '$lib/data'
-    import { onMount } from 'svelte';
+    import { beforeUpdate, onMount } from 'svelte';
     import TopNavbarItem from '$lib/components/TopNavbarItem.svelte';
+
+
+	let personaname = null
+	beforeUpdate(() => {
+		db.subscribe(data => {
+			personaname = data?.user?.personaname
+			console.log(data.user)
+		})
+	})
 </script>
 
 <!--  -->
 
-<div class="wrapper">
+<div class="wrapper {personaname ? "visible" : "invisible"}">
 	<a href={resolve("/")} class="logo">
 		<i class="fa-solid fa-hat-wizard"></i>
 		GameSage
@@ -18,7 +27,7 @@
 		<TopNavbarItem route="library" icon="grip" text="Library"/>
 		<TopNavbarItem route="suggest" icon="wand-magic-sparkles" text="Suggested"/>
 		<TopNavbarItem route="reviews" icon="star" text="Reviews"/>
-		<TopNavbarItem route="profile" icon="user" text="nonoobu_8"/>
+		<TopNavbarItem route="profile" icon="user" text={personaname}/>
 	</div>
 </div>
 
@@ -31,6 +40,7 @@
 		grid-template-columns: auto min-content;
 		align-items: center;
 		padding: 1rem 0;
+		transition: opacity 200ms cubic-bezier(0.215, 0.610, 0.355, 1);
 	}
     .logo{
 		width: fit-content;
@@ -53,4 +63,7 @@
 		display: flex;
 		align-items: center;
 	}
+
+	.visible{ opacity : 1; }
+	.invisible{ opacity : 0; }
 </style>

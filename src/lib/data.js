@@ -1,4 +1,8 @@
 import { writable } from 'svelte/store'
+import { steamAPICall } from '$lib/steam'
+
+const app_title = "steam.0010"
+const storage_ref = `localDB-${app_title}`
 
 let default_filters = {
     "Display": "All",
@@ -15,38 +19,29 @@ let initial_db = {
     sid: null
 }
 
-const app_title = "steam.0004"
-const storage_ref = `localDB-${app_title}`
-
 const storage = {
     read: function (location) {
-        if (typeof window =="undefined") return
-
-        if (storage.exists(location)) {
-            return localStorage[location]
-        } else {
-            return ''
-        }
+        if (typeof window =="undefined")    return
+        if (storage.exists(location))       return localStorage[location]
+        else                                return ''
     },
     write: function (location, value) {
-        if (typeof window =="undefined") return
-
+        if (typeof window =="undefined")    return
         localStorage[location] = value
     },
     clear: function() {
-        if (typeof window =="undefined") return
-
+        if (typeof window =="undefined")    return
         localStorage.clear()
     },
     exists: function (location) {
-		if (typeof window =="undefined") return
-
-        if (localStorage[location]) return true
-		else return false
+		if (typeof window =="undefined")    return
+        if (localStorage[location])         return true
+		else                                return false
 	}
 }
 
 export const db = storage.exists(storage_ref) ? writable(JSON.parse(storage.read(storage_ref))) : writable(initial_db)
+
 export function clearDB() {
     db.update(data => {
         data = initial_db
@@ -55,11 +50,22 @@ export function clearDB() {
     console.log("Cleared db")
 }
 
+const user_id = "76561199687209554"
+export function updateUserObject() {
+    db.update(data => {
+        steamAPICall("getPlayerSummary", user_id, ret => {
+            data.user = ret.response.players[0]
+        })
+        return data
+    })
+}
+
 db.subscribe(db => {
     let data
     
     if (Object.keys(db) == undefined) {
         data = initial_db
+        alert("Database Fault Detected: Restart & Reload")
         if (typeof window !== "undefined") window.open("/", "_self")
     }
     else {

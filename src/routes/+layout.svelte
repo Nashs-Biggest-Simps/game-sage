@@ -9,9 +9,6 @@
 	import { db } from '$lib/data'
 	let { children } = $props();
 
-	onMount(() => {
-		
-	})
 
 	const leftNavBarBool = false
 

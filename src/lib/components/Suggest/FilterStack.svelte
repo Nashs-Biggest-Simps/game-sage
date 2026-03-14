@@ -45,6 +45,6 @@
     .filter-wrapper{
         position: sticky;
         top: 2.4rem;
-        padding: 1.2rem;
+        padding: 2.4rem 1.2rem;
     }
 </style>

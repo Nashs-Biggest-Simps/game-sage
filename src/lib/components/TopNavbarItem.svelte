@@ -4,7 +4,6 @@
 	import { page } from '$app/stores';
 
     let path = $derived($page.url.pathname)
-	console.log(path)
 
     let { route, icon, text = null } = $props()
 

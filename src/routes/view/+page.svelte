@@ -1,6 +1,6 @@
 <script>
     import { page } from '$app/stores';
-    import { getGameDetails } from '$lib/api'
+    import { getGameDetails } from '$lib/steam'
 
     let appid = null
     let name = null
@@ -9,7 +9,6 @@
         appid = $page.url.searchParams.get('id')
         name = $page.url.searchParams.get('name')
         game = getGameDetails(appid)
-        console.log(game)
     }
 </script>
 
