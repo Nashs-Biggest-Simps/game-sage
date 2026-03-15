@@ -64,5 +64,4 @@
     .item.active .circle{
         background: var(--accent);
     }
-
 </style>

@@ -10,7 +10,6 @@
 	beforeUpdate(() => {
 		db.subscribe(data => {
 			personaname = data?.user?.personaname
-			console.log(data.user)
 		})
 	})
 </script>

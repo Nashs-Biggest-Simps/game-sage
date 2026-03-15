@@ -46,5 +46,7 @@
         position: sticky;
         top: 2.4rem;
         padding: 2.4rem 1.2rem;
+        padding-right: 3.6rem;
+        white-space: nowrap;
     }
 </style>

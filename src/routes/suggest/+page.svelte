@@ -23,7 +23,7 @@
 <style>
     .page{
         display: grid;
-        grid-template-columns: 1fr 3fr;
+        grid-template-columns: min-content auto;
     }
 
     .filter{

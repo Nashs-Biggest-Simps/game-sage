@@ -11,7 +11,7 @@
 
     onMount(() => {
         steamAPICall("getRecentlyPlayedGames", id, data => {
-            console.log(data)
+            // console.log("dta", data?.response?.games)
         })
     })
 </script>
