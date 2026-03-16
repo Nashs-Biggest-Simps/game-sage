@@ -96,8 +96,8 @@
         display: flex;
         align-items: center;
         grid-column: span 2;
-        font-size: 1.4rem;
-        font-weight: 600;
+        font-size: 1.6rem;
+        font-weight: 700;
     }
 
     .top-bar button{

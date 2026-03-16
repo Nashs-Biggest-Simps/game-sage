@@ -33,7 +33,13 @@
 
 <style>
 
-	.app{
+	.top-navbar{ 
+		padding-inline: var(--inline-moat);
+		background: linear-gradient(to top right, var(--l05), transparent);
+	}
+
+	.content{
+		padding-block: 2.4rem;
 		padding-inline: var(--inline-moat);
 	}
 

@@ -47,16 +47,6 @@ const storage = {
 	}
 }
 
-// function getWriteable(sref) {
-//     if (storage.exists(sref)) {
-//         return writable(JSON.parse(storage.read(sref)))
-//     }
-//     else {
-//         return writable(initial_db)
-//     }
-// }
-
-// export const db = getWriteable(storage_ref)
 export const db = storage.exists(storage_ref) ? writable(JSON.parse(storage.read(storage_ref))) : writable(initial_db)
 
 export const clearDB = () => {

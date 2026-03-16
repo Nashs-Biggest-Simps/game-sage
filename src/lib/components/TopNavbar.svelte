@@ -23,6 +23,7 @@
 	</a>
 
 	<div class="nav-buttons">
+		<TopNavbarItem route="market" icon="basket-shopping" text="Market"/>
 		<TopNavbarItem route="library" icon="grip" text="Library"/>
 		<TopNavbarItem route="suggest" icon="wand-magic-sparkles" text="Suggested"/>
 		<TopNavbarItem route="reviews" icon="star" text="Reviews"/>

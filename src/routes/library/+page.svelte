@@ -35,7 +35,6 @@
     }
 
     .title{
-        margin-top: 1.8rem;
         margin-left: 0.4rem;
         margin-bottom: 0.4rem;
         font-size: 2rem;
