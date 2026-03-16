@@ -1,6 +1,6 @@
 <script>
     import FilterStack from "$lib/components/Suggest/FilterStack.svelte";
-    import RecommendGrid from "$lib/components/Suggest/RecommendGrid.svelte";
+    import GameGrid from "$lib/components/Suggest/GameGrid.svelte";
 
 
 </script>
@@ -14,7 +14,7 @@
     </div>
     <div class="game-stack">
         <div class="title">Recommended Games</div>
-        <RecommendGrid />
+        <GameGrid />
     </div>
 </div>
 

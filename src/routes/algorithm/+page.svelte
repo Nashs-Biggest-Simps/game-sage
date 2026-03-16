@@ -1,12 +1,17 @@
 <!-- created by Aaron Meche -->
 <script>
     import { Algorithm } from "$lib/algorithm";
-    import { steamAPICall } from "$lib/steam";
+    import { steamAPI } from "$lib/steam";
     import { onMount } from "svelte";
 
-    const userAlg = new Algorithm()
+    const userAlg = new Algorithm("alpha")
     let playedGames = []
     let ownedGames = []
+
+    let library = ""
+    onMount(() => {
+        userAlg.assemble()
+    })
 
     const exRecentlyPlayedGames = {
         "appid": 255710,
@@ -31,28 +36,28 @@
         "playtime_disconnected": 1261
     }
 
-
-    onMount(() => {
-        steamAPICall("getRecentlyPlayedGames", ret => {
-            playedGames = ret?.response?.games
-            userAlg.ingestLibrary(playedGames)
-            userAlg.printContents()
-        })
-        steamAPICall("getOwnedGames", ret => {
-            ownedGames = ret?.response.games
-        })
-    })
-
 </script>
 
 <!--  -->
 
-<div class='page'>
-    Algorithm
+<div class="output">
+    <div class="line">Algorithm</div>
+    <div class="line">Library: {library}</div>
 </div>
 
 <!--  -->
 
 <style>
+    .output{
+        display: grid;
+        padding: 1rem;
+        gap: 2pt;
+        outline: solid 2pt var(--l2);
+    }
+
+    .line{
+        background: var(--l1);
+        padding: 1rem;
+    }
 
 </style>

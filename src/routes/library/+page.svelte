@@ -1,48 +1,37 @@
 <script>
-    import RecommendGrid from "$lib/components/Suggest/RecommendGrid.svelte";
+    import { db } from "$lib/data"
+    import FilterStack from "$lib/components/Suggest/FilterStack.svelte";
+    import GameGrid from "$lib/components/Suggest/GameGrid.svelte";
+    import { app } from "$lib/firebase";
 
-
-
-    let items = new Array(30)
+    let games = null
+    db.subscribe(data => {
+        games = Object.values(data?.algr?.brain?.appdata || {})
+        console.log(games)
+    })
 </script>
 
 <!--  -->
 
-<div class="page">
-    <div class="alert">
-        This page was copied from the Suggestions page. This list of games is hardcoded and predetermined.
+<div class='page'>
+    <!-- <div class="warning">This list of games is hardcoded and predetermined.</div> -->
+    <div class="filter-stack">
+        <FilterStack />
     </div>
-    <div class="horizontal-scroll filter-wrapper">
-        <button class="filter">Display: All ▼</button>
-        <button class="filter">Genre: All ▼</button>
-        <button class="filter">Platform: All ▼</button>
-        <button class="filter">Max Playtime: None ▼</button>
-        <button class="filter">Max Price: None ▼</button>
-        <button class="filter">Sort: Relevance ▼</button>
+    <div class="game-stack">
+        <div class="title">Your Library</div>
+        {#if games}
+            <GameGrid games={games} />
+        {/if}
     </div>
-    <div class="title">Your Library</div>
-    <RecommendGrid />
 </div>
 
 <!--  -->
 
 <style>
     .page{
-        width: 100%;
-    }
-
-    .filter{
-        margin-inline: 0.4rem;
-        padding: 0.6rem 0.8rem;
-        background: var(--l1);
-        border-radius: 0.4rem;
-        font-size: 0.8rem;
-        cursor: pointer;
-    }
-
-    .filter:hover{
-        background: var(--l2);
-        outline: solid 1pt var(--l4);
+        display: grid;
+        grid-template-columns: min-content auto;
     }
 
     .title{

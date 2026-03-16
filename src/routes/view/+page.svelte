@@ -1,26 +1,34 @@
 <script>
     import { page } from '$app/stores';
-    import { getGameDetails } from '$lib/steam'
+    import { steamAPI } from '$lib/steam'
+    import { beforeUpdate, onMount } from 'svelte';
 
+    let appdata = null
     let appid = null
-    let name = null
     let game = null
-    $: {
+    let hltb = null
+    onMount(() => {
         appid = $page.url.searchParams.get('id')
-        name = $page.url.searchParams.get('name')
-        game = getGameDetails(appid)
-    }
+        steamAPI.getGameDetails(appid, ret => {
+            game = ret[appid].data || null
+            console.log(game)
+        })
+        steamAPI.howLongToBeat(appid, ret => {
+            hltb = ret || null
+        })
+    })
 </script>
 
 <!--  -->
 
 <div class='page'>
-    <div class="game-title">
+    {#if game}
+    <div class="top-bar">
         <!-- svelte-ignore a11y_consider_explicit_label -->
         <button onclick={() => history.back()}>
             <i class="fa-solid fa-arrow-left"></i>
         </button>
-        {name}
+        {game.name}
     </div>
     <div class="content">
         <img class="thumbnail" src="https://cdn.akamai.steamstatic.com/steam/apps/{appid}/capsule_616x353.jpg" alt="">
@@ -28,22 +36,46 @@
             <button class="buy">Buy $17.99</button>
             <button>Save for Later</button>
         </div>
+        <div class="description">
+            {game.short_description}
+        </div>
     </div>
 
     <div class="information">
-        <div class="description">
-            This is a short description of the game sources from the developers themselves
-        </div>
         <div class="label">Information</div>
+
         <div class="key">Developer</div>
-        <div class="val">The Developer</div>
-        <div class="key">Developer</div>
-        <div class="val">The Developer</div>
-        <div class="key">Developer</div>
-        <div class="val">The Developer</div>
-        <div class="key">Developer</div>
-        <div class="val">The Developer</div>
+        <div class="val">{game?.developers?.join(", ")}</div>
+
+        <div class="key">Publisher</div>
+        <div class="val">{game?.publishers?.join(", ")}</div>
+
+        <div class="key">Genres</div>
+        <div class="val">{game?.genres.map(g => g.description).join(", ")}</div>
+        
+        <div class="key">Platforms</div>
+        <div class="val">
+            {Object.entries(game?.platforms ?? {})
+                .filter(([_, v]) => v)
+                .map(([k]) => k[0].toUpperCase() + k.slice(1))
+                .join(", ")}
+        </div>
+
+        <div class="key">Released</div>
+        <div class="val">{game?.release_date?.date}</div>
+
+        <div class="label">Estimated Play Time</div>
+
+        <div class="key">Completionist</div>
+        <div class="val">{Math.trunc(hltb?.completionist)}h {(hltb?.completionist % 1 * 60).toFixed(0)}m</div>
+
+        <div class="key">Main Story</div>
+        <div class="val">{Math.trunc(hltb?.mainStory)}h {(hltb?.mainStory % 1 * 60).toFixed(0)}m</div>
+
+        <div class="key">Main Story + Extras</div>
+        <div class="val">{Math.trunc(hltb?.mainStoryWithExtras)}h {(hltb?.mainStoryWithExtras % 1 * 60).toFixed(0)}m</div>
     </div>
+    {/if}
 </div>
 
 <!--  -->
@@ -55,19 +87,24 @@
         gap: 1.2rem;
     }
 
-    .game-title{
+    .content{
+        display: grid;
+        gap: 1.2rem;
+    }
+
+    .top-bar{
         display: flex;
         align-items: center;
         grid-column: span 2;
-        font-size: 1.6rem;
+        font-size: 1.4rem;
         font-weight: 600;
     }
 
-    .game-title button{
+    .top-bar button{
         display: flex;
         align-items: center;
         justify-content: center;
-        height: 125%;
+        height: 2rem;
         aspect-ratio: 1 / 1;
         background: var(--l1);
         outline: solid 1pt var(--l2);
@@ -77,7 +114,7 @@
         cursor: pointer;
     }
 
-    .game-title button:hover{
+    .top-bar button:hover{
         background: var(--l2);
         outline-color: var(--l4);
     }
@@ -86,15 +123,11 @@
         width: 100%;
         aspect-ratio: 16 / 9;
         object-fit: cover;
-        border-radius: 0.8rem;
-    }
-
-    .action-buttons{
-        padding-block: 0.8rem;
-        padding-inline: 1pt;
+        border-radius: 0.4rem;
     }
 
     .action-buttons button{
+        margin: 1pt;
         margin-right: 1.2rem;
         padding: 0.8rem 1.2rem;
         background: var(--l05);
@@ -121,14 +154,14 @@
     .information{
         height: fit-content;
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: min-content auto;
         gap: 1.2rem;
         padding: 1.2rem;
         outline: solid 2pt var(--l2);
         border-radius: 0.8rem;
     }
 
-    .information .description, .information .label{
+    .information .label{
         grid-column: span 2;
     }
 
@@ -137,6 +170,7 @@
     }
 
     .information .key, .information .val{
+        white-space: nowrap;
         opacity: 0.75;
     }
 

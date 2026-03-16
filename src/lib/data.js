@@ -1,8 +1,16 @@
-import { writable } from 'svelte/store'
-import { steamAPICall } from '$lib/steam'
+// data.js
+// by Aaron Meche
 
-const app_title = "steam.0010"
-const storage_ref = `localDB-${app_title}`
+// This file exports a "db" constant
+// that allows for easy and convenient
+// local data storage on client browsers
+
+
+import { writable } from 'svelte/store'
+import { steamAPI } from '$lib/steam'
+
+const app_title = "gamesage_0.0.0"
+const storage_ref = `ldb-${app_title}`
 
 let default_filters = {
     "Display": "All",
@@ -15,34 +23,43 @@ let default_filters = {
 
 let initial_db = {
     user: {},
+    algr: {},
     filters: default_filters,
-    sid: null
 }
 
 const storage = {
     read: function (location) {
-        if (typeof window =="undefined")    return
-        if (storage.exists(location))       return localStorage[location]
-        else                                return ''
+        if (typeof window =="undefined") return
+        return localStorage[location] || null
     },
     write: function (location, value) {
-        if (typeof window =="undefined")    return
+        if (typeof window =="undefined") return
         localStorage[location] = value
     },
     clear: function() {
-        if (typeof window =="undefined")    return
+        if (typeof window =="undefined") return
         localStorage.clear()
     },
     exists: function (location) {
-		if (typeof window =="undefined")    return
-        if (localStorage[location])         return true
-		else                                return false
+		if (typeof window =="undefined") return
+        if (localStorage[location])      return true
+		else                             return false
 	}
 }
 
+// function getWriteable(sref) {
+//     if (storage.exists(sref)) {
+//         return writable(JSON.parse(storage.read(sref)))
+//     }
+//     else {
+//         return writable(initial_db)
+//     }
+// }
+
+// export const db = getWriteable(storage_ref)
 export const db = storage.exists(storage_ref) ? writable(JSON.parse(storage.read(storage_ref))) : writable(initial_db)
 
-export function clearDB() {
+export const clearDB = () => {
     db.update(data => {
         data = initial_db
         return data
@@ -52,25 +69,23 @@ export function clearDB() {
 
 const user_id = "76561199687209554"
 export function updateUserObject() {
-    db.update(data => {
-        steamAPICall("getPlayerSummary", user_id, ret => {
+    steamAPI.getPlayerSummary(ret => {
+        db.update(data => {
             data.user = ret.response.players[0]
+            return data
         })
-        return data
     })
 }
 
 db.subscribe(db => {
     let data
-    
     if (Object.keys(db) == undefined) {
         data = initial_db
+        console.error("Database Fault")
         alert("Database Fault Detected: Restart & Reload")
-        if (typeof window !== "undefined") window.open("/", "_self")
     }
     else {
         data = JSON.stringify(db)
     }
-
     storage.write(storage_ref, data)
 })
