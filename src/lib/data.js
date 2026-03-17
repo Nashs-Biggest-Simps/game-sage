@@ -57,6 +57,7 @@ export const clearDB = () => {
     console.log("Cleared db")
 }
 
+// const user_id = "76561199687209554"
 const user_id = "76561199687209554"
 export function updateUserObject() {
     steamAPI.getPlayerSummary(ret => {

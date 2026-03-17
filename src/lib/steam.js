@@ -4,6 +4,7 @@
 
 // Steam API Call File
 
+// const steamID = "76561199687209554"
 const steamID = "76561199687209554"
 const APIkey = "20C1F35B7542A2AA3770FBCA32674486" // public in github, dont care, no cost, will hide for production
 
