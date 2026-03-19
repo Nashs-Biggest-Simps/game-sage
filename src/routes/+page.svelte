@@ -23,7 +23,7 @@
 
 <!--  -->
 
-<style>
+<style lang="rue">
     .page {
         display: grid;
         grid-template-columns: 3fr 2fr;
