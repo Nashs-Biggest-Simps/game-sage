@@ -20,7 +20,7 @@
 
 <!--  -->
 
-<style>
+<style lang="rue">
     .island{
         height: auto;
         width: 30rem;
@@ -51,10 +51,11 @@
         outline: solid 1pt var(--l5);
         border-radius: inherit;
         cursor: pointer;
+
+        :hover{
+            background: var(--l2);
+            color: var(--accent);
+        }
     }
 
-    a:hover{
-        backgronud: var(--l2);
-        color: var(--accent);
-    }
 </style>

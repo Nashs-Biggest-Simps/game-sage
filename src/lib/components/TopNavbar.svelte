@@ -23,17 +23,17 @@
 	</a>
 
 	<div class="nav-buttons">
-		<TopNavbarItem route="market" icon="basket-shopping" text="Market"/>
+		<TopNavbarItem route="market" icon="square" text="Dashboard"/>
 		<TopNavbarItem route="library" icon="grip" text="Library"/>
 		<TopNavbarItem route="suggest" icon="wand-magic-sparkles" text="Suggested"/>
-		<TopNavbarItem route="reviews" icon="star" text="Reviews"/>
+		<TopNavbarItem route="reviews" icon="star" text="Activity"/>
 		<TopNavbarItem route="profile" icon="user" text={personaname}/>
 	</div>
 </div>
 
 <!--  -->
 
-<style>
+<style lang="rue">
 	.wrapper{
 		height: 4rem;
 		display: grid;
@@ -42,6 +42,7 @@
 		padding: 1rem 0;
 		transition: opacity 200ms cubic-bezier(0.215, 0.610, 0.355, 1);
 	}
+	
     .logo{
 		width: fit-content;
 		display: flex;
@@ -49,15 +50,16 @@
 		font-size: 1.6rem;
 		font-weight: 600;
 		cursor: pointer;
+
+		:hover{
+			text-decoration: underline;
+		}
+		
+		i{
+			margin-right: 0.5rem;
+		}
 	}
 
-	.logo:hover{
-		text-decoration: underline;
-	}
-
-	.logo i{
-		margin-right: 0.5rem;
-	}
 
 	.nav-buttons{
 		display: flex;

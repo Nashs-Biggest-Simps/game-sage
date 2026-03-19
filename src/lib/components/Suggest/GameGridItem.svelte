@@ -25,7 +25,7 @@
 
 <!--  -->
 
-<style>
+<style lang="rue">
     .item{
         display: grid;
         gap: 0.6rem;
@@ -34,12 +34,16 @@
         cursor: pointer;
         border-radius: 1.2rem;
         opacity: 0.9;
-    }
 
-    .item:hover{
-        background: var(--l1);
-        outline: solid 1pt var(--l3);
-        opacity: 1;
+        :hover{
+            background: var(--l1);
+            outline: solid 1pt var(--l3);
+            opacity: 1;
+
+            .tags .item{
+                background: var(--l2);
+            }
+        }
     }
 
     
@@ -76,9 +80,5 @@
         background: var(--l1);
         outline: solid 1pt var(--l2);
         border-radius: 100vh;
-    }
-
-    .item:hover .tags .item{
-        background: var(--l2);
     }
 </style>

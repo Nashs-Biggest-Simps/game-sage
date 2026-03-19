@@ -27,6 +27,14 @@
     --red: hsl(0, 40%, 80%);
 
 	--inline-moat: 8vw;
+
+    --bg: #14171f;
+    --l1: #1d232f;
+    --l2: #252d41;
+    --l3: #2b3854;
+    --soft-accent: #335299;
+    --accent: #2059df;
+    --red: #ca0000;
 }
 
 @media (prefers-color-scheme: dark) {

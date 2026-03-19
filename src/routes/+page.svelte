@@ -17,8 +17,8 @@
 <!--  -->
 
 <div class="page">
-    <RightHalf />
     <LeftHalf />
+    <RightHalf />
 </div>
 
 <!--  -->
@@ -26,6 +26,6 @@
 <style>
     .page {
         display: grid;
-        grid-template-columns: 2fr 3fr;
+        grid-template-columns: 3fr 2fr;
     }
 </style>

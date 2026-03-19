@@ -19,7 +19,7 @@
 
 <!--  -->
 
-<style>
+<style lang="rue">
 	a{
 		display: flex;
 		align-items: center;
@@ -29,11 +29,11 @@
 		aspect-ratio: 1 / 1;
 		border-radius: 0.6rem;
 		cursor: pointer;
-	}
 
-	a:hover{
-		background: var(--l1);
-		outline: solid 1pt var(--l3);
+		:hover{
+			background: var(--l1);
+			outline: solid 1pt var(--l3);
+		}
 	}
 
 	a.active{
