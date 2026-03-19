@@ -1,4 +1,4 @@
-import { preprocessRue } from './rue-sveltePreprocessor.js';
+import preprocessRue from 'rue-lang';
 import adapter from '@sveltejs/adapter-auto';
 
 /** @type {import('@sveltejs/kit').Config} */
