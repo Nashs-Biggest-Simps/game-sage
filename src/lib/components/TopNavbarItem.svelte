@@ -37,9 +37,7 @@
 	}
 
 	a.active{
-		background: var(--l05);
-		color: var(--accent);
-		/* outline: solid 1pt var(--l2); */
+		color: var(--bright-accent);
 	}
 
 	a.text{

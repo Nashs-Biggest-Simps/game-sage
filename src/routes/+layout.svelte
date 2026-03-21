@@ -1,5 +1,6 @@
 <script>
-	import '$lib/main.css';
+	import "$lib/main.css"
+	import "$lib/main.rue"
 	import TopNavbar from '$lib/components/TopNavbar.svelte';
 	import LeftNavbar from '$lib/components/LeftNavbar.svelte';
 	import { resolve } from '$app/paths';
@@ -8,8 +9,6 @@
 	import { goto } from '$app/navigation';
 	import { db } from '$lib/data'
 	let { children } = $props();
-
-
 
 
 </script>
