@@ -25,14 +25,23 @@ def la0: getLayer(0, 16);
 def la05: getLayer(0.5, 16);
 def la1: getLayer(1, 16);
 def la2: getLayer(2, 16);
+def la3: getLayer(3, 16);
+def la4: getLayer(4, 16);
+def la5: getLayer(5, 16);
+def la6: getLayer(6, 16);
 
-def lz0: getLayer(0, 0, 6);
-def lz05: getLayer(0.5, 0, 6);
-def lz1: getLayer(1, 0, 6);
-def lz2: getLayer(2, 0, 6);
+def lb0: getLayer(0, 0, 4);
+def lb05: getLayer(0.5, 0, 4);
+def lb1: getLayer(1, 0, 4);
+def lb2: getLayer(2, 0, 4);
+def lb3: getLayer(3, 0, 4);
+def lb4: getLayer(4, 0, 4);
+def lb5: getLayer(5, 0, 4);
+def lb6: getLayer(6, 0, 4);
 
 def soft-accent: hsl(212, 50%, 40%);
 def accent: hsl(212, 75%, 50%);
+def accent-low: hsl(212, 75%, 50%, 4%);
 def bright-accent: hsl(212, 75%, 65%);
 def warning: #ca0000;
 def contrast: white;
