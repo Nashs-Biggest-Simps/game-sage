@@ -12,21 +12,19 @@
 <!--  -->
 
 <!-- svelte-ignore a11y_consider_explicit_label -->
-<a class="{path == "/" + route ? "active" : ""} {text ? "text" : ""}" href={resolve("/" + route)}>
-    <i class="fa-solid fa-{icon} {text ? "pretext" : ""}"></i>
+<a class="navitem {path == "/" + route ? "active" : ""} {text ? "text" : ""}" href={resolve("/" + route)}>
+    <!-- <i class="fa-solid fa-{icon} {text ? "pretext" : ""}"></i> -->
     {text ? text : ""}
 </a>
 
 <!--  -->
 
 <style lang="rue">
-	a{
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		height: 2.4rem;
+	.navitem{
+		padding: 0.6rem 1.2rem;
 		margin-left: 2pt;
-		aspect-ratio: 1 / 1;
+		font-weight: 500;
+		letter-spacing: 0.25px;
 		border-radius: 0.6rem;
 		cursor: pointer;
 
@@ -36,12 +34,8 @@
 		}
 	}
 
-	a.active{
+	.navitem.active{
 		color: var(--bright-accent);
-	}
-
-	a.text{
-		padding-inline: 0.8rem;
 	}
 
 	i.pretext{

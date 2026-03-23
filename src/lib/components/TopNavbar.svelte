@@ -23,7 +23,7 @@
 	</a>
 
 	<div class="nav-buttons">
-		<TopNavbarItem route="market" icon="square" text="Dashboard"/>
+		<TopNavbarItem route="dashboard" icon="square" text="Dashboard"/>
 		<TopNavbarItem route="library" icon="grip" text="Library"/>
 		<TopNavbarItem route="suggest" icon="wand-magic-sparkles" text="Suggested"/>
 		<TopNavbarItem route="reviews" icon="star" text="Activity"/>
@@ -35,11 +35,10 @@
 
 <style lang="rue">
 	.wrapper{
-		height: 4rem;
 		display: grid;
 		grid-template-columns: auto min-content;
 		align-items: center;
-		padding: 1rem 0;
+		padding: 1.2rem 0;
 		transition: opacity 200ms cubic-bezier(0.215, 0.610, 0.355, 1);
 	}
 	

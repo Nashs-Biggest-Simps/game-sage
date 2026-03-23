@@ -21,6 +21,11 @@
 </svelte:head>
 
 <div class="app">
+	<div class="background">
+		<div class="bottom-right-shine"></div>
+		<div class="left-side-shine"></div>
+	</div>
+
 	<div class="top-navbar">
 		<TopNavbar />
 	</div>
@@ -31,11 +36,39 @@
 </div>
 
 <style>
+	.background{
+		position: fixed;
+		top: 0;
+		left: 0;
+		height: 100vh;
+		width: 100vw;
+		z-index: -100;
+		background: linear-gradient(to bottom, transparent, var(--l05));
+	}
+
+	.bottom-right-shine{
+		position: absolute;
+		height: 100%;
+		width: 100%;
+		background: linear-gradient(to bottom right, transparent, var(--l2));
+		opacity: 0.2;
+		display: none;
+	}
+
+	.left-side-shine{
+		position: absolute;
+		height: 100%;
+		width: 100%;
+		background: linear-gradient(to top right, var(--l2), transparent);
+		opacity: 0.2;
+		display: none;
+	}
 
 	.top-navbar{ 
 		padding-inline: var(--inline-moat);
-		background: linear-gradient(to top right, var(--l05), transparent);
+		background: linear-gradient(to top right, var(--la1), var(--la05));
 	}
+
 
 	.content{
 		padding-block: 2.4rem;
