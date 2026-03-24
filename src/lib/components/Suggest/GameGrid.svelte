@@ -1,6 +1,5 @@
 <script>
     import GameGridItem from '$lib/components/Suggest/GameGridItem.svelte'
-    import Page from '../../../routes/+page.svelte';
 
 
     let { games } = $props()
@@ -31,8 +30,8 @@
 <!--  -->
 
 <div class="grid">
-    {#each games as item}
-        <GameGridItem game={item} />
+    {#each games as game}
+        <GameGridItem game={game} />
     {/each}
 </div>
 

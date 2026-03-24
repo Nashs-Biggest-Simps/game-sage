@@ -1,27 +1,39 @@
 <script>
     import { resolve } from "$app/paths";
+    import { steamAPI } from "$lib/steam";
+    import { onMount } from "svelte";
 
 
 
     let { game } = $props()
+
+    onMount(() => {
+        steamAPI.getGameDetails(game.appid, ret => {
+            game = Object.values(ret)[0].data
+            console.log("game", game)
+        })
+    })
+
 
 
 </script>
 
 <!--  -->
 
-<a href={resolve(`/view?name=${game.name}&id=${game.steam_appid}`)} class="item">
-    <img class="thumbnail" src="https://cdn.akamai.steamstatic.com/steam/apps/{game.steam_appid}/capsule_616x353.jpg" alt="">
+{#if game}
+<a href={resolve(`/view?name=${game?.name}&id=${game?.steam_appid}`)} class="item">
+    <img class="thumbnail" src="https://cdn.akamai.steamstatic.com/steam/apps/{game?.steam_appid}/capsule_616x353.jpg" alt="">
     <div class="details">
-        <div class="game-title">{game.name}</div>
-        <div class="line">{game.is_free ? "Free" : game.price_overview.final_formatted}</div>
+        <div class="game-title">{game?.name}</div>
+        <div class="line">{game?.is_free ? "Free" : game.price_overview?.final_formatted}</div>
         <div class="tags">
-            {#each game.genres as genre}
-                <div class="item">{genre.description}</div>
+            {#each game?.genres as genre}
+                <div class="item">{genre?.description}</div>
             {/each}
         </div>
     </div>
 </a>
+{/if}
 
 <!--  -->
 

@@ -3,11 +3,19 @@
     import FilterStack from "$lib/components/Suggest/FilterStack.svelte";
     import GameGrid from "$lib/components/Suggest/GameGrid.svelte";
     import { app } from "$lib/firebase";
+    import { steamAPI } from "$lib/steam";
+    import { onMount } from "svelte";
 
     let games = null
     db.subscribe(data => {
-        games = Object.values(data?.algr?.brain?.appdata || {})
-        console.log(games)
+        // games = Object.values(data?.algr?.brain?.appdata || {})
+    })
+
+    onMount(() => {
+        steamAPI.getOwnedGames(ret => {
+            games = Object.values(ret?.response?.games) || null
+            console.log(games.map(g => g.appid))
+        })
     })
 </script>
 
