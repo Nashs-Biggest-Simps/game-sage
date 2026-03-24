@@ -26,7 +26,7 @@
     <div class="details">
         <div class="game-title">{game?.name}</div>
         <div class="line">{game?.is_free ? "Free" : game.price_overview?.final_formatted}</div>
-        <div class="tags">
+        <div class="tags horizontal-scroll">
             {#each game?.genres as genre}
                 <div class="item">{genre?.description}</div>
             {/each}

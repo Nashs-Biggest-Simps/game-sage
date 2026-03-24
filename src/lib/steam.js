@@ -1,6 +1,6 @@
 
 
-
+import { db } from "$lib/data"
 
 // Steam API Call File
 
@@ -35,7 +35,7 @@ export const steamAPI = {
         makeApiCall(`https://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key=${APIkey}&steamid=${steamID}&format=json`, callback)
     },
     getGameDetails: (appid, callback) => {
-        makeApiCall(`https://store.steampowered.com/api/appdetails?appids=${appid}`, callback)
+        makeApiCall(`https://store.steampowered.com/api/appdetails?appids=${appid}&cc=us`, callback)
     },
     howLongToBeat: (appid, callback) => {
         makeApiCall(`https://hltbapi.codepotatoes.de/steam/${appid}`, callback)
