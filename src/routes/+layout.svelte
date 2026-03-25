@@ -8,8 +8,43 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { db } from '$lib/data'
+    import { steamAPI } from "$lib/steam";
 	let { children } = $props();
 
+	// Regular Update Cycle
+	// ... cache management, 
+	// ... other updates ...
+	function regularUpdateCycle() {
+		db.update(data => {
+			// Missing User Object
+			if (!data.user) {
+				steamAPI.getPlayerSummary(ret => {
+					db.update(data => {
+						data.user = ret.response.players[0]
+						return data
+					})
+					console.log("Updated: User")
+				})
+			}
+			// No Saved LibraryAppIdArray
+			if (!data?.cache?.libraryAppIdArray) {
+				steamAPI.getOwnedGames(ret => {
+					data.cache.libraryAppIdArray = ret?.response?.games.map(i => i.appid) || []
+				})
+			}
+			// Check for caches Library Game Objects
+			if (!data?.cache?.library) {
+				for (let i = 0; i < 25; i++) {
+
+				}
+			}
+			console.log("cache", data.cache)
+			return data
+		})
+		console.log("cache is updated")
+	}
+
+	onMount(regularUpdateCycle)
 
 </script>
 

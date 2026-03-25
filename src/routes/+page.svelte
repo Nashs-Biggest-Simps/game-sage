@@ -4,12 +4,7 @@
     import LeftHalf from "$lib/components/Home/LeftHalf.svelte";
     import RightHalf from "$lib/components/Home/RightHalf.svelte";
     import { onMount } from "svelte";
-    import { db, updateUserObject } from "$lib/data";
-
-    const id = "76561199687209554"
-    onMount(() => {
-        updateUserObject()
-    })
+    import { db } from "$lib/data";
 
 </script>
 

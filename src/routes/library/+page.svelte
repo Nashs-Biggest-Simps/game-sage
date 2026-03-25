@@ -8,14 +8,7 @@
 
     let games = null
     db.subscribe(data => {
-        // games = Object.values(data?.algr?.brain?.appdata || {})
-    })
-
-    onMount(() => {
-        steamAPI.getOwnedGames(ret => {
-            games = Object.values(ret?.response?.games) || null
-            console.log(games.map(g => g.appid))
-        })
+        games = data?.cache?.library || []
     })
 </script>
 

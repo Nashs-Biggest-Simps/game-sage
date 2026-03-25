@@ -6,9 +6,11 @@
     import TopNavbarItem from '$lib/components/TopNavbarItem.svelte';
 
 
+	let profilepic
 	let personaname = null
 	beforeUpdate(() => {
 		db.subscribe(data => {
+			profilepic = data?.user?.avatarfull
 			personaname = data?.user?.personaname
 		})
 	})
@@ -27,7 +29,7 @@
 		<TopNavbarItem route="library" icon="grip" text="Library"/>
 		<TopNavbarItem route="suggest" icon="wand-magic-sparkles" text="Suggested"/>
 		<TopNavbarItem route="reviews" icon="star" text="Activity"/>
-		<TopNavbarItem route="profile" icon="user" text={personaname}/>
+		<TopNavbarItem route="profile" icon="user" img={profilepic} text={personaname}/>
 	</div>
 </div>
 

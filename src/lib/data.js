@@ -9,7 +9,7 @@
 import { writable } from 'svelte/store'
 import { steamAPI } from '$lib/steam'
 
-const app_title = "gamesage_0.0.2"
+const app_title = "gamesage_0.0.3"
 const storage_ref = `ldb-${app_title}`
 
 let default_filters = {
@@ -24,6 +24,7 @@ let default_filters = {
 let initial_db = {
     user: {},
     algr: {},
+    cache: {},
     filters: default_filters,
 }
 
@@ -55,18 +56,6 @@ export const clearDB = () => {
         return data
     })
     console.log("Cleared db")
-}
-
-// const user_id = "76561199687209554"
-// const user_id = "76561198093685592"
-const user_id = "76561198240385412"
-export function updateUserObject() {
-    steamAPI.getPlayerSummary(ret => {
-        db.update(data => {
-            data.user = ret.response.players[0]
-            return data
-        })
-    })
 }
 
 db.subscribe(db => {
