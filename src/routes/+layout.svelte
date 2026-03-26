@@ -7,8 +7,8 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { db } from '$lib/data'
-    import { steamAPI } from "$lib/steam";
+	import { db, serverAPI } from '$lib/data'
+    import { steamAPI, steamID } from "$lib/steam";
 	let { children } = $props();
 
 	// Regular Update Cycle
@@ -16,32 +16,40 @@
 	// ... other updates ...
 	function regularUpdateCycle() {
 		db.update(data => {
+			let libraryAppIdArray = data?.cache?.libraryAppIdArray || []
 			// Missing User Object
-			if (!data.user) {
-				steamAPI.getPlayerSummary(ret => {
+			if (Object.keys(data.user).length < 1) {
+				console.log("Fetching playerSummary")
+				serverAPI.get("playerSummary/" + steamID, (res => {
 					db.update(data => {
-						data.user = ret.response.players[0]
+						data.user = res.response.players[0]
 						return data
 					})
-					console.log("Updated: User")
-				})
+				}))
 			}
 			// No Saved LibraryAppIdArray
 			if (!data?.cache?.libraryAppIdArray) {
-				steamAPI.getOwnedGames(ret => {
-					data.cache.libraryAppIdArray = ret?.response?.games.map(i => i.appid) || []
+				console.log("Fetching ownedGames")
+				serverAPI.get("ownedGames/" + steamID, res => {
+					data.cache.libraryAppIdArray = res?.response?.games.map(i => i.appid) || []
 				})
 			}
-			// Check for caches Library Game Objects
-			if (!data?.cache?.library) {
-				for (let i = 0; i < 25; i++) {
-
+			// Check for missing Library object
+			if (!data?.cache?.library) data.cache.library = {}
+			// Check for missing Library Cache content
+			if (Object.keys(data?.cache?.library) < libraryAppIdArray.length) {
+				for (let i = 0; i < libraryAppIdArray.length; i++) {
+					let appID = libraryAppIdArray[i]
+					if (!data.cache.library?.[appID]) {
+						serverAPI.get("gameDetails/" + appID, res => {
+							data.cache.library[appID] = res?.[appID]?.data
+						})
+					}
 				}
 			}
 			console.log("cache", data.cache)
 			return data
 		})
-		console.log("cache is updated")
 	}
 
 	onMount(regularUpdateCycle)

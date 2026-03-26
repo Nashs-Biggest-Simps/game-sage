@@ -1,15 +1,29 @@
 <script>
-    import { db } from "$lib/data"
+    import { db, serverAPI } from "$lib/data"
     import FilterStack from "$lib/components/Suggest/FilterStack.svelte";
     import GameGrid from "$lib/components/Suggest/GameGrid.svelte";
     import { app } from "$lib/firebase";
     import { steamAPI } from "$lib/steam";
     import { onMount } from "svelte";
+    
+    const api = {
+        get: async (req, callback) => {
+            try {
+                const response = await fetch(`${req}`);
+                const data = await response.json();
+                callback(data);
+            } catch (err) {
+                console.error('API call failed:', err);
+            }
+        }
+    };
+
 
     let games = null
-    db.subscribe(data => {
-        games = data?.cache?.library || []
-    })
+    $: {
+        games = $db.cache.library || []
+    }
+
 </script>
 
 <!--  -->
@@ -22,7 +36,7 @@
     <div class="game-stack">
         <div class="title">Your Library</div>
         {#if games}
-            <GameGrid games={games} />
+            <GameGrid games={Object.values(games)} />
         {/if}
     </div>
 </div>

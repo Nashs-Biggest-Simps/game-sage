@@ -4,9 +4,9 @@ import { db } from "$lib/data"
 
 // Steam API Call File
 
-// const steamID = "76561199687209554" // aaron
-const steamID = "76561198093685592" // owen
-// const steamID = "76561198240385412" // dylan
+// export const steamID = "76561199687209554" // aaron
+// const steamID = "76561198093685592" // owen
+export const steamID = "76561198240385412" // dylan
 const APIkey = "20C1F35B7542A2AA3770FBCA32674486" // public in github, dont care, no cost, will hide for production
 
 async function callAPI(url) {
@@ -38,5 +38,8 @@ export const steamAPI = {
     },
     howLongToBeat: (appid, callback) => {
         makeApiCall(`https://hltbapi.codepotatoes.de/steam/${appid}`, callback)
+    },
+    customServerCall: (req, callback) => {
+        makeApiCall(`http://localhost:3000/steam/${req}`, callback)
     }
 }

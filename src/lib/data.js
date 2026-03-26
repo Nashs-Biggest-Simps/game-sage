@@ -9,7 +9,7 @@
 import { writable } from 'svelte/store'
 import { steamAPI } from '$lib/steam'
 
-const app_title = "gamesage_0.0.3"
+const app_title = "gamesage_0.0.10"
 const storage_ref = `ldb-${app_title}`
 
 let default_filters = {
@@ -70,3 +70,19 @@ db.subscribe(db => {
     }
     storage.write(storage_ref, data)
 })
+
+
+
+// Server API Call Handler
+const baseServerURL = "https://simple-api-server.vercel.app/steam/" // dev purposes only
+export const serverAPI = {
+    get: async (req, callback) => {
+        try {
+            const response = await fetch(baseServerURL + req);
+            const data = await response.json();
+            callback(data);
+        } catch (err) {
+            console.error('API call failed:', err);
+        }
+    }
+};
