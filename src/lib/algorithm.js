@@ -1,96 +1,121 @@
-
-
-
-import { steamAPI } from "$lib/steam"
-import { db } from "$lib/data"
-
-
-
 // algorithm.js
 // by Aaron Meche
 
 // Algorithm Class
 
+import { get } from 'svelte/store'
+import { db } from '$lib/data'
+import { buildCompactProfile, getGameDetail } from '$lib/cache'
+
+const SUGGESTIONS_TTL = 24 * 60 * 60 * 1000 // 24 hours
+
+// Minimum data thresholds before AI call
+const MIN_PLAYED_GAMES   = 3
+const MIN_UNPLAYED_GAMES = 1
+
 export class Algorithm {
-    constructor(algrID = "Default") {
-        this.algrID = algrID
-        this.brain = {
-            // Objective Data
-            library: [],
-            appdata: {},
-            recplay: [],
-            // Preferences
-            genres:     { positive: [], negative: [] },
-            rated:      { positive: [], negative: [] },
-            descriptors:{ positive: [], negative: [] },
-        }
+    constructor(id = 'default') {
+        this.id = id
     }
 
-    // ingestLibrary
-    // > input:  array of owned games
-    // . action: add each game to brain library
-    // < output: none
-    ingestLibrary(games = []) {
-        console.log("Ingesting library...")
-        games.forEach(g => {
-            if (!g.appid) console.error("Game ingestion failure: missing app id.")
-            this.brain.library.push({
-                appid: g.appid,
-                playtime: g.playtime_forever || null,
-                lastplay: g.rtime_last_played || null,
-            })
-            this.brain.appdata[g.appid] = {}
-        })
-        this.#updateAppData()
+    // Private Methods
+
+    #isCacheFresh() {
+        const { generatedAt } = get(db).cache?.suggestions ?? {}
+        if (!generatedAt) return false
+        return (Date.now() - generatedAt) < SUGGESTIONS_TTL
     }
 
-    assemble() {
-        console.log("Algorithm Assembly...")
-        const unsub = db.subscribe(data => {
-            if (Object.keys(data.algr).length > 0) {
-                this.brain = data.algr
-                console.log("Already Assembled. Brain Transplant", this)
-            }
-            else {
-                console.log("Beginning Assembly...")
-                steamAPI.getOwnedGames(ret => {
-                    this.ingestLibrary(ret?.response?.games)
-                })
-            }
-        })
-        unsub()
+    #getCachedSuggestions() {
+        const appids = get(db).cache?.suggestions?.appids ?? []
+        return appids.map(id => getGameDetail(id)).filter(Boolean)
     }
 
-    async #updateAppData() {
-        console.log("Updating App Data...")
-        let apps = Object.keys(this.brain.appdata)
-        let appsToCall = []
-        for (const app of apps) {
-            // Check if data stored in brain @ appdata @ appid
-            if (Object.keys(this.brain.appdata[app]).length > 0) {
-                console.log("Log Exists", app, this.brain.appdata[app])
-                continue
-            }
-            await new Promise(resolve => {
-                steamAPI.getGameDetails(app, ret => {
-                    this.brain.appdata[app] = ret[app].data
-                    resolve()
-                })
-            })
-        }
-        this.#updateStorage()
-    }
-
-    #updateStorage() {
-        console.log("Updating Algr Storage")
+    #persistSuggestions(appids) {
         db.update(data => {
-            data.algr = this
+            if (!data.cache) data.cache = {}
+            data.cache.suggestions = { appids, generatedAt: Date.now() }
             return data
         })
     }
 
-    printContents() {
-        console.log(this.brain)
-        return JSON.stringify(this.brain)
+    // ─── Public ───────────────────────────────────────────────────────────────
+
+    /**
+     * Return an array of Steam game-detail objects recommended for this user.
+     *
+     * On the first call (or after invalidate()), it:
+     *   1. Builds a compact profile from the local cache
+     *   2. POSTs it to /api/sage (which calls Claude server-side)
+     *   3. Maps the returned appids to cached game detail objects
+     *   4. Persists the result for 24 hours
+     *
+     * On subsequent calls within the TTL window, returns from cache instantly.
+     */
+    async getSuggestions() {
+        if (this.#isCacheFresh()) {
+            return this.#getCachedSuggestions()
+        }
+
+        const { text, playedCount, unplayedCount } = buildCompactProfile()
+
+        if (playedCount < MIN_PLAYED_GAMES || unplayedCount < MIN_UNPLAYED_GAMES) {
+            console.warn(
+                `[Algorithm] Insufficient cache data for suggestions ` +
+                `(played=${playedCount}, unplayed=${unplayedCount}). ` +
+                `Run startCacheUpdateCycle() and wait for more details to load.`
+            )
+            return []
+        }
+
+        try {
+            const res = await fetch('/api/sage', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ profile: text }),
+            })
+
+            if (!res.ok) {
+                const msg = await res.text().catch(() => res.statusText)
+                throw new Error(`/api/sage responded ${res.status}: ${msg}`)
+            }
+
+            const { s: appids } = await res.json()
+
+            if (!Array.isArray(appids)) {
+                throw new Error('Claude returned unexpected shape — expected { s: number[] }')
+            }
+
+            this.#persistSuggestions(appids)
+            return appids.map(id => getGameDetail(id)).filter(Boolean)
+
+        } catch (err) {
+            console.error('[Algorithm] getSuggestions failed:', err)
+            return []
+        }
+    }
+
+    /**
+     * Force the next getSuggestions() call to re-query Claude
+     * (e.g. after rating games or when the library grows significantly).
+     */
+    invalidate() {
+        db.update(data => {
+            if (data.cache?.suggestions) {
+                data.cache.suggestions.generatedAt = 0
+            }
+            return data
+        })
+        console.log('[Algorithm] Suggestion cache invalidated.')
+    }
+
+    /**
+     * Debug helper — logs the profile that would be sent to Claude.
+     */
+    printProfile() {
+        const { text, playedCount, unplayedCount } = buildCompactProfile()
+        console.log(
+            `[Algorithm] Profile (played=${playedCount}, unplayed=${unplayedCount}):\n${text}`
+        )
     }
 }
