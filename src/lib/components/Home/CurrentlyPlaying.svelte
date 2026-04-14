@@ -8,10 +8,10 @@
 <!--  -->
 
 <div class="wrapper">
-    <CurrentlyPlayingItem name="Persona S" message="45 Hours Played" appID="1245620" />
-    <CurrentlyPlayingItem name="Dark Souls" message="23 Hours Played" appID="1091500" />
-    <CurrentlyPlayingItem name="Half-Life 2" message="13 Hours Played" appID="730" />
-    <CurrentlyPlayingItem name="Half-Life 2" message="13 Hours Played" appID="367520" />
+    <CurrentlyPlayingItem name="Elden Ring" message="45 Hours Played" appID="1245620" />
+    <CurrentlyPlayingItem name="Cyberpunk 2077" message="23 Hours Played" appID="1091500" />
+    <CurrentlyPlayingItem name="Counter-Strike 2" message="13 Hours Played" appID="730" />
+    <CurrentlyPlayingItem name="Fallout" message="13 Hours Played" appID="38400" />
 </div>
 
 <!--  -->

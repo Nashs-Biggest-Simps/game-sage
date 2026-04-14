@@ -4,6 +4,10 @@
 
     let url = "https://cdn.cloudflare.steamstatic.com/steam/apps/" + appID + "/library_600x900.jpg"
 
+	function handleClick(){
+		window.location.href = `steam://launch/${appID}`;
+	}
+
 </script>
 
 <!--  -->
@@ -14,7 +18,7 @@
         <div class="name">{name}</div>
         <div class="message">{message}</div>
     </div>
-    <button class="play">
+    <button class="play" onclick={handleClick}>
         <i class="fa-solid fa-play"></i>
         Play
     </button>
