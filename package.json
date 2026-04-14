@@ -20,6 +20,7 @@
 	"dependencies": {
 		"@anthropic-ai/sdk": "^0.88.0",
 		"firebase": "^12.9.0",
+		"rue-algr": "^0.0.1",
 		"rue-lang": "^1.0.20"
 	}
 }
