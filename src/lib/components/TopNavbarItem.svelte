@@ -22,7 +22,7 @@
 
 <!--  -->
 
-<style lang="rue">
+<style>
 	.navitem{
 		display: flex;
 		align-items: center;
@@ -32,24 +32,20 @@
 		letter-spacing: 0.25px;
 		border-radius: 0.6rem;
 		cursor: pointer;
+	}
 
-		img{
-			height: 1rem;
-			margin-right: 0.4rem;
-			border-radius: 100vh;
-		}
+	.navitem img{
+		height: 1rem;
+		margin-right: 0.4rem;
+		border-radius: 100vh;
+	}
 
-		:hover{
-			background: var(--l1);
-			outline: solid 1pt var(--l3);
-		}
+	.navitem:hover{
+		background: var(--l1);
+		outline: solid 1pt var(--l3);
 	}
 
 	.navitem.active{
 		color: var(--bright-accent);
-	}
-
-	i.pretext{
-		margin-right: 0.6rem;
 	}
 </style>

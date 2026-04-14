@@ -24,7 +24,7 @@
 
 <!--  -->
 
-<style lang="rue">
+<style>
 
     section{
         margin-bottom: 1.2rem;
@@ -47,27 +47,25 @@
         gap: 0.6rem;
         opacity: 0.75;
         cursor: pointer;
-
-        :hover{
-            opacity: 1;
-        }
-
-        .circle{
-            height: 100%;
-            aspect-ratio: 1 / 1;
-            background: var(--l1);
-            outline: solid 1pt var(--l3);
-            border-radius: 100%;
-        }
     }
 
-    .item.active{
-        :hover{
-            opacity: 1;
-        }
+    .item:hover{
+        opacity: 1;
+    }
 
-        .circle{
-            background: var(--accent);
-        }
+    .item .circle{
+        height: 100%;
+        aspect-ratio: 1 / 1;
+        background: var(--l1);
+        outline: solid 1pt var(--l3);
+        border-radius: 100%;
+    }
+
+    .item.active:hover{
+        opacity: 1;
+    }
+
+    .item.active .circle{
+        background: var(--accent);
     }
 </style>

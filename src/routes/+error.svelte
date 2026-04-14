@@ -3,11 +3,11 @@
     import { resolve } from '$app/paths';
 </script>
 
-<!--  -->
-
-<head>
+<svelte:head>
     <title>Page Error</title>
-</head>
+</svelte:head>
+
+<!--  -->
 
 <div class='page'>
     <div class="island">
@@ -20,7 +20,7 @@
 
 <!--  -->
 
-<style lang="rue">
+<style>
     .island{
         height: auto;
         width: 30rem;
@@ -51,11 +51,10 @@
         outline: solid 1pt var(--l5);
         border-radius: inherit;
         cursor: pointer;
+	}
 
-        :hover{
-            background: var(--l2);
-            color: var(--accent);
-        }
-    }
-
+	a:hover{
+		background: var(--l2);
+		color: var(--accent);
+	}
 </style>

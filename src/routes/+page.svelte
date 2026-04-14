@@ -18,7 +18,7 @@
 
 <!--  -->
 
-<style lang="rue">
+<style>
     .page {
         display: grid;
         grid-template-columns: 3fr 2fr;
