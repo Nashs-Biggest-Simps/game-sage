@@ -5,23 +5,10 @@
     import { app } from "$lib/firebase";
     import { steamAPI } from "$lib/steam";
     import { onMount } from "svelte";
-    
-    const api = {
-        get: async (req, callback) => {
-            try {
-                const response = await fetch(`${req}`);
-                const data = await response.json();
-                callback(data);
-            } catch (err) {
-                console.error('API call failed:', err);
-            }
-        }
-    };
-
 
     let games = null
     $: {
-        games = $db.cache.library || []
+        games = $db.cache?.library?.details || []
     }
 
 </script>
@@ -36,7 +23,7 @@
     <div class="game-stack">
         <div class="title">Your Library</div>
         {#if games}
-            <GameGrid games={Object.values(games)} />
+            <GameGrid games={games} />
         {/if}
     </div>
 </div>

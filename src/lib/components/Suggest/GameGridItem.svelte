@@ -54,6 +54,11 @@
 		opacity: 1;
 	}
 
+    img{
+        width: 100%;
+        border-radius: 0.6rem;
+    }
+
 	.item:hover .tags .item{
 		background: var(--l2);
     }

@@ -1,8 +1,17 @@
 <script>
     import GameGridItem from '$lib/components/Suggest/GameGridItem.svelte'
+    import { onMount } from 'svelte';
+    import { db } from "$lib/data"
 
 
     let { games } = $props()
+
+    let gamesDataArray = $state(null)
+    $effect(() => {
+        gamesDataArray =  Object.values(games).map(item => item.data)
+    })
+
+
     // if (!games) games = [
     //     { title: "Elden Ring", category: "RPG", price: 59.99, appid: 1245620 },
     //     { title: "Counter-Strike 2", category: "Shooter", price: 0, appid: 730 },
@@ -30,7 +39,7 @@
 <!--  -->
 
 <div class="grid">
-    {#each games as game}
+    {#each gamesDataArray as game}
         <GameGridItem game={game} />
     {/each}
 </div>
