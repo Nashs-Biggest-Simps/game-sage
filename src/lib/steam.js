@@ -2,8 +2,8 @@
 // Steam API Call File
 
 // export const steamID = "76561199687209554" // aaron
-export const steamID = "76561198093685592" // owen
-// export const steamID = "76561198240385412" // dylan
+// export const steamID = "76561198093685592" // owen
+export const steamID = "76561198240385412" // dylan
 const APIkey = "20C1F35B7542A2AA3770FBCA32674486" // public in github, dont care, no cost, will hide for production
 
 async function makeApiCall(url, callback) {
