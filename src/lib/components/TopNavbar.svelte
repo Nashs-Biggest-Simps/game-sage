@@ -35,7 +35,7 @@
 
 <!--  -->
 
-<style lang="rue">
+<style>
 	.wrapper{
 		display: grid;
 		grid-template-columns: auto min-content;
@@ -51,16 +51,15 @@
 		font-size: 1.6rem;
 		font-weight: 600;
 		cursor: pointer;
-
-		:hover{
-			text-decoration: underline;
-		}
-		
-		i{
-			margin-right: 0.5rem;
-		}
 	}
 
+	.logo:hover{
+		text-decoration: underline;
+	}
+	
+	.logo i{
+		margin-right: 0.5rem;
+	}
 
 	.nav-buttons{
 		display: flex;

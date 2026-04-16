@@ -29,7 +29,7 @@
 
 <!--  -->
 
-<style lang="rue">
+<style>
     .page{
         display: grid;
         grid-template-columns: 3fr 2fr;
@@ -46,12 +46,12 @@
         padding: 1.6rem 0;
         outline: solid 1pt var(--l3);
         border-radius: 0.8rem;
+    }
 
-        .title{
-            padding: 1.6rem;
-            padding-top: 0;
-            font-size: 1.6rem;
-            font-weight: 700;
-        }
+    .module .title{
+        padding: 1.6rem;
+        padding-top: 0;
+        font-size: 1.6rem;
+        font-weight: 700;
     }
 </style>

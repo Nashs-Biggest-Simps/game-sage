@@ -32,7 +32,7 @@
 
 <!--  -->
 
-<style lang="rue">
+<style>
 	.wrapper{
 		position: sticky;
 		top: 0;
@@ -44,13 +44,8 @@
 		font-size: 1.6rem;
 		font-weight: 600;
 		cursor: pointer;
-
-		i{
-			margin-right: 0.5rem;
-		}
 	}
 
-	.nav-buttons{
-		padding: 0 1rem;
-	}
+	.logo i{
+		margin-right: 0.5rem;
 </style>

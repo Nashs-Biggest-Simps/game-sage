@@ -41,7 +41,7 @@
 
 <!--  -->
 
-<style lang="rue">
+<style>
     .filter-wrapper{
         position: sticky;
         top: 2.4rem;

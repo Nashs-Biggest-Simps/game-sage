@@ -1,18 +1,30 @@
 <script>
     import CurrentlyPlayingItem from "$lib/components/Home/CurrentlyPlayingItem.svelte";
+    import { steamAPI } from "$lib/steam.js";
+    import { onMount } from "svelte";
 
+    let recentGames = [];
 
-
+    onMount(() => {
+        steamAPI.getRecentlyPlayedGames((data) => {
+            recentGames = data.response.games;
+            console.log(recentGames);
+        });
+    });
 </script>
 
 <!--  -->
 
 <div class="wrapper">
-    <CurrentlyPlayingItem name="Persona S" message="45 Hours Played" appID="1245620" />
-    <CurrentlyPlayingItem name="Dark Souls" message="23 Hours Played" appID="1091500" />
-    <CurrentlyPlayingItem name="Half-Life 2" message="13 Hours Played" appID="730" />
-    <CurrentlyPlayingItem name="Half-Life 2" message="13 Hours Played" appID="367520" />
+    {#each recentGames as game (game.appid)}
+        <CurrentlyPlayingItem 
+            name={game.name} 
+            message={`${Math.trunc(game.playtime_forever/60)} Hours Played`}
+            appID={game.appid} 
+        />
+    {/each}
 </div>
+
 
 <!--  -->
 

@@ -20,7 +20,7 @@
 
 <!--  -->
 
-<style lang="rue">
+<style>
     a{
 		display: grid;
 		grid-template-columns: min-content auto;
@@ -28,19 +28,12 @@
 		cursor: pointer;
 		border-radius: 0.5rem;
 		opacity: 0.75;
-
-		:hover{
-			background: var(--l1);
-			outline: solid 1pt var(--l3);
-			opacity: 1;
-		}
 	}
 
-    a.active{
-        outline: solid 1pt var(--l3);
-        opacity: 1;
-    }
-
+	a:hover{
+		background: var(--l1);
+		outline: solid 1pt var(--l3);
+		opacity: 1;
 	.icon{
 		display: inline-block;
 		width: 2.5rem;

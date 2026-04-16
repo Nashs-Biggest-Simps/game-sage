@@ -4,6 +4,10 @@
 
     let url = "https://cdn.cloudflare.steamstatic.com/steam/apps/" + appID + "/library_600x900.jpg"
 
+	function handleClick(){
+		window.location.href = `steam://launch/${appID}`;
+	}
+
 </script>
 
 <!--  -->
@@ -14,7 +18,7 @@
         <div class="name">{name}</div>
         <div class="message">{message}</div>
     </div>
-    <button class="play">
+    <button class="play" onclick={handleClick}>
         <i class="fa-solid fa-play"></i>
         Play
     </button>
@@ -22,7 +26,7 @@
 
 <!--  -->
 
-<style lang="rue">
+<style>
     .item{
         display: grid;
         grid-template-columns: min-content auto min-content;
@@ -32,42 +36,41 @@
         cursor: pointer;
         opacity: 0.75;
         transition-duration: 250ms;
+	}
 
-        .play{
-            display: grid;
-            grid-template-columns: min-content auto;
-            gap: 0.4rem;
-            align-items: center;
-            padding: 0.8rem 1.6rem;
-            font-weight: 600;
-            background: var(--l2);
-            border-radius: 0.8rem;
-        }
+	.item .play{
+		display: grid;
+		grid-template-columns: min-content auto;
+		gap: 0.4rem;
+		align-items: center;
+		padding: 0.8rem 1.6rem;
+		font-weight: 600;
+		background: var(--l2);
+		border-radius: 0.8rem;
+	}
 
-        :hover{
-            padding-block: 0;
-            opacity: 1;
-            background: linear-gradient(to right, transparent, var(--accent-low));
-            
-            .play{
-                background: var(--la2);
-                color: var(--bright-accent);
-            }
+	.item:hover{
+		padding-block: 0;
+		opacity: 1;
+		background: linear-gradient(to right, transparent, var(--accent-low));
+	}
 
-            img{
-                height: 7.6rem;
-            }
-        }
+	.item:hover .play{
+		background: var(--la2);
+		color: var(--bright-accent);
+	}
 
-    }
+	.item:hover img{
+		height: 7.6rem;
+	}
 
-    img{
-        height: 6rem;
-        width: 6rem;
-        object-fit: cover;
-        border-radius: 0.8rem;
-        transition-duration: 250ms;
-    }
+	img{
+		height: 6rem;
+		width: 6rem;
+		object-fit: cover;
+		border-radius: 0.8rem;
+		transition-duration: 250ms;
+	}
 
     .name{
         font-size: 1.4rem;

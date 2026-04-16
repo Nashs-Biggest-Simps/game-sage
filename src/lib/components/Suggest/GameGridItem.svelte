@@ -37,7 +37,7 @@
 
 <!--  -->
 
-<style lang="rue">
+<style>
     .item{
         display: grid;
         gap: 0.6rem;
@@ -46,24 +46,16 @@
         cursor: pointer;
         border-radius: 1.2rem;
         opacity: 0.9;
+	}
 
-        :hover{
-            background: var(--l1);
-            outline: solid 1pt var(--l3);
-            opacity: 1;
+	.item:hover{
+		background: var(--l1);
+		outline: solid 1pt var(--l3);
+		opacity: 1;
+	}
 
-            .tags .item{
-                background: var(--l2);
-            }
-        }
-    }
-
-    
-    .thumbnail{
-        width: 100%;
-        background: var(--l2);
-        object-fit: cover;
-        border-radius: 0.6rem;
+	.item:hover .tags .item{
+		background: var(--l2);
     }
 
     .details{

@@ -2,7 +2,7 @@
 // Steam API Call File
 
 // export const steamID = "76561199687209554" // aaron
-// const steamID = "76561198093685592" // owen
+// export const steamID = "76561198093685592" // owen
 export const steamID = "76561198240385412" // dylan
 const APIkey = "20C1F35B7542A2AA3770FBCA32674486" // public in github, dont care, no cost, will hide for production
 
@@ -32,7 +32,7 @@ export const steamAPI = {
         makeApiCall(`https://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key=${APIkey}&steamid=${steamID}&format=json`, callback)
     },
     getRecentlyPlayedGames: (callback) => {
-        makeApiCall(`https://api.steampowered.com/IPlayerService/GetRecentlyPlayedGames/v0001/?key=${APIkey}&steamid=${steamID}&format=json`, callback)
+        makeApiCall(`https://api.steampowered.com/IPlayerService/GetRecentlyPlayedGames/v0001/?key=${APIkey}&steamid=${steamID}&count=4&format=json`, callback)
     },
     getSteamLevel: (callback) => {
         makeApiCall(`https://api.steampowered.com/IPlayerService/GetSteamLevel/v1/?key=${APIkey}&steamid=${steamID}`, callback)
