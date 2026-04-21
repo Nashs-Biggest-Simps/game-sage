@@ -70,8 +70,9 @@
     }
 
     .main-grid {
+        width: 100%;
         display: grid;
-        grid-template-columns: 3fr 2fr;
+        grid-template-columns: minmax(0, 5fr) minmax(0, 3fr); /* ← this is the key */
         gap: 2.4rem;
         align-items: start;
     }

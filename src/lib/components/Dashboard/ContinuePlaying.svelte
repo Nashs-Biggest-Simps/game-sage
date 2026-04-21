@@ -4,36 +4,43 @@
     import { resolve } from '$app/paths'
 
     let game = $derived($db?.cache?.recentlyPlayed?.data?.[0] ?? null)
-    let heroUrl  = $derived(game ? `https://cdn.akamai.steamstatic.com/steam/apps/${game.appid}/library_hero.jpg` : null)
-    let hours    = $derived(game ? Math.round(game.playtime_forever / 60) : 0)
+    let heroUrl = $derived(game ? `https://cdn.akamai.steamstatic.com/steam/apps/${game.appid}/library_hero.jpg` : null)
+    let hours = $derived(game ? Math.round(game.playtime_forever / 60) : 0)
     let recentHours = $derived(game ? Math.round((game.playtime_2weeks || 0) / 60) : 0)
 
     function launch(e) {
         e.stopPropagation()
         window.location.href = `steam://run/${game.appid}`
     }
+
+    function handleKeydown(e) {
+        if (game && e.key == "Enter") {
+            launch(e)
+        }
+    }
 </script>
 
+<svelte:window on:keydown={handleKeydown} />
+
 {#if game}
-<div
-    class="hero"
-    style="background-image: url('{heroUrl}')"
-    role="button"
-    tabindex="0"
-    onclick={() => goto(resolve(`/view?id=${game.appid}`))}
-    onkeydown={(e) => e.key === 'Enter' && goto(resolve(`/view?id=${game.appid}`))}
->
+<div class="hero" style="background-image: url('{heroUrl}')" role="button" tabindex="0" onclick={launch} onkeydown={(e) => onKeyDown(e)}>
     <div class="gradient"></div>
     <div class="content">
+        <!-- Continue Playing Text -->
         <div class="eyebrow">
             <i class="fa-solid fa-circle-play"></i>
             Continue Playing
         </div>
+        <!-- Large Game Name -->
         <div class="name">{game.name}</div>
+        <!-- Progress Info -->
         <div class="meta">
             {hours.toLocaleString()}h total
-            {#if recentHours > 0}&nbsp;·&nbsp;{recentHours}h this week{/if}
+            {#if recentHours > 0}
+                &nbsp;·&nbsp;{recentHours}h this week
+            {/if}
         </div>
+        <!-- Quick Actions -->
         <div class="actions">
             <button class="btn-play" onclick={launch}>
                 <i class="fa-solid fa-play"></i>
@@ -55,7 +62,7 @@
 <style>
     .hero {
         position: relative;
-        height: 28rem;
+        height: 30rem;
         border-radius: 1.2rem;
         overflow: hidden;
         background-size: cover;
@@ -65,23 +72,23 @@
         transition: box-shadow 200ms;
     }
 
-    .hero:hover { box-shadow: 0 0 0 2px var(--accent); }
+    .hero:hover { 
+        box-shadow: 0 0 0 2px var(--accent); 
+    }
 
     .gradient {
         position: absolute;
         inset: 0;
-        background: linear-gradient(
-            to right,
-            hsl(0, 0%, 0%, 0.85) 0%,
-            hsl(0, 0%, 0%, 0.5) 50%,
-            transparent 100%
-        );
+        background: linear-gradient(to right, hsl(0, 0%, 0%, 0.85) 0%, hsl(0, 0%, 0%, 0.5) 50%, transparent 100%);
         pointer-events: none;
     }
 
     .content {
-        position: relative;
+        position: absolute;
+        bottom: 0;
+        left: 0;
         height: 100%;
+        width: 100%;
         display: flex;
         flex-direction: column;
         justify-content: flex-end;
@@ -152,7 +159,9 @@
         color: white;
     }
 
-    .btn-details:hover { background: hsl(0, 0%, 100%, 0.22); }
+    .btn-details:hover { 
+        background: hsl(0, 0%, 100%, 0.22); 
+    }
 
     .empty {
         height: 10rem;
@@ -166,5 +175,7 @@
         opacity: 0.4;
     }
 
-    .empty i { font-size: 1.6rem; }
+    .empty i { 
+        font-size: 1.6rem; 
+    }
 </style>

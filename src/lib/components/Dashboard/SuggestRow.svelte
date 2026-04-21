@@ -84,6 +84,8 @@
 
     .scroll-track {
         gap: 0.8rem;
+        padding-top: 4px;
+        padding-left: 1px;
         padding-bottom: 0.6rem;
         align-items: stretch;
     }
