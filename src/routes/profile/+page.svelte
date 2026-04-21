@@ -92,7 +92,7 @@
         if (!ID_REGEX.test(trimmed)) { saveStatus = 'error'; setTimeout(() => saveStatus = null, 3000); return }
         const changed = trimmed !== savedID
         db.update(data => {
-            if (changed) { data.cache = {}; data.algr = {}; data.user = {} }
+            if (changed) { data.cache = {}; data.algr = {} }
             data.steamID = trimmed
             return data
         })
