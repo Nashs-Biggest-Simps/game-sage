@@ -86,7 +86,6 @@
                 placeholder="Search for a game…"
                 bind:value={query}
                 onkeydown={onKeydown}
-                autofocus
             />
             {#if query}
                 <button class="clear-btn" onclick={() => { query = ''; searched = false; storeResults = [] }} aria-label="Clear">

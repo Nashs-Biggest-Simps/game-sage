@@ -1,25 +1,34 @@
 <script>
+    //
+    // JsonNode.svelte
+    //
+    // GameSage
+    // written by Aaron Meche
+    //
+    // Component used for /profile Data Viewer
+    //
+
+    import JsonNode from './JsonNode.svelte'
+
     let { keyName = null, value, depth = 0 } = $props()
+    let expanded = $state(0)
+    let isArr = $state(false)
+    let isObj = $state(false)
+    let entries = $state([])
+    let summary = $state(null)
 
-    let expanded = $state(depth < 2)
-
-    let isArr  = $derived(Array.isArray(value))
-    let isObj  = $derived(value !== null && typeof value === 'object')
-    let entries = $derived(
-        isArr
-            ? value.map((v, i) => [String(i), v])
-            : isObj ? Object.entries(value) : []
-    )
-    let summary = $derived(
-        isArr ? `Array(${value.length})`
-              : isObj ? `{${Object.keys(value).length} key${Object.keys(value).length !== 1 ? 's' : ''}}`
-              : ''
-    )
+    $effect(() => {
+        expanded = depth < 2
+        isArr = Array.isArray(value)
+        isObj = value !== null && typeof value === 'object'
+        entries = isArr ? value.map((v, i) => [String(i), v]) : isObj ? Object.entries(value) : []
+        summary = isArr ? `Array(${value.length})` : isObj ? `{${Object.keys(value).length} key${Object.keys(value).length !== 1 ? 's' : ''}}` : ''
+    })
 
     function valClass(v) {
-        if (v === null)            return 'null'
-        if (typeof v === 'string') return 'str'
-        if (typeof v === 'number') return 'num'
+        if (v === null)             return 'null'
+        if (typeof v === 'string')  return 'str'
+        if (typeof v === 'number')  return 'num'
         if (typeof v === 'boolean') return 'bool'
         return ''
     }
@@ -32,6 +41,8 @@
 </script>
 
 <div class="node">
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div class="row" class:clickable={isObj} onclick={isObj ? () => expanded = !expanded : null}>
         {#if isObj}
             <span class="chevron">{expanded ? '▾' : '▸'}</span>
@@ -58,7 +69,7 @@
     {#if isObj && expanded}
         <div class="children">
             {#each entries as [k, v] (k)}
-                <svelte:self keyName={k} value={v} depth={depth + 1} />
+                <JsonNode keyName={k} value={v} depth={depth + 1} />
             {/each}
         </div>
         <div class="close-brace row">

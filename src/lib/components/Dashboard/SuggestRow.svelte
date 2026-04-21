@@ -4,9 +4,9 @@
 
     let {
         title,
-        type      = 'play',
-        items     = [],
-        loading   = false,
+        type = 'play',
+        items = [],
+        loading = false,
         emptyIcon = null,
         emptyText = null,
     } = $props()

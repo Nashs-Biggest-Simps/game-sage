@@ -1,21 +1,38 @@
 <script>
+    //
+    // BuyCard.svelte
+    //
+    // GameSage
+    // written by Aaron Meche
+    //
+
     let { name, reason, appid, storeData } = $props()
+    let imageFailed = $state(null)
+    let storeUrl = $state(null)
+    let artUrl = $state(null)
+    let imgIdx = $state(0)
+    let price = $state(0)
 
-    let price    = storeData?.price?.final_formatted ?? (storeData?.is_free ? 'Free' : null)
-    let storeUrl = `https://store.steampowered.com/app/${appid}`
-
-    let imgIdx   = $state(0)
-    const IMGS   = (id) => [
+    const IMGS = (id) => [
         `https://cdn.akamai.steamstatic.com/steam/apps/${id}/capsule_616x353.jpg`,
         `https://cdn.akamai.steamstatic.com/steam/apps/${id}/header.jpg`,
     ]
-    let artUrl   = $derived(IMGS(appid)[imgIdx] ?? null)
-    let imgFailed = $derived(imgIdx >= IMGS(appid).length)
+    
+    $effect(() => {
+        imgFailed = imgIdx >= IMGS(appid).length
+        storeUrl = `https://store.steampowered.com/app/${appid}`
+        artUrl = IMGS(appid)[imgIdx] ?? null
+        price = storeData?.price?.final_formatted ?? (storeData?.is_free ? 'Free' : null)
+        appid
+        imgIdx = 0
+    })
 
-    $effect(() => { appid; imgIdx = 0 })
-
-    function nextImg() { imgIdx++ }
+    function nextImg() { 
+        imgIdx++ 
+    }
 </script>
+
+<!--  -->
 
 <a href={storeUrl} target="_blank" rel="noopener noreferrer" class="card">
     <div class="art-wrap">
@@ -40,6 +57,8 @@
         </div>
     </div>
 </a>
+
+<!--  -->
 
 <style>
     .card {

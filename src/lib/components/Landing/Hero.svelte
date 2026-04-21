@@ -59,6 +59,32 @@
         max-width: 42rem;
     }
 
+    .btn-primary {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        padding: 0.9rem 2rem;
+        background: var(--accent);
+        border-radius: 0.75rem;
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: white;
+        cursor: pointer;
+        transition: background 150ms, transform 120ms, box-shadow 150ms;
+        box-shadow: 0 8px 24px hsl(212, 75%, 50%, 0.3);
+    }
+
+    .btn-primary:hover {
+        background: var(--bright-accent);
+        transform: translateY(-2px);
+        box-shadow: 0 12px 32px hsl(212, 75%, 50%, 0.4);
+    }
+
+    .cta-note {
+        font-size: 0.75rem;
+        opacity: 0.35;
+    }
+
     .logo-mark {
         width: 4rem;
         height: 4rem;

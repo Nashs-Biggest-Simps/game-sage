@@ -1,9 +1,9 @@
 <script>
-    import { onMount } from 'svelte'
-    import { db }      from '$lib/data'
-    import { steamAPI } from '$lib/steam'
-    import { resolve } from '$app/paths'
-    import { goto }    from '$app/navigation'
+    import { onMount, onDestroy } from 'svelte'
+    import { db }                from '$lib/data'
+    import { refreshFriends }    from '$lib/cache'
+    import { resolve }           from '$app/paths'
+    import { goto }              from '$app/navigation'
 
     // ── Personal data ─────────────────────────────────────────────────────────
 
@@ -49,8 +49,8 @@
 
     const STATE_LABEL = ['Offline', 'Online', 'Busy', 'Away', 'Snooze', 'Trade', 'Play']
 
-    let friends        = $state([])
-    let friendsLoading = $state(true)
+    let friends        = $derived($db?.cache?.friends?.data ?? [])
+    let friendsLoading = $derived($db?.cache?.friends == null)
     let showOffline    = $state(false)
     let feedExpanded   = $state(false)
 
@@ -86,21 +86,15 @@
         return `${Math.floor(secs / 604800)}w ago`
     }
 
+    let refreshInterval
+
     onMount(() => {
-        steamAPI.getFriendList(data => {
-            const ids = (data?.friendslist?.friends ?? []).map(f => f.steamid)
-            if (!ids.length) { friendsLoading = false; return }
-            steamAPI.getPlayerSummaries(ids.slice(0, 100), res => {
-                const players = res?.response?.players ?? []
-                friends = players.sort((a, b) => {
-                    const sa = a.gameid ? 2 : a.personastate > 0 ? 1 : 0
-                    const sb = b.gameid ? 2 : b.personastate > 0 ? 1 : 0
-                    if (sa !== sb) return sb - sa
-                    return (b.lastlogoff ?? 0) - (a.lastlogoff ?? 0)
-                })
-                friendsLoading = false
-            })
-        })
+        refreshFriends()
+        refreshInterval = setInterval(refreshFriends, 60_000)
+    })
+
+    onDestroy(() => {
+        clearInterval(refreshInterval)
     })
 </script>
 
