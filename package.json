@@ -11,13 +11,13 @@
 		"start": "HOST=0.0.0.0 PORT=8080 node build"
 	},
 	"devDependencies": {
-		"@sveltejs/adapter-auto": "^7.0.0",
 		"@sveltejs/kit": "^2.50.2",
 		"@sveltejs/vite-plugin-svelte": "^6.2.4",
 		"svelte": "^5.49.2",
 		"vite": "^7.3.1"
 	},
 	"dependencies": {
+		"@sveltejs/adapter-node": "^5.5.4",
 		"firebase": "^12.9.0",
 		"rue-algr": "^0.0.1",
 		"rue-lang": "^1.0.20",

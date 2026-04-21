@@ -1,6 +1,6 @@
 import { json, error } from '@sveltejs/kit'
 import { RueterModel } from 'rueter-ai'
-import { ANTHROPIC_API_KEY } from '$env/static/private'
+import { GROK_API_KEY } from '$env/static/private'
 
 const PLAY_BASE =
     'You are a precision game recommendation engine for Steam. ' +
@@ -49,7 +49,7 @@ export async function POST({ request }) {
         throw error(400, '"type" must be "play" or "buy".')
     }
 
-    const model = new RueterModel('anthropic', ANTHROPIC_API_KEY)
+    const model = new RueterModel('grok', GROK_API_KEY, 1)
     model.setSystemPrompt(buildSystemPrompt(type, prefs))
     model.setMaxTokens(type === 'play' ? 512 : 384)
     model.setTemperature(0.7)

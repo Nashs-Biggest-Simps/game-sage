@@ -14,6 +14,7 @@ const TTL = {
     libraryList:    6  * 60 * 60 * 1000,       //  6 hours
     gameDetails:    7  * 24 * 60 * 60 * 1000,  //  7 days
     recentlyPlayed: 15 * 60 * 1000,            // 15 minutes
+    friends:        60 * 1000,                 // 60 seconds
 }
 
 // Number of game-detail requests to fire per update cycle.
@@ -35,10 +36,11 @@ function snap() {
 // Apply an update to db.cache, guaranteeing the nested structure always exists
 function patchCache(updater) {
     db.update(data => {
-        if (!data.cache)                  data.cache = {}
-        if (!data.cache.library)          data.cache.library = {}
-        if (!data.cache.library.details)  data.cache.library.details = {}
-        if (!data.cache.recentlyPlayed)   data.cache.recentlyPlayed = {}
+        if (!data.cache)                       data.cache = {}
+        if (!data.cache.library)               data.cache.library = {}
+        if (!data.cache.library.details)       data.cache.library.details = {}
+        if (!data.cache.library.blacklist)     data.cache.library.blacklist = []
+        if (!data.cache.recentlyPlayed)        data.cache.recentlyPlayed = {}
         updater(data.cache)
         return data
     })
@@ -88,6 +90,27 @@ function refreshRecentlyPlayed(cache) {
     })
 }
 
+export function refreshFriends() {
+    const cache = snap().cache
+    if (!isStale(cache?.friends?.fetchedAt, TTL.friends)) return
+    steamAPI.getFriendList(data => {
+        const ids = (data?.friendslist?.friends ?? []).map(f => f.steamid)
+        if (!ids.length) {
+            patchCache(c => { c.friends = { data: [], fetchedAt: Date.now() } })
+            return
+        }
+        steamAPI.getPlayerSummaries(ids.slice(0, 100), res => {
+            const players = (res?.response?.players ?? []).sort((a, b) => {
+                const sa = a.gameid ? 2 : a.personastate > 0 ? 1 : 0
+                const sb = b.gameid ? 2 : b.personastate > 0 ? 1 : 0
+                if (sa !== sb) return sb - sa
+                return (b.lastlogoff ?? 0) - (a.lastlogoff ?? 0)
+            })
+            patchCache(c => { c.friends = { data: players, fetchedAt: Date.now() } })
+        })
+    })
+}
+
 // Fetch details for the next batch of games that are missing or stale.
 // This is designed to be called repeatedly across sessions — each call
 // fills in a few more entries until the full library is cached.
@@ -95,8 +118,10 @@ function refreshDetailBatch(cache) {
     const appIdList = cache.library?.appIdList || []
     const details   = cache.library?.details   || {}
 
+    const blacklist = new Set(cache.library?.blacklist || [])
     const pending = appIdList.filter(id =>
-        !details[id]?.data || isStale(details[id].fetchedAt, TTL.gameDetails)
+        !blacklist.has(id) &&
+        (!details[id]?.data || isStale(details[id].fetchedAt, TTL.gameDetails))
     )
 
     if (pending.length === 0) return
@@ -108,6 +133,12 @@ function refreshDetailBatch(cache) {
 
     batch.forEach(appid => {
         steamAPI.getGameDetails(appid, res => {
+            if (res?.[appid]?.success === false) {
+                patchCache(c => {
+                    if (!c.library.blacklist.includes(appid)) c.library.blacklist.push(appid)
+                })
+                return
+            }
             const gameData = res?.[appid]?.data
             if (!gameData) return
             patchCache(c => {
@@ -151,6 +182,13 @@ export function getGameDetail(appid) {
 export function fetchGameDetail(appid) {
     return new Promise((resolve) => {
         steamAPI.getGameDetails(appid, res => {
+            if (res?.[appid]?.success === false) {
+                patchCache(c => {
+                    if (!c.library.blacklist.includes(appid)) c.library.blacklist.push(appid)
+                })
+                resolve(null)
+                return
+            }
             const gameData = res?.[appid]?.data
             if (gameData) {
                 patchCache(c => {
@@ -166,10 +204,12 @@ export function fetchGameDetail(appid) {
  * Return all cached game detail objects as a flat array.
  */
 export function getCachedLibrary() {
-    const details = snap().cache?.library?.details ?? {}
-    return Object.values(details)
-        .filter(entry => entry?.data)
-        .map(entry => entry.data)
+    const library   = snap().cache?.library ?? {}
+    const details   = library.details  ?? {}
+    const blacklist = new Set(library.blacklist ?? [])
+    return Object.entries(details)
+        .filter(([id, entry]) => entry?.data && !blacklist.has(id))
+        .map(([, entry]) => entry.data)
 }
 
 /**

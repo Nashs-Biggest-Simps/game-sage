@@ -12,7 +12,6 @@
 </script>
 
 <div class="landing">
-
     <Hero />
     <Features />
     <GetStartedSteps />
@@ -23,6 +22,7 @@
             Open GameSage
         </a>
     </div>
+    
 
 </div>
 
@@ -35,8 +35,6 @@
         gap: 5rem;
         padding: 0 var(--inline-moat) 6rem;
     }
-
-    /* ── Hero ─────────────────────── */
 
     .btn-primary {
         display: flex;
@@ -60,13 +58,6 @@
     }
 
     .btn-primary.large { padding: 1rem 2.6rem; font-size: 1.05rem; }
-
-    .cta-note {
-        font-size: 0.75rem;
-        opacity: 0.35;
-    }
-
-    /* ── Footer CTA ───────────────── */
 
     .footer-cta {
         display: flex;

@@ -1,13 +1,19 @@
 <script>
+    //
+    // ActivityFeed.svelte
+    //
+    // GameSage
+    // written by Aaron Meche
+    //
+
     import { onMount } from 'svelte'
     import { steamAPI } from '$lib/steam'
-
-    // personastate: 0=offline, 1=online, 2=busy, 3=away, 4=snooze, 5=trade, 6=play
-    const STATE_LABEL = ['Offline', 'Online', 'Busy', 'Away', 'Snooze', 'Looking to Trade', 'Looking to Play']
 
     let friends = $state([])
     let loading = $state(true)
     let error   = $state(false)
+
+    const STATE_LABEL = ['Offline', 'Online', 'Busy', 'Away', 'Snooze', 'Looking to Trade', 'Looking to Play']
 
     function timeAgo(unix) {
         if (!unix) return ''
@@ -29,26 +35,25 @@
         steamAPI.getFriendList(data => {
             const ids = (data?.friendslist?.friends ?? []).map(f => f.steamid)
             if (!ids.length) { loading = false; return }
-
+            
             steamAPI.getPlayerSummaries(ids.slice(0, 50), res => {
                 const players = res?.response?.players ?? []
                 if (!players.length) { loading = false; return }
 
-                friends = players
-                    .sort((a, b) => {
-                        // in-game first, then online, then by lastlogoff
-                        const aScore = a.gameid ? 2 : a.personastate > 0 ? 1 : 0
-                        const bScore = b.gameid ? 2 : b.personastate > 0 ? 1 : 0
-                        if (aScore !== bScore) return bScore - aScore
-                        return (b.lastlogoff ?? 0) - (a.lastlogoff ?? 0)
-                    })
-                    .slice(0, 14)
-
+                // Sort by Active -> Online -> Last Active
+                friends = players.sort((a, b) => {
+                    const aScore = a.gameid ? 2 : a.personastate > 0 ? 1 : 0
+                    const bScore = b.gameid ? 2 : b.personastate > 0 ? 1 : 0
+                    if (aScore !== bScore) return bScore - aScore
+                    return (b.lastlogoff ?? 0) - (a.lastlogoff ?? 0)
+                }).slice(0, 14)
                 loading = false
             })
         })
     })
 </script>
+
+<!--  -->
 
 <div class="feed">
     {#if loading}
@@ -86,6 +91,8 @@
         {/each}
     {/if}
 </div>
+
+<!--  -->
 
 <style>
     .feed {

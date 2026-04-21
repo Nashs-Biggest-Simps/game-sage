@@ -1,17 +1,32 @@
-<!-- created by Aaron Meche -->
 <script>
+	//
+	// TopNavbarItem.svelte
+	//
+	// GameSage
+	// written by Aaron Meche
+	//
+
     import { resolve } from "$app/paths";
 	import { page } from '$app/state'
 
-    let path = $derived(page.url.pathname)
     let { route, icon, text = null } = $props()
-    let active = $derived(path === '/' + route)
+	let active = $state(null)
+	let path = $state(null)
+
+	$effect(() => {
+		active = path === '/' + route
+		path = page.url.pathname
+	})
 </script>
+
+<!--  -->
 
 <a class="navitem {active ? 'active' : ''}" href={resolve('/' + route)}>
     <i class="fa-solid fa-{icon}"></i>
     {#if text}<span>{text}</span>{/if}
 </a>
+
+<!--  -->
 
 <style>
 	.navitem {

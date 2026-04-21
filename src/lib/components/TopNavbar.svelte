@@ -1,12 +1,25 @@
 <script>
+	//
+	// TopNavbar.svelte
+	// 
+	// GameSage
+	// written by Aaron Meche
+	//
+
 	import { resolve } from '$app/paths'
 	import { page } from '$app/state'
 	import { db } from '$lib/data'
     import TopNavbarItem from '$lib/components/TopNavbarItem.svelte';
 
-	let profilepic   = $derived($db?.cache?.user?.data?.avatarfull ?? $db?.user?.photoURL ?? null)
-	let personaname  = $derived($db?.cache?.user?.data?.personaname ?? $db?.user?.displayName ?? null)
-	let path         = $derived(page.url.pathname)
+	let name = $state(null)
+	let path = $state(null)
+	let pfp = $state(null)
+
+	$effect(() => {
+		name = $db?.cache?.user?.data?.personaname ?? $db?.user?.displayName ?? null
+		path = page.url.pathname
+		pfp = $db?.cache?.user?.data?.avatarfull ?? $db?.user?.photoURL ?? null
+	})
 </script>
 
 <nav class="navbar">
@@ -24,13 +37,13 @@
 	</div>
 
 	<a href={resolve("/profile")} class="profile-btn {path === '/profile' ? 'active' : ''}">
-		{#if profilepic}
-			<img src={profilepic} alt="" class="profile-img" />
+		{#if pfp}
+			<img src={pfp} alt="" class="profile-img" />
 		{:else}
 			<div class="profile-icon"><i class="fa-solid fa-user"></i></div>
 		{/if}
-		{#if personaname}
-			<span>{personaname}</span>
+		{#if name}
+			<span>{name}</span>
 		{/if}
 	</a>
 </nav>
