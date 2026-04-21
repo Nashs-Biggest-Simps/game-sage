@@ -16,20 +16,24 @@
     let achievements = $state(null)
     let globalPcts   = $state(null)
     let loadingAch   = $state(true)
+    let friends      = $state([])
 
     let myPlaytime = $derived($db?.cache?.library?.playtime?.[appid] ?? 0)
     let myHours    = $derived(Math.round(myPlaytime / 60))
     let isOwned    = $derived(appid in ($db?.cache?.library?.playtime ?? {}))
 
-    let screenshots = $derived(game?.screenshots?.slice(0, 8) ?? [])
-    let price       = $derived(game?.price_overview?.final_formatted ?? (game?.is_free ? 'Free' : null))
-    let discount    = $derived(game?.price_overview?.discount_percent ?? 0)
-    let origPrice   = $derived(game?.price_overview?.initial_formatted ?? null)
-    let storeUrl    = $derived(`https://store.steampowered.com/app/${appid}`)
-    let genres      = $derived(game?.genres?.map(g => g.description) ?? [])
-    let categories  = $derived(game?.categories?.slice(0, 6)?.map(c => c.description) ?? [])
+    let screenshots    = $derived(game?.screenshots?.slice(0, 12) ?? [])
+    let movies         = $derived(game?.movies?.filter(m => m.mp4)?.slice(0, 3) ?? [])
+    let price          = $derived(game?.price_overview?.final_formatted ?? (game?.is_free ? 'Free' : null))
+    let discount       = $derived(game?.price_overview?.discount_percent ?? 0)
+    let origPrice      = $derived(game?.price_overview?.initial_formatted ?? null)
+    let storeUrl       = $derived(`https://store.steampowered.com/app/${appid}`)
+    let wishlistUrl    = $derived(`https://store.steampowered.com/app/${appid}`)
+    let genres         = $derived(game?.genres?.map(g => g.description) ?? [])
+    let categories     = $derived(game?.categories?.slice(0, 6)?.map(c => c.description) ?? [])
+    let friendsInGame  = $derived(friends.filter(f => f.gameid && String(f.gameid) === String(appid)))
 
-    // Hero image fallback chain
+    // Hero image with JS preload fallback chain
     let heroIdx    = $state(0)
     const HERO_IMGS = (id) => [
         `https://cdn.akamai.steamstatic.com/steam/apps/${id}/library_hero.jpg`,
@@ -50,6 +54,22 @@
         img.src = heroSrc
     })
 
+    // Screenshot modal
+    let modalIdx = $state(null)
+    let modalSrc = $derived(modalIdx !== null ? (screenshots[modalIdx]?.path_full ?? null) : null)
+    function openModal(idx) { modalIdx = idx }
+    function closeModal()   { modalIdx = null }
+    function modalPrev()    { if (modalIdx > 0) modalIdx-- }
+    function modalNext()    { if (modalIdx < screenshots.length - 1) modalIdx++ }
+
+    function handleKeydown(e) {
+        if (modalIdx === null) return
+        if (e.key === 'Escape')     closeModal()
+        if (e.key === 'ArrowLeft')  modalPrev()
+        if (e.key === 'ArrowRight') modalNext()
+    }
+
+    // Achievements
     let totalAch  = $derived(achievements?.achievements?.length ?? 0)
     let earnedAch = $derived(achievements?.achievements?.filter(a => a.achieved)?.length ?? 0)
     let achPct    = $derived(totalAch > 0 ? Math.round((earnedAch / totalAch) * 100) : 0)
@@ -85,6 +105,14 @@
             loadingAch = false
         })
         steamAPI.getGlobalAchievementPercentages(id, ret => { globalPcts = ret ?? null })
+
+        steamAPI.getFriendList(data => {
+            const ids = (data?.friendslist?.friends ?? []).map(f => f.steamid)
+            if (!ids.length) return
+            steamAPI.getPlayerSummaries(ids.slice(0, 100), res => {
+                friends = res?.response?.players ?? []
+            })
+        })
     })
 
     function hltbFmt(val) {
@@ -102,6 +130,45 @@
         return (html ?? '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 220)
     }
 </script>
+
+<svelte:window onkeydown={handleKeydown} />
+
+<!-- Screenshot modal -->
+{#if modalIdx !== null && modalSrc}
+    <div
+        class="modal-backdrop"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Screenshot viewer"
+        tabindex="-1"
+        onclick={closeModal}
+        onkeydown={(e) => e.key === 'Escape' && closeModal()}
+    >
+        <button class="modal-close" onclick={closeModal} aria-label="Close">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+
+        {#if modalIdx > 0}
+            <button class="modal-nav prev" onclick={(e) => { e.stopPropagation(); modalPrev() }} aria-label="Previous screenshot">
+                <i class="fa-solid fa-chevron-left"></i>
+            </button>
+        {/if}
+
+        <img
+            class="modal-img"
+            src={modalSrc}
+            alt="Screenshot {modalIdx + 1}"
+        />
+
+        {#if modalIdx < screenshots.length - 1}
+            <button class="modal-nav next" onclick={(e) => { e.stopPropagation(); modalNext() }} aria-label="Next screenshot">
+                <i class="fa-solid fa-chevron-right"></i>
+            </button>
+        {/if}
+
+        <div class="modal-counter">{modalIdx + 1} / {screenshots.length}</div>
+    </div>
+{/if}
 
 <div class="view-page">
 
@@ -134,10 +201,7 @@
     {:else if game}
 
         <!-- Hero -->
-        <div
-            class="hero"
-            style={heroLoaded ? `background-image: url('${heroSrc}')` : ''}
-        >
+        <div class="hero" style={heroLoaded ? `background-image: url('${heroSrc}')` : ''}>
             <div class="hero-gradient"></div>
             <div class="hero-content">
                 {#if genres.length > 0}
@@ -163,101 +227,108 @@
         <!-- Two-column content -->
         <div class="content-grid">
 
-            <!-- ── Main column ───────────────────────────── -->
+            <!-- ── Main column ── -->
             <div class="main-col">
 
                 <!-- About -->
                 {#if game.short_description}
                     <section class="panel">
-                        <div class="panel-label">
-                            <i class="fa-solid fa-align-left"></i>About
-                        </div>
+                        <div class="panel-label"><i class="fa-solid fa-align-left"></i>About</div>
                         <p class="description">{game.short_description}</p>
+                    </section>
+                {/if}
+
+                <!-- Trailers -->
+                {#if movies.length > 0}
+                    <section class="panel">
+                        <div class="panel-label"><i class="fa-solid fa-film"></i>Trailers</div>
+                        <div class="videos-list">
+                            {#each movies as m (m.id)}
+                                <div class="video-wrap">
+                                    <video
+                                        class="trailer-video"
+                                        controls
+                                        preload="none"
+                                        poster={m.thumbnail}
+                                        src={m.mp4['480'] ?? m.mp4.max}
+                                    >
+                                        <track kind="captions" />
+                                    </video>
+                                    <div class="video-label">{m.name}</div>
+                                </div>
+                            {/each}
+                        </div>
                     </section>
                 {/if}
 
                 <!-- Screenshots -->
                 {#if screenshots.length > 0}
                     <section class="panel">
-                        <div class="panel-label">
-                            <i class="fa-solid fa-images"></i>Screenshots
-                        </div>
+                        <div class="panel-label"><i class="fa-solid fa-images"></i>Screenshots</div>
                         <div class="screenshots-scroll horizontal-scroll">
-                            {#each screenshots as s (s.id)}
-                                <a
-                                    href={s.path_full}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    class="ss-link"
+                            {#each screenshots as s, i (s.id)}
+                                <button
+                                    class="ss-btn"
+                                    onclick={() => openModal(i)}
+                                    aria-label="View screenshot {i + 1}"
                                 >
                                     <img src={s.path_thumbnail} alt="" loading="lazy" class="ss-img" />
-                                </a>
+                                    <div class="ss-hover-overlay">
+                                        <i class="fa-solid fa-magnifying-glass-plus"></i>
+                                    </div>
+                                </button>
                             {/each}
                         </div>
                     </section>
                 {/if}
 
                 <!-- Achievements -->
-                {#if !loadingAch}
-                    {#if achievements?.success && totalAch > 0}
-                        <section class="panel">
-                            <div class="ach-top">
-                                <div class="panel-label">
-                                    <i class="fa-solid fa-medal"></i>Achievements
-                                </div>
-                                <div class="ach-fraction">
-                                    <span class="ach-earned">{earnedAch}</span>
-                                    <span class="ach-total">/ {totalAch}</span>
-                                </div>
+                {#if !loadingAch && achievements?.success && totalAch > 0}
+                    <section class="panel">
+                        <div class="ach-top">
+                            <div class="panel-label"><i class="fa-solid fa-medal"></i>Achievements</div>
+                            <div class="ach-fraction">
+                                <span class="ach-earned">{earnedAch}</span>
+                                <span class="ach-total">/ {totalAch}</span>
                             </div>
-                            <div class="ach-bar-track">
-                                <div class="ach-bar-fill" style="width:{achPct}%"></div>
-                            </div>
-                            <div class="ach-pct">{achPct}% complete</div>
+                        </div>
+                        <div class="ach-bar-track">
+                            <div class="ach-bar-fill" style="width:{achPct}%"></div>
+                        </div>
+                        <div class="ach-pct">{achPct}% complete</div>
 
-                            {#if rarestAch().length > 0}
-                                <div class="ach-sublabel">
-                                    <i class="fa-solid fa-star"></i>
-                                    Rarest Earned
-                                </div>
-                                <div class="ach-grid">
-                                    {#each rarestAch() as a (a.apiname)}
-                                        <div class="ach-item" title="{a.name}: {a.description ?? ''}">
-                                            {#if a.icon}
-                                                <img src={a.icon} alt={a.name} class="ach-icon" loading="lazy" />
-                                            {:else}
-                                                <div class="ach-icon-ph">
-                                                    <i class="fa-solid fa-trophy"></i>
-                                                </div>
+                        {#if rarestAch().length > 0}
+                            <div class="ach-sublabel">
+                                <i class="fa-solid fa-star"></i>Rarest Earned
+                            </div>
+                            <div class="ach-grid">
+                                {#each rarestAch() as a (a.apiname)}
+                                    <div class="ach-item" title="{a.name}: {a.description ?? ''}">
+                                        {#if a.icon}
+                                            <img src={a.icon} alt={a.name} class="ach-icon" loading="lazy" />
+                                        {:else}
+                                            <div class="ach-icon-ph"><i class="fa-solid fa-trophy"></i></div>
+                                        {/if}
+                                        <div class="ach-info">
+                                            <div class="ach-name">{a.name}</div>
+                                            {#if a.globalPct !== null}
+                                                <div class="ach-rarity">{a.globalPct.toFixed(1)}% of players</div>
                                             {/if}
-                                            <div class="ach-info">
-                                                <div class="ach-name">{a.name}</div>
-                                                {#if a.globalPct !== null}
-                                                    <div class="ach-rarity">{a.globalPct.toFixed(1)}% of players</div>
-                                                {/if}
-                                            </div>
                                         </div>
-                                    {/each}
-                                </div>
-                            {/if}
-                        </section>
-                    {/if}
+                                    </div>
+                                {/each}
+                            </div>
+                        {/if}
+                    </section>
                 {/if}
 
                 <!-- News -->
                 {#if news.length > 0}
                     <section class="panel">
-                        <div class="panel-label">
-                            <i class="fa-solid fa-newspaper"></i>Latest News
-                        </div>
+                        <div class="panel-label"><i class="fa-solid fa-newspaper"></i>Latest News</div>
                         <div class="news-list">
                             {#each news as item (item.gid)}
-                                <a
-                                    href={item.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    class="news-item"
-                                >
+                                <a href={item.url} target="_blank" rel="noopener noreferrer" class="news-item">
                                     <div class="news-top">
                                         <span class="news-source">{item.feedlabel}</span>
                                         <span class="news-date">{newsDate(item.date)}</span>
@@ -274,38 +345,52 @@
 
             </div>
 
-            <!-- ── Info sidebar ──────────────────────────── -->
+            <!-- ── Info sidebar ── -->
             <aside class="info-col">
 
-                <!-- Actions -->
+                <!-- Action buttons: context-aware -->
                 <div class="panel action-panel">
                     {#if isOwned}
                         <button
-                            class="btn-play"
+                            class="btn-primary btn-play-game"
                             onclick={() => { window.location.href = `steam://run/${appid}` }}
                         >
                             <i class="fa-solid fa-play"></i>
                             Play in Steam
                         </button>
-                    {/if}
-                    <a href={storeUrl} target="_blank" rel="noopener noreferrer" class="btn-store">
-                        <i class="fa-brands fa-steam"></i>
-                        {#if discount > 0}
-                            <span class="discount-badge">-{discount}%</span>
+                        <a href={storeUrl} target="_blank" rel="noopener noreferrer" class="btn-secondary">
+                            <i class="fa-brands fa-steam"></i>
+                            View on Store
+                        </a>
+                    {:else}
+                        <a href={storeUrl} target="_blank" rel="noopener noreferrer" class="btn-primary btn-buy">
+                            <i class="fa-solid fa-cart-shopping"></i>
+                            {#if discount > 0}
+                                <span class="discount-badge">-{discount}%</span>
+                            {/if}
+                            {price ? `Buy · ${price}` : game?.is_free ? 'Get for Free' : 'View on Steam'}
+                        </a>
+                        {#if !game?.is_free}
+                            <a
+                                href="https://store.steampowered.com/wishlist/add/{appid}"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="btn-secondary"
+                            >
+                                <i class="fa-solid fa-bookmark"></i>
+                                Add to Wishlist
+                            </a>
                         {/if}
-                        {price ?? 'View on Steam'}
-                    </a>
-                    {#if discount > 0 && origPrice}
-                        <div class="orig-price">Was {origPrice}</div>
+                        {#if discount > 0 && origPrice}
+                            <div class="orig-price">Was {origPrice}</div>
+                        {/if}
                     {/if}
                 </div>
 
-                <!-- Personal playtime -->
+                <!-- Personal playtime (only when owned) -->
                 {#if isOwned}
                     <div class="panel">
-                        <div class="panel-label">
-                            <i class="fa-solid fa-clock"></i>Your Playtime
-                        </div>
+                        <div class="panel-label"><i class="fa-solid fa-clock"></i>Your Playtime</div>
                         <div class="playtime-big">
                             {myHours > 0 ? `${myHours.toLocaleString()}h` : 'Never played'}
                         </div>
@@ -315,12 +400,31 @@
                     </div>
                 {/if}
 
+                <!-- Friends playing this game right now -->
+                {#if friendsInGame.length > 0}
+                    <div class="panel">
+                        <div class="panel-label">
+                            <i class="fa-solid fa-user-group"></i>
+                            Friends Playing Now
+                        </div>
+                        <div class="friends-list">
+                            {#each friendsInGame as f (f.steamid)}
+                                <div class="friend-row">
+                                    <div class="friend-av-wrap">
+                                        <img class="friend-av" src={f.avatarmedium} alt="" loading="lazy" />
+                                        <div class="friend-dot"></div>
+                                    </div>
+                                    <div class="friend-name">{f.personaname}</div>
+                                </div>
+                            {/each}
+                        </div>
+                    </div>
+                {/if}
+
                 <!-- HLTB -->
                 {#if hltb?.mainStory || hltb?.mainStoryWithExtras || hltb?.completionist}
                     <div class="panel">
-                        <div class="panel-label">
-                            <i class="fa-solid fa-hourglass-half"></i>How Long to Beat
-                        </div>
+                        <div class="panel-label"><i class="fa-solid fa-hourglass-half"></i>How Long to Beat</div>
                         <div class="hltb-list">
                             {#if hltb.mainStory}
                                 <div class="hltb-row">
@@ -344,11 +448,29 @@
                     </div>
                 {/if}
 
+                <!-- Metacritic score (if available) -->
+                {#if game.metacritic?.score}
+                    <div class="panel">
+                        <div class="panel-label"><i class="fa-solid fa-star-half-stroke"></i>Metacritic</div>
+                        <div class="meta-score-row">
+                            <div class="meta-score {game.metacritic.score >= 75 ? 'great' : game.metacritic.score >= 50 ? 'mixed' : 'poor'}">
+                                {game.metacritic.score}
+                            </div>
+                            <a
+                                href={game.metacritic.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="meta-link"
+                            >
+                                Read reviews →
+                            </a>
+                        </div>
+                    </div>
+                {/if}
+
                 <!-- Game details -->
                 <div class="panel">
-                    <div class="panel-label">
-                        <i class="fa-solid fa-circle-info"></i>Game Details
-                    </div>
+                    <div class="panel-label"><i class="fa-solid fa-circle-info"></i>Game Details</div>
                     <div class="detail-rows">
                         {#if game.developers?.length}
                             <div class="detail-row">
@@ -380,6 +502,12 @@
                             <div class="detail-row">
                                 <span class="detail-key">Achievements</span>
                                 <span class="detail-val">{totalAch} total</span>
+                            </div>
+                        {/if}
+                        {#if game.recommendations?.total}
+                            <div class="detail-row">
+                                <span class="detail-key">Reviews</span>
+                                <span class="detail-val">{game.recommendations.total.toLocaleString()} reviews</span>
                             </div>
                         {/if}
                     </div>
@@ -417,6 +545,84 @@
         display: flex;
         flex-direction: column;
         gap: 1.4rem;
+    }
+
+    /* ── Modal ───────────────────────────── */
+
+    .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: hsl(0,0%,0%,0.92);
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(6px);
+        cursor: pointer;
+    }
+
+    .modal-img {
+        max-width: min(90vw, 1280px);
+        max-height: 85vh;
+        border-radius: 0.6rem;
+        object-fit: contain;
+        cursor: default;
+        box-shadow: 0 24px 80px hsl(0,0%,0%,0.8);
+    }
+
+    .modal-close {
+        position: fixed;
+        top: 1.2rem;
+        right: 1.4rem;
+        width: 2.4rem;
+        height: 2.4rem;
+        border-radius: 50%;
+        background: hsl(0,0%,100%,0.12);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        color: white;
+        cursor: pointer;
+        transition: background 120ms;
+        z-index: 1001;
+    }
+
+    .modal-close:hover { background: hsl(0,0%,100%,0.22); }
+
+    .modal-nav {
+        position: fixed;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 3rem;
+        height: 3rem;
+        border-radius: 50%;
+        background: hsl(0,0%,100%,0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        color: white;
+        cursor: pointer;
+        transition: background 120ms;
+        z-index: 1001;
+    }
+
+    .modal-nav:hover { background: hsl(0,0%,100%,0.25); }
+    .modal-nav.prev { left: 1.4rem; }
+    .modal-nav.next { right: 1.4rem; }
+
+    .modal-counter {
+        position: fixed;
+        bottom: 1.4rem;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 0.78rem;
+        color: white;
+        opacity: 0.5;
+        background: hsl(0,0%,0%,0.5);
+        padding: 0.25rem 0.8rem;
+        border-radius: 100vh;
     }
 
     /* ── Topbar ──────────────────────────── */
@@ -457,10 +663,9 @@
         height: 1.5rem;
         width: 14rem;
         border-radius: 0.4rem;
-        background: var(--l2);
-        animation: shimmer 1.6s ease-in-out infinite;
         background: linear-gradient(90deg, var(--l2) 0%, var(--l3) 50%, var(--l2) 100%);
         background-size: 200% 100%;
+        animation: shimmer 1.6s ease-in-out infinite;
     }
 
     /* ── Hero ────────────────────────────── */
@@ -479,16 +684,9 @@
     .hero-gradient {
         position: absolute;
         inset: 0;
-        background: linear-gradient(
-            to right,
-            hsl(0,0%,0%,0.9) 0%,
-            hsl(0,0%,0%,0.65) 40%,
-            hsl(0,0%,0%,0.1) 100%
-        ), linear-gradient(
-            to top,
-            hsl(0,0%,0%,0.7) 0%,
-            transparent 60%
-        );
+        background:
+            linear-gradient(to right, hsl(0,0%,0%,0.9) 0%, hsl(0,0%,0%,0.65) 40%, hsl(0,0%,0%,0.1) 100%),
+            linear-gradient(to top,   hsl(0,0%,0%,0.7) 0%, transparent 60%);
     }
 
     .hero-content {
@@ -501,11 +699,7 @@
         gap: 0.5rem;
     }
 
-    .hero-chips {
-        display: flex;
-        gap: 0.4rem;
-        flex-wrap: wrap;
-    }
+    .hero-chips { display: flex; gap: 0.4rem; flex-wrap: wrap; }
 
     .genre-chip {
         font-size: 0.65rem;
@@ -585,6 +779,23 @@
         margin: 0;
     }
 
+    /* ── Trailers ────────────────────────── */
+
+    .videos-list { display: flex; flex-direction: column; gap: 0.8rem; }
+
+    .video-wrap { display: flex; flex-direction: column; gap: 0.4rem; }
+
+    .trailer-video {
+        width: 100%;
+        border-radius: 0.65rem;
+        background: var(--l2);
+        outline: solid 1pt var(--l3);
+        aspect-ratio: 16 / 9;
+        display: block;
+    }
+
+    .video-label { font-size: 0.75rem; opacity: 0.45; padding-left: 0.2rem; }
+
     /* ── Screenshots ─────────────────────── */
 
     .screenshots-scroll {
@@ -595,16 +806,20 @@
         padding-right: 1px;
     }
 
-    .ss-link {
+    .ss-btn {
         flex-shrink: 0;
         border-radius: 0.5rem;
         overflow: hidden;
         display: block;
         outline: solid 1pt transparent;
         transition: outline-color 140ms, transform 140ms;
+        cursor: pointer;
+        position: relative;
+        padding: 0;
+        background: none;
     }
 
-    .ss-link:hover {
+    .ss-btn:hover {
         outline-color: var(--accent);
         transform: translateY(-2px);
     }
@@ -616,6 +831,21 @@
         object-fit: cover;
         display: block;
     }
+
+    .ss-hover-overlay {
+        position: absolute;
+        inset: 0;
+        background: hsl(0,0%,0%,0.45);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        color: white;
+        opacity: 0;
+        transition: opacity 140ms;
+    }
+
+    .ss-btn:hover .ss-hover-overlay { opacity: 1; }
 
     /* ── Achievements ────────────────────── */
 
@@ -658,11 +888,7 @@
         border-top: 1pt solid var(--l2);
     }
 
-    .ach-grid {
-        display: flex;
-        flex-direction: column;
-        gap: 0.25rem;
-    }
+    .ach-grid { display: flex; flex-direction: column; gap: 0.25rem; }
 
     .ach-item {
         display: flex;
@@ -724,10 +950,7 @@
         text-decoration: none;
     }
 
-    .news-item:hover {
-        background: var(--l1);
-        outline-color: var(--l3);
-    }
+    .news-item:hover { background: var(--l1); outline-color: var(--l3); }
 
     .news-top {
         display: flex;
@@ -766,32 +989,46 @@
 
     /* ── Action panel ────────────────────── */
 
-    .action-panel { gap: 0.65rem; }
+    .action-panel { gap: 0.6rem; }
 
-    .btn-play {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.55rem;
-        padding: 0.75rem;
-        background: var(--accent);
-        border-radius: 0.75rem;
-        font-size: 0.95rem;
-        font-weight: 700;
-        color: white;
-        cursor: pointer;
-        transition: background 150ms, transform 100ms;
-        width: 100%;
-    }
-
-    .btn-play:hover { background: var(--bright-accent); transform: scale(1.01); }
-
-    .btn-store {
+    .btn-primary {
         display: flex;
         align-items: center;
         justify-content: center;
         gap: 0.5rem;
-        padding: 0.65rem;
+        width: 100%;
+        padding: 0.8rem 1rem;
+        border-radius: 0.75rem;
+        font-size: 0.95rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: background 150ms, transform 80ms;
+        text-decoration: none;
+        box-sizing: border-box;
+    }
+
+    .btn-play-game {
+        background: var(--accent);
+        color: white;
+    }
+
+    .btn-play-game:hover { background: var(--bright-accent); transform: scale(1.01); }
+
+    .btn-buy {
+        background: hsl(130,50%,22%);
+        color: hsl(130,65%,62%);
+        outline: solid 1pt hsl(130,45%,32%);
+    }
+
+    .btn-buy:hover { background: hsl(130,50%,26%); transform: scale(1.01); }
+
+    .btn-secondary {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        width: 100%;
+        padding: 0.65rem 1rem;
         background: var(--l1);
         outline: solid 1pt var(--l3);
         border-radius: 0.75rem;
@@ -800,22 +1037,23 @@
         text-decoration: none;
         cursor: pointer;
         transition: background 150ms, outline-color 150ms;
+        box-sizing: border-box;
     }
 
-    .btn-store:hover { background: var(--l2); outline-color: var(--l4); }
+    .btn-secondary:hover { background: var(--l2); outline-color: var(--l4); }
 
     .discount-badge {
         background: hsl(130,60%,25%);
         color: hsl(130,65%,55%);
-        font-size: 0.65rem;
+        font-size: 0.62rem;
         font-weight: 700;
-        padding: 0.15rem 0.4rem;
+        padding: 0.12rem 0.4rem;
         border-radius: 0.3rem;
     }
 
     .orig-price { font-size: 0.72rem; opacity: 0.4; text-align: center; text-decoration: line-through; }
 
-    /* ── Playtime panel ──────────────────── */
+    /* ── Playtime ────────────────────────── */
 
     .playtime-big {
         font-size: 2rem;
@@ -827,7 +1065,92 @@
 
     .playtime-sub { font-size: 0.72rem; opacity: 0.45; margin-top: -0.3rem; }
 
-    /* ── HLTB panel ──────────────────────── */
+    /* ── Friends in game ─────────────────── */
+
+    .friends-list { display: flex; flex-direction: column; gap: 0.1rem; }
+
+    .friend-row {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        padding: 0.4rem 0.5rem;
+        border-radius: 0.55rem;
+        transition: background 120ms;
+    }
+
+    .friend-row:hover { background: var(--l1); }
+
+    .friend-av-wrap {
+        position: relative;
+        width: 2rem;
+        height: 2rem;
+        flex-shrink: 0;
+    }
+
+    .friend-av {
+        width: 100%;
+        height: 100%;
+        border-radius: 0.3rem;
+        object-fit: cover;
+        display: block;
+        background: var(--l3);
+    }
+
+    .friend-dot {
+        position: absolute;
+        bottom: -0.15rem;
+        right: -0.15rem;
+        width: 0.6rem;
+        height: 0.6rem;
+        border-radius: 50%;
+        background: var(--accent);
+        border: 2px solid var(--lb0);
+    }
+
+    .friend-name {
+        font-size: 0.83rem;
+        font-weight: 600;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* ── Metacritic ──────────────────────── */
+
+    .meta-score-row {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .meta-score {
+        font-size: 1.8rem;
+        font-weight: 800;
+        line-height: 1;
+        width: 3rem;
+        height: 3rem;
+        border-radius: 0.55rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .meta-score.great { background: hsl(130,50%,22%); color: hsl(130,65%,55%); }
+    .meta-score.mixed { background: hsl(45,60%,22%);  color: hsl(45,80%,55%);  }
+    .meta-score.poor  { background: hsl(0,50%,22%);   color: hsl(0,65%,55%);   }
+
+    .meta-link {
+        font-size: 0.78rem;
+        color: var(--bright-accent);
+        opacity: 0.7;
+        text-decoration: none;
+        transition: opacity 120ms;
+    }
+
+    .meta-link:hover { opacity: 1; }
+
+    /* ── HLTB ────────────────────────────── */
 
     .hltb-list { display: flex; flex-direction: column; gap: 0.1rem; }
 
