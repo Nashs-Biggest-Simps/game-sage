@@ -28,8 +28,18 @@ let initial_db = {
     steamID: '',
     prefs: {
         genres: { preferred: [], excluded: [] },
-        suggestions: { refreshHours: 24, aiTone: 'brief' },
-        display: { compactLibrary: false },
+        suggestions: { refreshHours: 24, aiTone: 'brief', maxResults: 9 },
+        display: { compactLibrary: false, accentColor: 'default' },
+        dashboard: {
+            showContinuePlaying: true,
+            showRecentlyPlayed:  true,
+            showSuggestions:     true,
+            showNews:            true,
+            showStats:           true,
+            showActivity:        true,
+        },
+        library: { defaultSort: 'None', defaultFilter: 'All' },
+        privacy: { shareActivity: true },
     },
 }
 

@@ -23,6 +23,24 @@
     let preferredGenres = $derived($db?.prefs?.genres?.preferred ?? [])
     let excludedGenres  = $derived($db?.prefs?.genres?.excluded  ?? [])
 
+    let mounted = $state(false)
+    let prefDebounce = null
+
+    // Re-fetch play & buy suggestions whenever genre prefs change after mount
+    $effect(() => {
+        const _p = preferredGenres.length
+        const _e = excludedGenres.length
+        if (!mounted || !hasSteamID) return
+        clearTimeout(prefDebounce)
+        prefDebounce = setTimeout(() => {
+            algo.invalidate('all')
+            playLoading = true
+            buyLoading  = true
+            algo.getPlaySuggestions().then(s => { playItems = s; playLoading = false })
+            algo.getBuySuggestions().then(s  => { buyItems  = s; buyLoading  = false })
+        }, 600)
+    })
+
     // ── Active section jump ───────────────────────────────────────────────────────
     const SECTIONS = [
         { id: 'hot',     label: 'Hot Right Now',    icon: 'fire'               },
@@ -85,6 +103,7 @@
             buyLoading   = false
             friendLoading = false
         }
+        mounted = true
     })
 </script>
 

@@ -20,6 +20,7 @@
 		<TopNavbarItem route="library"   icon="grip"                 text="Library"   />
 		<TopNavbarItem route="suggest"   icon="wand-magic-sparkles"  text="Suggested" />
 		<TopNavbarItem route="activity"  icon="star"                 text="Activity"  />
+		<TopNavbarItem route="search"    icon="magnifying-glass"     text="Search"    />
 	</div>
 
 	<a href={resolve("/profile")} class="profile-btn {path === '/profile' ? 'active' : ''}">
