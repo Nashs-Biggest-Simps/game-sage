@@ -2,70 +2,107 @@
 	import { resolve } from '$app/paths'
 	import { page } from '$app/state'
 	import { db } from '$lib/data'
-    import { beforeUpdate, onMount } from 'svelte';
     import TopNavbarItem from '$lib/components/TopNavbarItem.svelte';
 
-
-	let profilepic
-	let personaname = null
-	beforeUpdate(() => {
-		db.subscribe(data => {
-			profilepic = data?.user?.avatarfull
-			personaname = data?.user?.personaname
-		})
-	})
+	let profilepic   = $derived($db?.cache?.user?.data?.avatarfull ?? $db?.user?.photoURL ?? null)
+	let personaname  = $derived($db?.cache?.user?.data?.personaname ?? $db?.user?.displayName ?? null)
+	let path         = $derived(page.url.pathname)
 </script>
 
-<!--  -->
-
-<div class="wrapper {personaname ? "visible" : "invisible"}">
+<nav class="navbar">
 	<a href={resolve("/")} class="logo">
 		<i class="fa-solid fa-hat-wizard"></i>
 		GameSage
 	</a>
 
-	<div class="nav-buttons">
-		<TopNavbarItem route="dashboard" icon="square" text="Dashboard"/>
-		<TopNavbarItem route="library" icon="grip" text="Library"/>
-		<TopNavbarItem route="suggest" icon="wand-magic-sparkles" text="Suggested"/>
-		<TopNavbarItem route="reviews" icon="star" text="Activity"/>
-		<TopNavbarItem route="profile" icon="user" img={profilepic} text={personaname}/>
+	<div class="nav-links">
+		<TopNavbarItem route="dashboard" icon="square-poll-vertical" text="Dashboard" />
+		<TopNavbarItem route="library"   icon="grip"                 text="Library"   />
+		<TopNavbarItem route="suggest"   icon="wand-magic-sparkles"  text="Suggested" />
+		<TopNavbarItem route="activity"  icon="star"                 text="Activity"  />
 	</div>
-</div>
 
-<!--  -->
+	<a href={resolve("/profile")} class="profile-btn {path === '/profile' ? 'active' : ''}">
+		{#if profilepic}
+			<img src={profilepic} alt="" class="profile-img" />
+		{:else}
+			<div class="profile-icon"><i class="fa-solid fa-user"></i></div>
+		{/if}
+		{#if personaname}
+			<span>{personaname}</span>
+		{/if}
+	</a>
+</nav>
 
 <style>
-	.wrapper{
-		display: grid;
-		grid-template-columns: auto min-content;
-		align-items: center;
-		padding: 1.2rem 0;
-		transition: opacity 200ms cubic-bezier(0.215, 0.610, 0.355, 1);
-	}
-	
-    .logo{
-		width: fit-content;
+	.navbar {
 		display: flex;
 		align-items: center;
-		font-size: 1.6rem;
-		font-weight: 600;
+		gap: 0.5rem;
+		padding: 0.7rem 0;
+	}
+
+	.logo {
+		display: flex;
+		align-items: center;
+		gap: 0.45rem;
+		font-size: 1.15rem;
+		font-weight: 700;
 		cursor: pointer;
+		margin-right: auto;
+		letter-spacing: -0.01em;
+		opacity: 0.95;
 	}
 
-	.logo:hover{
-		text-decoration: underline;
-	}
-	
-	.logo i{
-		margin-right: 0.5rem;
-	}
+	.logo i { font-size: 1rem; color: var(--bright-accent); }
+	.logo:hover { opacity: 1; }
 
-	.nav-buttons{
+	.nav-links {
 		display: flex;
 		align-items: center;
+		gap: 0.15rem;
 	}
 
-	.visible{ opacity : 1; }
-	.invisible{ opacity : 0; }
+	.profile-btn {
+		display: flex;
+		align-items: center;
+		gap: 0.55rem;
+		padding: 0.35rem 0.7rem 0.35rem 0.35rem;
+		margin-left: 0.5rem;
+		border-radius: 100vh;
+		cursor: pointer;
+		font-size: 0.85rem;
+		font-weight: 600;
+		transition: background 150ms;
+		outline: solid 1pt transparent;
+	}
+
+	.profile-btn:hover {
+		background: var(--l1);
+		outline-color: var(--l3);
+	}
+
+	.profile-btn.active {
+		background: var(--la1);
+		outline-color: var(--la3);
+		color: var(--bright-accent);
+	}
+
+	.profile-img {
+		width: 1.7rem;
+		height: 1.7rem;
+		border-radius: 50%;
+		object-fit: cover;
+	}
+
+	.profile-icon {
+		width: 1.7rem;
+		height: 1.7rem;
+		border-radius: 50%;
+		background: var(--l3);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 0.75rem;
+	}
 </style>

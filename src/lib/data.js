@@ -7,7 +7,6 @@
 
 
 import { writable } from 'svelte/store'
-import { steamAPI } from '$lib/steam'
 
 const app_title = "gamesage_0.0.10"
 const storage_ref = `ldb-${app_title}`
@@ -26,6 +25,12 @@ let initial_db = {
     algr: {},
     cache: {},
     filters: default_filters,
+    steamID: '',
+    prefs: {
+        genres: { preferred: [], excluded: [] },
+        suggestions: { refreshHours: 24, aiTone: 'brief' },
+        display: { compactLibrary: false },
+    },
 }
 
 const storage = {
@@ -58,6 +63,15 @@ export const clearDB = () => {
     console.log("Cleared db")
 }
 
+export const clearCache = () => {
+    db.update(data => {
+        data.cache = {}
+        data.algr  = {}
+        return data
+    })
+    console.log("Cache cleared")
+}
+
 db.subscribe(db => {
     let data
     if (Object.keys(db) == undefined) {
@@ -73,16 +87,3 @@ db.subscribe(db => {
 
 
 
-// Server API Call Handler
-const baseServerURL = "https://simple-api-server.vercel.app/steam/" // dev purposes only
-export const serverAPI = {
-    get: async (req, callback) => {
-        try {
-            const response = await fetch(baseServerURL + req);
-            const data = await response.json();
-            callback(data);
-        } catch (err) {
-            console.error('API call failed:', err);
-        }
-    }
-};

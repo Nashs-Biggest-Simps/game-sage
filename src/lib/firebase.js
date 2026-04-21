@@ -1,17 +1,18 @@
 // Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyAaq33xlXV0lO2GxngVGIPCeWZuLqfMt1g",
-  authDomain: "lsu4330-project.firebaseapp.com",
-  projectId: "lsu4330-project",
-  storageBucket: "lsu4330-project.firebasestorage.app",
-  messagingSenderId: "489154277682",
-  appId: "1:489154277682:web:068c566d26bfe312db672b"
+  apiKey: "AIzaSyCYWOZgyKWSdokPrFhiZmzmf73YuwKg43k",
+  authDomain: "gamesage-lsu.firebaseapp.com",
+  databaseURL: "https://gamesage-lsu-default-rtdb.firebaseio.com",
+  projectId: "gamesage-lsu",
+  storageBucket: "gamesage-lsu.firebasestorage.app",
+  messagingSenderId: "626081120815",
+  appId: "1:626081120815:web:30bb3f0731e8f5e3757cda"
 };
 
-// Initialize Firebase
-export const app = initializeApp(firebaseConfig);
+// Initialize Firebase — guard against duplicate-app errors during hot reload
+export const app = getApps().length ? getApp() : initializeApp(firebaseConfig);

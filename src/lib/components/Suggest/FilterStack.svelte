@@ -1,51 +1,30 @@
 <!-- created by Aaron Meche -->
 <script>
-    import FilterStackSection from "$lib/components/Suggest/FilterStackSection.svelte";
-
+    import FilterStackSection from '$lib/components/Suggest/FilterStackSection.svelte'
 </script>
 
-<!--  -->
-
 <div class="filter-wrapper">
+    <div class="filter-heading">Filters</div>
     <FilterStackSection
         label="Display"
-        options={["All", "Owned", "Not Owned"]}
-        select="one"
-    />
-    <FilterStackSection
-        label="Genre"
-        options={["All", "Custom"]}
-        select="one"
-    />
-    <FilterStackSection
-        label="Platform"
-        options={["All", "Windows", "Mac", "PlayStation", "Xbox"]}
-        select="one"
-    />
-    <FilterStackSection
-        label="Max Playtime"
-        options={["None", "Custom"]}
-        select="one"
-    />
-    <FilterStackSection
-        label="Max Price"
-        options={["None", "Custom"]}
-        select="one"
+        options={['All', 'Never Played']}
     />
     <FilterStackSection
         label="Sort"
-        options={["Relevance", "Price: Low to High", "Price: High to Low", "Rating: High to Low", "Rating, Low to High"]}
-        select="one"
+        options={['None', 'Most Played', 'Recently Played', 'A → Z', 'Z → A', 'Never Played']}
     />
 </div>
 
-<!--  -->
-
 <style>
-    .filter-wrapper{
-        position: sticky;
-        top: 2.4rem;
-        padding-right: 3.6rem;
-        white-space: nowrap;
+    .filter-wrapper {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .filter-heading {
+        font-size: 1rem;
+        font-weight: 700;
+        margin-bottom: 1.2rem;
+        opacity: 0.85;
     }
 </style>
