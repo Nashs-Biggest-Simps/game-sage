@@ -52,7 +52,6 @@ function refreshUser(cache) {
         const player = res?.response?.players?.[0]
         if (!player) return
         db.update(data => {
-            data.user = player
             if (!data.cache) data.cache = {}
             data.cache.user = { data: player, fetchedAt: Date.now() }
             return data
@@ -125,15 +124,17 @@ function refreshDetailBatch(cache) {
  * Call this from +layout.svelte on mount.
  */
 export function startCacheUpdateCycle() {
-    // Ensure nested structure is in place before any reads
     patchCache(() => {})
 
-    const cache = snap().cache
+    const data = snap()
+    if (!data.steamID) return   // nothing to fetch without a Steam ID
+
+    const cache = data.cache
 
     refreshUser(cache)
     refreshLibraryList(cache)
     refreshRecentlyPlayed(cache)
-    refreshDetailBatch(cache) // no-op on first run (no appIdList yet), works on repeat visits
+    refreshDetailBatch(cache)
 }
 
 /**
@@ -169,11 +170,11 @@ export function getCachedLibrary() {
  *   ...
  *   <instruction line>
  */
-export function buildCompactProfile() {
+export function buildCompactProfile(brain = null) {
     const data     = snap()
     const cache    = data.cache ?? {}
     const details  = cache.library?.details  ?? {}
-    const playtime = cache.library?.playtime ?? {}  // values are in minutes
+    const playtime = cache.library?.playtime ?? {}
     const recent   = cache.recentlyPlayed?.data ?? []
 
     // Top 20 most-played games that have cached details
@@ -201,22 +202,67 @@ export function buildCompactProfile() {
         .slice(0, 5)
         .map(g => `${g.name}:${Math.round((g.playtime_2weeks || 0) / 60)}h`)
 
-    const text = [
-        'PLAYED:',
-        ...playedLines,
-        '',
-        'RECENT:',
-        ...recentLines,
-        '',
-        'UNPLAYED_OWNED:',
-        ...unplayedLines,
-        '',
-        'Suggest top 12 from UNPLAYED_OWNED matching play style. JSON only: {"s":[appid,...]}',
-    ].join('\n')
+    const lines = [
+        'PLAYED:', ...playedLines, '',
+        'RECENT:', ...recentLines, '',
+        'UNPLAYED_OWNED:', ...unplayedLines, '',
+    ]
+
+    if (brain) lines.push('USER_FEEDBACK:', brain, '')
+
+    lines.push('Suggest top 12 from UNPLAYED_OWNED matching play style. JSON only: {"s":[{"id":appid,"r":"one sentence reason"},...]}')
 
     return {
-        text,
+        text:          lines.join('\n'),
         playedCount:   playedLines.length,
         unplayedCount: unplayedLines.length,
+    }
+}
+
+/**
+ * Build a compact profile for buy suggestions (games not owned).
+ * Includes PLAYED, RECENT, and a list of already-owned game names so
+ * the AI knows what to exclude.
+ */
+export function buildBuyProfile(brain = null) {
+    const data     = snap()
+    const cache    = data.cache ?? {}
+    const details  = cache.library?.details  ?? {}
+    const playtime = cache.library?.playtime ?? {}
+    const recent   = cache.recentlyPlayed?.data ?? []
+
+    const playedLines = Object.entries(playtime)
+        .filter(([id, mins]) => mins > 0 && details[id]?.data)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 25)
+        .map(([id, mins]) => {
+            const d      = details[id].data
+            const genres = (d.genres || []).map(g => g.description).join(',')
+            return `${d.name}[${genres}]:${Math.round(mins / 60)}h`
+        })
+
+    const recentLines = recent
+        .slice(0, 5)
+        .map(g => `${g.name}:${Math.round((g.playtime_2weeks || 0) / 60)}h`)
+
+    // All owned game names so AI avoids re-suggesting them
+    const ownedNames = Object.entries(playtime)
+        .filter(([id]) => details[id]?.data)
+        .map(([id]) => details[id].data.name)
+        .slice(0, 60)
+
+    const lines = [
+        'PLAYED:', ...playedLines, '',
+        'RECENT:', ...recentLines, '',
+        'ALREADY_OWNED:', ...ownedNames, '',
+    ]
+
+    if (brain) lines.push('USER_FEEDBACK:', brain, '')
+
+    lines.push('Suggest 8 Steam games not in ALREADY_OWNED that match this taste. JSON only: {"b":[{"n":"exact title","r":"one sentence reason"},...]}')
+
+    return {
+        text:        lines.join('\n'),
+        playedCount: playedLines.length,
     }
 }

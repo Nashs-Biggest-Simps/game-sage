@@ -1,57 +1,114 @@
 <script>
-    import { db } from "$lib/data"
-    import FilterStack from "$lib/components/Suggest/FilterStack.svelte";
-    import GameGrid from "$lib/components/Suggest/GameGrid.svelte";
-    import { app } from "$lib/firebase";
-    import CurrentlyPlaying from "$lib/components/Home/CurrentlyPlaying.svelte";
+    import { onMount } from 'svelte'
+    import { Algorithm } from '$lib/algorithm'
+    import ContinuePlaying from '$lib/components/Dashboard/ContinuePlaying.svelte'
+    import SuggestRow      from '$lib/components/Dashboard/SuggestRow.svelte'
+    import QuickStats      from '$lib/components/Dashboard/QuickStats.svelte'
+    import ActivityFeed    from '$lib/components/Dashboard/ActivityFeed.svelte'
 
+    const algo = new Algorithm()
+
+    let playSuggestions = $state([])
+    let buySuggestions  = $state([])
+    let playLoading     = $state(true)
+    let buyLoading      = $state(true)
+
+    onMount(() => {
+        algo.getPlaySuggestions().then(s => { playSuggestions = s; playLoading = false })
+        algo.getBuySuggestions().then(s => { buySuggestions  = s; buyLoading  = false })
+    })
 </script>
 
-<!--  -->
+<div class="dashboard">
 
-<div class='page'>
-    <div class="left-side">
-        <div class="module">
-            <div class="title">Currently Playing</div>
-            <CurrentlyPlaying />
+    <section class="hero-section">
+        <ContinuePlaying />
+    </section>
+
+    <div class="main-grid">
+        <div class="left-col">
+            <SuggestRow
+                title="Suggested for You"
+                type="play"
+                items={playSuggestions}
+                loading={playLoading}
+            />
+            <SuggestRow
+                title="New Games to Explore"
+                type="buy"
+                items={buySuggestions}
+                loading={buyLoading}
+            />
         </div>
 
+        <aside class="right-col">
+            <div class="panel">
+                <h3 class="panel-title">
+                    <i class="fa-solid fa-chart-simple"></i>
+                    Your Stats
+                </h3>
+                <QuickStats />
+            </div>
+
+            <div class="panel">
+                <h3 class="panel-title">
+                    <i class="fa-solid fa-user-group"></i>
+                    Friend Activity
+                </h3>
+                <ActivityFeed />
+            </div>
+        </aside>
     </div>
-    <div class="right-side">
-        <div class="module">
-            <div class="title">Friend Activity</div>
-        </div>
-        <div class="module">
-            <div class="title">Suggestions</div>
-        </div>
-    </div>
+
 </div>
 
-<!--  -->
-
 <style>
-    .page{
+    .dashboard {
+        display: flex;
+        flex-direction: column;
+        gap: 2.4rem;
+    }
+
+    .main-grid {
         display: grid;
         grid-template-columns: 3fr 2fr;
-        gap: 1.6rem;
+        gap: 2.4rem;
+        align-items: start;
     }
 
-    .right-side{
-        display: grid;
-        gap: 1.6rem;
+    .left-col {
+        display: flex;
+        flex-direction: column;
+        gap: 2.4rem;
     }
 
-    .module{
+    .right-col {
+        display: flex;
+        flex-direction: column;
+        gap: 1.4rem;
+        position: sticky;
+        top: 2.4rem;
+    }
+
+    .panel {
         background: var(--lb0);
-        padding: 1.6rem 0;
+        border-radius: 1.2rem;
         outline: solid 1pt var(--l3);
-        border-radius: 0.8rem;
+        padding: 1.4rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.1rem;
     }
 
-    .module .title{
-        padding: 1.6rem;
-        padding-top: 0;
-        font-size: 1.6rem;
+    .panel-title {
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+        margin: 0;
+        font-size: 0.78rem;
         font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.09em;
+        opacity: 0.55;
     }
 </style>

@@ -60,9 +60,10 @@
 		display: none;
 	}
 
-	.top-navbar{ 
+	.top-navbar {
 		padding-inline: var(--inline-moat);
-		background: linear-gradient(to top right, var(--la1), var(--la05));
+		background: var(--l05);
+		border-bottom: 1pt solid var(--l2);
 	}
 
 

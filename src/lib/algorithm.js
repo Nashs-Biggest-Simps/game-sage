@@ -1,70 +1,96 @@
 // algorithm.js
 // by Aaron Meche
 
-// Algorithm Class
-
 import { get } from 'svelte/store'
 import { db } from '$lib/data'
-import { buildCompactProfile, getGameDetail } from '$lib/cache'
+import { buildCompactProfile, buildBuyProfile, getGameDetail } from '$lib/cache'
+import { steamAPI } from '$lib/steam'
+import { Algorithm as Brain } from 'rue-algr'
 
-const SUGGESTIONS_TTL = 24 * 60 * 60 * 1000 // 24 hours
+const PLAY_TTL = 24 * 60 * 60 * 1000
+const BUY_TTL  = 24 * 60 * 60 * 1000
 
-// Minimum data thresholds before AI call
-const MIN_PLAYED_GAMES   = 3
-const MIN_UNPLAYED_GAMES = 1
+const MIN_PLAYED   = 3
+const MIN_UNPLAYED = 1
+
+function isFresh(ts, ttl) {
+    return !!ts && (Date.now() - ts) < ttl
+}
+
+// Wrap steamAPI.searchStore callback in a promise and pick the best name match
+function searchStore(name) {
+    return new Promise(resolve => {
+        steamAPI.searchStore(name, data => {
+            const items = data?.items ?? []
+            const exact = items.find(i => i.name?.toLowerCase() === name.toLowerCase())
+            resolve(exact ?? items[0] ?? null)
+        })
+    })
+}
+
+// Returns true only if the brain has actual interaction data worth sending
+function brainHasData(brain) {
+    const b = brain.getBrain(false)
+    return !!(b.recent_interact?.length || b.shown_positive?.length || b.shown_negative?.length)
+}
 
 export class Algorithm {
+    #brain
+
     constructor(id = 'default') {
         this.id = id
+        this.#brain = new Brain('game')
+        this.#loadBrain()
     }
 
-    // Private Methods
-
-    #isCacheFresh() {
-        const { generatedAt } = get(db).cache?.suggestions ?? {}
-        if (!generatedAt) return false
-        return (Date.now() - generatedAt) < SUGGESTIONS_TTL
+    #loadBrain() {
+        const saved = get(db).algr?.brain
+        if (saved) this.#brain.importBrain(saved)
     }
 
-    #getCachedSuggestions() {
-        const appids = get(db).cache?.suggestions?.appids ?? []
-        return appids.map(id => getGameDetail(id)).filter(Boolean)
-    }
-
-    #persistSuggestions(appids) {
+    #saveBrain() {
         db.update(data => {
-            if (!data.cache) data.cache = {}
-            data.cache.suggestions = { appids, generatedAt: Date.now() }
+            if (!data.algr) data.algr = {}
+            data.algr.brain = this.#brain.getBrain(false)
             return data
         })
     }
 
-    // ─── Public ───────────────────────────────────────────────────────────────
+    #getPlayCache() { return get(db).cache?.suggestions?.play ?? null }
+    #getBuyCache()  { return get(db).cache?.suggestions?.buy  ?? null }
 
-    /**
-     * Return an array of Steam game-detail objects recommended for this user.
-     *
-     * On the first call (or after invalidate()), it:
-     *   1. Builds a compact profile from the local cache
-     *   2. POSTs it to /api/sage (which calls Claude server-side)
-     *   3. Maps the returned appids to cached game detail objects
-     *   4. Persists the result for 24 hours
-     *
-     * On subsequent calls within the TTL window, returns from cache instantly.
-     */
-    async getSuggestions() {
-        if (this.#isCacheFresh()) {
-            return this.#getCachedSuggestions()
+    #persistPlay(items) {
+        db.update(data => {
+            data.cache ??= {}
+            data.cache.suggestions ??= {}
+            data.cache.suggestions.play = { items, generatedAt: Date.now() }
+            return data
+        })
+    }
+
+    #persistBuy(items) {
+        db.update(data => {
+            data.cache ??= {}
+            data.cache.suggestions ??= {}
+            data.cache.suggestions.buy = { items, generatedAt: Date.now() }
+            return data
+        })
+    }
+
+    // ─── Play Suggestions ────────────────────────────────────────────────────
+    // Returns: [{ game: <Steam detail object>, reason: <string> }, ...]
+
+    async getPlaySuggestions() {
+        const cached = this.#getPlayCache()
+        if (isFresh(cached?.generatedAt, PLAY_TTL) && cached.items?.length) {
+            return this.#resolvePlay(cached.items)
         }
 
-        const { text, playedCount, unplayedCount } = buildCompactProfile()
+        const brain  = brainHasData(this.#brain) ? this.#brain.getBrain(true) : null
+        const { text, playedCount, unplayedCount } = buildCompactProfile(brain)
 
-        if (playedCount < MIN_PLAYED_GAMES || unplayedCount < MIN_UNPLAYED_GAMES) {
-            console.warn(
-                `[Algorithm] Insufficient cache data for suggestions ` +
-                `(played=${playedCount}, unplayed=${unplayedCount}). ` +
-                `Run startCacheUpdateCycle() and wait for more details to load.`
-            )
+        if (playedCount < MIN_PLAYED || unplayedCount < MIN_UNPLAYED) {
+            console.warn(`[Algorithm] Not enough cached data for play suggestions (played=${playedCount}, unplayed=${unplayedCount})`)
             return []
         }
 
@@ -72,50 +98,119 @@ export class Algorithm {
             const res = await fetch('/api/sage', {
                 method:  'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify({ profile: text }),
+                body:    JSON.stringify({ type: 'play', profile: text }),
             })
-
-            if (!res.ok) {
-                const msg = await res.text().catch(() => res.statusText)
-                throw new Error(`/api/sage responded ${res.status}: ${msg}`)
-            }
-
-            const { s: appids } = await res.json()
-
-            if (!Array.isArray(appids)) {
-                throw new Error('Claude returned unexpected shape — expected { s: number[] }')
-            }
-
-            this.#persistSuggestions(appids)
-            return appids.map(id => getGameDetail(id)).filter(Boolean)
-
+            if (!res.ok) throw new Error(`/api/sage ${res.status}`)
+            const { s: items } = await res.json()
+            if (!Array.isArray(items)) throw new Error('Unexpected response shape')
+            this.#persistPlay(items)
+            return this.#resolvePlay(items)
         } catch (err) {
-            console.error('[Algorithm] getSuggestions failed:', err)
+            console.error('[Algorithm] getPlaySuggestions failed:', err)
             return []
         }
     }
 
-    /**
-     * Force the next getSuggestions() call to re-query Claude
-     * (e.g. after rating games or when the library grows significantly).
-     */
-    invalidate() {
-        db.update(data => {
-            if (data.cache?.suggestions) {
-                data.cache.suggestions.generatedAt = 0
-            }
-            return data
-        })
-        console.log('[Algorithm] Suggestion cache invalidated.')
+    #resolvePlay(items) {
+        return items.map(item => {
+            const id   = item?.id ?? item  // handle both {id,r} objects and legacy plain appids
+            const game = getGameDetail(id)
+            if (!game) return null
+            return { game, reason: item?.r ?? null }
+        }).filter(Boolean)
     }
 
-    /**
-     * Debug helper — logs the profile that would be sent to Claude.
-     */
-    printProfile() {
-        const { text, playedCount, unplayedCount } = buildCompactProfile()
-        console.log(
-            `[Algorithm] Profile (played=${playedCount}, unplayed=${unplayedCount}):\n${text}`
-        )
+    // ─── Buy Suggestions ─────────────────────────────────────────────────────
+    // Returns: [{ name, reason, appid, storeData }, ...]
+
+    async getBuySuggestions() {
+        const cached = this.#getBuyCache()
+        if (isFresh(cached?.generatedAt, BUY_TTL) && cached.items?.length) {
+            return cached.items
+        }
+
+        const brain = brainHasData(this.#brain) ? this.#brain.getBrain(true) : null
+        const { text, playedCount } = buildBuyProfile(brain)
+
+        if (playedCount < MIN_PLAYED) {
+            console.warn(`[Algorithm] Not enough cached data for buy suggestions (played=${playedCount})`)
+            return []
+        }
+
+        try {
+            const res = await fetch('/api/sage', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ type: 'buy', profile: text }),
+            })
+            if (!res.ok) throw new Error(`/api/sage ${res.status}`)
+            const { b: suggestions } = await res.json()
+            if (!Array.isArray(suggestions)) throw new Error('Unexpected response shape')
+
+            // Resolve each suggested title to a Steam store entry in parallel
+            const resolved = await Promise.all(
+                suggestions.map(async ({ n: name, r: reason }) => {
+                    const match = await searchStore(name)
+                    if (!match) return null
+                    return { name, reason, appid: match.id, storeData: match }
+                })
+            )
+            const items = resolved.filter(Boolean)
+            this.#persistBuy(items)
+            return items
+        } catch (err) {
+            console.error('[Algorithm] getBuySuggestions failed:', err)
+            return []
+        }
     }
+
+    // ─── User Feedback ───────────────────────────────────────────────────────
+    // Call this when a user explicitly likes or dislikes a game.
+    // Invalidates suggestions so the next fetch reflects the new preference.
+
+    recordInteraction(game, liked) {
+        this.#brain.recordInteraction(
+            { name: game.name, developer: game.developers?.[0] ?? null },
+            liked
+        )
+        this.#saveBrain()
+        this.invalidate('all')
+        console.log(`[Algorithm] Recorded ${liked ? 'like' : 'dislike'} for "${game.name}"`)
+    }
+
+    // ─── Invalidation ────────────────────────────────────────────────────────
+
+    invalidate(type = 'all') {
+        db.update(data => {
+            const s = data.cache?.suggestions
+            if (!s) return data
+            if ((type === 'play' || type === 'all') && s.play) s.play.generatedAt = 0
+            if ((type === 'buy'  || type === 'all') && s.buy)  s.buy.generatedAt  = 0
+            return data
+        })
+        console.log(`[Algorithm] Invalidated suggestions: ${type}`)
+    }
+
+    // Wipe all interaction history and force fresh suggestions
+    resetFeedback() {
+        this.#brain.resetBrain()
+        this.#saveBrain()
+        this.invalidate('all')
+        console.log('[Algorithm] Brain reset and suggestions invalidated.')
+    }
+
+    // ─── Debug ───────────────────────────────────────────────────────────────
+
+    printProfile(type = 'play') {
+        const brain = brainHasData(this.#brain) ? this.#brain.getBrain(true) : null
+        if (type === 'buy') {
+            const { text, playedCount } = buildBuyProfile(brain)
+            console.log(`[Algorithm] Buy profile (played=${playedCount}):\n${text}`)
+        } else {
+            const { text, playedCount, unplayedCount } = buildCompactProfile(brain)
+            console.log(`[Algorithm] Play profile (played=${playedCount}, unplayed=${unplayedCount}):\n${text}`)
+        }
+    }
+
+    getBrainState() { return this.#brain.getBrain(false) }
 }
