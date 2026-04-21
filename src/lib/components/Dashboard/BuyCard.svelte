@@ -1,14 +1,27 @@
 <script>
     let { name, reason, appid, storeData } = $props()
 
-    let artUrl   = `https://cdn.akamai.steamstatic.com/steam/apps/${appid}/capsule_616x353.jpg`
     let price    = storeData?.price?.final_formatted ?? (storeData?.is_free ? 'Free' : null)
     let storeUrl = `https://store.steampowered.com/app/${appid}`
+
+    let imgIdx   = $state(0)
+    const IMGS   = (id) => [
+        `https://cdn.akamai.steamstatic.com/steam/apps/${id}/capsule_616x353.jpg`,
+        `https://cdn.akamai.steamstatic.com/steam/apps/${id}/header.jpg`,
+    ]
+    let artUrl   = $derived(IMGS(appid)[imgIdx] ?? null)
+    let imgFailed = $derived(imgIdx >= IMGS(appid).length)
+
+    $effect(() => { appid; imgIdx = 0 })
+
+    function nextImg() { imgIdx++ }
 </script>
 
 <a href={storeUrl} target="_blank" rel="noopener noreferrer" class="card">
     <div class="art-wrap">
-        <img src={artUrl} alt={name} loading="lazy" />
+        {#if artUrl && !imgFailed}
+            <img src={artUrl} alt={name} loading="lazy" onerror={nextImg} />
+        {/if}
         <div class="badge">
             <i class="fa-solid fa-cart-shopping"></i>
         </div>

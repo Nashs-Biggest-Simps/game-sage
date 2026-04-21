@@ -145,6 +145,24 @@ export function getGameDetail(appid) {
 }
 
 /**
+ * Fetch and cache details for a single game immediately.
+ * Returns a Promise that resolves with the game data (or null on failure).
+ */
+export function fetchGameDetail(appid) {
+    return new Promise((resolve) => {
+        steamAPI.getGameDetails(appid, res => {
+            const gameData = res?.[appid]?.data
+            if (gameData) {
+                patchCache(c => {
+                    c.library.details[appid] = { data: gameData, fetchedAt: Date.now() }
+                })
+            }
+            resolve(gameData ?? null)
+        })
+    })
+}
+
+/**
  * Return all cached game detail objects as a flat array.
  */
 export function getCachedLibrary() {

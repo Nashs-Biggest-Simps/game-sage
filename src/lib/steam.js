@@ -80,4 +80,9 @@ export const steamAPI = {
     howLongToBeat: (appid, callback) => {
         makeApiCall(`https://hltbapi.codepotatoes.de/steam/${appid}`, callback)
     },
+
+    // --- Steam Store Featured ---
+    getFeaturedGames: (callback) => {
+        makeApiCall(`https://store.steampowered.com/api/featuredcategories/?cc=us`, callback)
+    },
 }

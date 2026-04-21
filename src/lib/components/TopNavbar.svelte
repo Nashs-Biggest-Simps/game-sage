@@ -19,7 +19,7 @@
 		<TopNavbarItem route="dashboard" icon="square-poll-vertical" text="Dashboard" />
 		<TopNavbarItem route="library"   icon="grip"                 text="Library"   />
 		<TopNavbarItem route="suggest"   icon="wand-magic-sparkles"  text="Suggested" />
-		<TopNavbarItem route="reviews"   icon="star"                 text="Activity"  />
+		<TopNavbarItem route="activity"  icon="star"                 text="Activity"  />
 	</div>
 
 	<a href={resolve("/profile")} class="profile-btn {path === '/profile' ? 'active' : ''}">

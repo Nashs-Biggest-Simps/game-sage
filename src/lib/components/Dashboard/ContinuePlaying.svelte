@@ -3,10 +3,21 @@
     import { goto } from '$app/navigation'
     import { resolve } from '$app/paths'
 
-    let game = $derived($db?.cache?.recentlyPlayed?.data?.[0] ?? null)
-    let heroUrl = $derived(game ? `https://cdn.akamai.steamstatic.com/steam/apps/${game.appid}/library_hero.jpg` : null)
-    let hours = $derived(game ? Math.round(game.playtime_forever / 60) : 0)
+    let game    = $derived($db?.cache?.recentlyPlayed?.data?.[0] ?? null)
+    let heroUrl = $state(null)
+    let hours   = $derived(game ? Math.round(game.playtime_forever / 60) : 0)
     let recentHours = $derived(game ? Math.round((game.playtime_2weeks || 0) / 60) : 0)
+
+    $effect(() => {
+        if (!game) { heroUrl = null; return }
+        const id = game.appid
+        const primary  = `https://cdn.akamai.steamstatic.com/steam/apps/${id}/library_hero.jpg`
+        const fallback = `https://cdn.akamai.steamstatic.com/steam/apps/${id}/header.jpg`
+        const img = new Image()
+        img.onload  = () => { heroUrl = primary }
+        img.onerror = () => { heroUrl = fallback }
+        img.src = primary
+    })
 
     function launch(e) {
         e.stopPropagation()

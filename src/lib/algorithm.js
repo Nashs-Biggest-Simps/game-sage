@@ -81,8 +81,10 @@ export class Algorithm {
     // Returns: [{ game: <Steam detail object>, reason: <string> }, ...]
 
     async getPlaySuggestions() {
-        const cached = this.#getPlayCache()
-        if (isFresh(cached?.generatedAt, PLAY_TTL) && cached.items?.length) {
+        const prefs     = get(db).prefs ?? {}
+        const ttl       = (prefs.suggestions?.refreshHours ?? 24) * 60 * 60 * 1000
+        const cached    = this.#getPlayCache()
+        if (isFresh(cached?.generatedAt, ttl) && cached.items?.length) {
             return this.#resolvePlay(cached.items)
         }
 
@@ -98,7 +100,7 @@ export class Algorithm {
             const res = await fetch('/api/sage', {
                 method:  'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify({ type: 'play', profile: text }),
+                body:    JSON.stringify({ type: 'play', profile: text, prefs }),
             })
             if (!res.ok) throw new Error(`/api/sage ${res.status}`)
             const { s: items } = await res.json()
@@ -124,8 +126,10 @@ export class Algorithm {
     // Returns: [{ name, reason, appid, storeData }, ...]
 
     async getBuySuggestions() {
-        const cached = this.#getBuyCache()
-        if (isFresh(cached?.generatedAt, BUY_TTL) && cached.items?.length) {
+        const prefs     = get(db).prefs ?? {}
+        const ttl       = (prefs.suggestions?.refreshHours ?? 24) * 60 * 60 * 1000
+        const cached    = this.#getBuyCache()
+        if (isFresh(cached?.generatedAt, ttl) && cached.items?.length) {
             return cached.items
         }
 
@@ -141,7 +145,7 @@ export class Algorithm {
             const res = await fetch('/api/sage', {
                 method:  'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify({ type: 'buy', profile: text }),
+                body:    JSON.stringify({ type: 'buy', profile: text, prefs }),
             })
             if (!res.ok) throw new Error(`/api/sage ${res.status}`)
             const { b: suggestions } = await res.json()

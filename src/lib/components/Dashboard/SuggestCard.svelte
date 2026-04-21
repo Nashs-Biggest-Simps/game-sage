@@ -5,7 +5,18 @@
 
     let { game, reason } = $props()
 
-    let artUrl   = `https://cdn.akamai.steamstatic.com/steam/apps/${game?.steam_appid}/capsule_616x353.jpg`
+    let imgIdx  = $state(0)
+    const IMGS  = (id) => [
+        `https://cdn.akamai.steamstatic.com/steam/apps/${id}/capsule_616x353.jpg`,
+        `https://cdn.akamai.steamstatic.com/steam/apps/${id}/header.jpg`,
+    ]
+    let artUrl   = $derived(IMGS(game?.steam_appid)[imgIdx] ?? null)
+    let imgFailed = $derived(imgIdx >= IMGS(game?.steam_appid).length)
+
+    $effect(() => { game?.steam_appid; imgIdx = 0 })
+
+    function nextImg() { imgIdx++ }
+
     let playtime = $derived($db?.cache?.library?.playtime?.[game?.steam_appid] ?? 0)
     let hours    = $derived(Math.round(playtime / 60))
 
@@ -23,7 +34,9 @@
     onkeydown={(e) => e.key === 'Enter' && goto(resolve(`/view?id=${game?.steam_appid}`))}
 >
     <div class="art-wrap">
-        <img src={artUrl} alt={game?.name} loading="lazy" />
+        {#if artUrl && !imgFailed}
+            <img src={artUrl} alt={game?.name} loading="lazy" onerror={nextImg} />
+        {/if}
         <button class="play-btn" onclick={launch} title="Launch in Steam">
             <i class="fa-solid fa-play"></i>
         </button>

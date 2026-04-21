@@ -11,7 +11,7 @@
     />
     <FilterStackSection
         label="Sort"
-        options={['Most Played', 'Recently Played', 'A → Z', 'Z → A', 'Never Played']}
+        options={['None', 'Most Played', 'Recently Played', 'A → Z', 'Z → A', 'Never Played']}
     />
 </div>
 

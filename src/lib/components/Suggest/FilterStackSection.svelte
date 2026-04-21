@@ -9,7 +9,8 @@
 
     function select(option) {
         db.update(data => {
-            data.filters = { ...data.filters, [key]: option }
+            const next = data.filters?.[key] === option ? options[0] : option
+            data.filters = { ...data.filters, [key]: next }
             return data
         })
     }

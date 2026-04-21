@@ -1,8 +1,8 @@
 import { json, error } from '@sveltejs/kit'
 import { RueterModel } from 'rueter-ai'
-import { GROK_API_KEY } from '$env/static/private'
+import { ANTHROPIC_API_KEY } from '$env/static/private'
 
-const PLAY_SYSTEM =
+const PLAY_BASE =
     'You are a precision game recommendation engine for Steam. ' +
     'Given a user\'s play history, select games from their UNPLAYED_OWNED list that best match their taste. ' +
     'Only pick from UNPLAYED_OWNED using the listed appid. ' +
@@ -12,7 +12,7 @@ const PLAY_SYSTEM =
     'Return ONLY valid JSON with no markdown, code fences, or explanation. ' +
     'Format exactly: {"s":[{"id":<appid>,"r":"<one-sentence reason>"},...]} — up to 12 results, confidence order.'
 
-const BUY_SYSTEM =
+const BUY_BASE =
     'You are a game discovery expert for Steam. ' +
     'Given a user\'s play history, suggest games they do not own but would enjoy. ' +
     'Only suggest real, currently purchasable Steam games — use their exact Steam store titles. ' +
@@ -22,9 +22,25 @@ const BUY_SYSTEM =
     'Return ONLY valid JSON with no markdown, code fences, or explanation. ' +
     'Format exactly: {"b":[{"n":"<exact Steam title>","r":"<one-sentence reason>"},...]} — up to 8 results, confidence order.'
 
+function buildSystemPrompt(type, prefs) {
+    let prompt = type === 'play' ? PLAY_BASE : BUY_BASE
+
+    const preferred = prefs?.genres?.preferred ?? []
+    const excluded  = prefs?.genres?.excluded  ?? []
+    const tone      = prefs?.suggestions?.aiTone ?? 'brief'
+
+    if (preferred.length) prompt += ` User has indicated they prefer these genres: ${preferred.join(', ')} — weight your picks toward these.`
+    if (excluded.length)  prompt += ` User dislikes these genres: ${excluded.join(', ')} — avoid suggesting games primarily in those genres.`
+
+    if (tone === 'detailed')      prompt += ` Write reasons in 2 sentences, being specific about what makes the game a good fit.`
+    else if (tone === 'enthusiastic') prompt += ` Write reasons with enthusiasm and energy — make the game sound exciting and fun.`
+
+    return prompt
+}
+
 export async function POST({ request }) {
     const body = await request.json().catch(() => null)
-    const { type, profile } = body ?? {}
+    const { type, profile, prefs } = body ?? {}
 
     if (!profile?.trim()) {
         throw error(400, 'Body must include a non-empty "profile" string.')
@@ -33,8 +49,8 @@ export async function POST({ request }) {
         throw error(400, '"type" must be "play" or "buy".')
     }
 
-    const model = new RueterModel('grok', GROK_API_KEY, 1)
-    model.setSystemPrompt(type === 'play' ? PLAY_SYSTEM : BUY_SYSTEM)
+    const model = new RueterModel('anthropic', ANTHROPIC_API_KEY)
+    model.setSystemPrompt(buildSystemPrompt(type, prefs))
     model.setMaxTokens(type === 'play' ? 512 : 384)
     model.setTemperature(0.7)
 

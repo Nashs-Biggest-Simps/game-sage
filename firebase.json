@@ -1,24 +1,36 @@
 {
-  "apphosting": {
-    "backendId": "web-app",
-    "rootDir": "/",
-    "ignore": [
-      "node_modules",
-      ".git",
-      "firebase-debug.log",
-      "firebase-debug.*.log",
-      "functions"
-    ]
-  },
+  "apphosting": [
+    {
+      "backendId": "web-app",
+      "rootDir": "/",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "functions"
+      ]
+    },
+    {
+      "backendId": "web-app",
+      "rootDir": "/",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "functions"
+      ]
+    }
+  ],
   "database": {
     "rules": "database.rules.json"
   },
   "auth": {
     "providers": {
-      "emailPassword": true,
       "googleSignIn": {
         "oAuthBrandDisplayName": "GameSage",
-        "supportEmail": "gamesagesupport@gmail.com"
+        "supportEmail": "aaronmeche18@icloud.com"
       }
     }
   }

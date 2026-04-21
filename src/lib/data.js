@@ -26,6 +26,11 @@ let initial_db = {
     cache: {},
     filters: default_filters,
     steamID: '',
+    prefs: {
+        genres: { preferred: [], excluded: [] },
+        suggestions: { refreshHours: 24, aiTone: 'brief' },
+        display: { compactLibrary: false },
+    },
 }
 
 const storage = {

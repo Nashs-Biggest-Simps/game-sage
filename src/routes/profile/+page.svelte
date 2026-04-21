@@ -81,6 +81,72 @@
         { id: 'data',        label: 'Data & Cache',  icon: 'database' },
         { id: 'preferences', label: 'Preferences',   icon: 'sliders'  },
     ]
+
+    // ── Preferences ──────────────────────────────────────────────────────────
+
+    const GENRES = [
+        'Action', 'Adventure', 'RPG', 'Strategy', 'Simulation', 'Sports',
+        'Racing', 'Puzzle', 'Horror', 'Indie', 'Casual', 'Multiplayer',
+        'Story Rich', 'Open World', 'Shooter', 'Platformer', 'Stealth',
+        'Survival', 'Tower Defense', 'Visual Novel',
+    ]
+
+    let prefs           = $derived($db?.prefs ?? {})
+    let preferredGenres = $derived(prefs.genres?.preferred ?? [])
+    let excludedGenres  = $derived(prefs.genres?.excluded  ?? [])
+    let refreshHours    = $derived(prefs.suggestions?.refreshHours ?? 24)
+    let aiTone          = $derived(prefs.suggestions?.aiTone ?? 'brief')
+    let compactLibrary  = $derived(prefs.display?.compactLibrary ?? false)
+
+    function setPref(path, value) {
+        db.update(data => {
+            data.prefs ??= {}
+            const parts = path.split('.')
+            let obj = data.prefs
+            for (let i = 0; i < parts.length - 1; i++) {
+                obj[parts[i]] ??= {}
+                obj = obj[parts[i]]
+            }
+            obj[parts[parts.length - 1]] = value
+            return data
+        })
+    }
+
+    function invalidateSuggestions() {
+        db.update(data => {
+            const s = data.cache?.suggestions
+            if (s?.play) s.play.generatedAt = 0
+            if (s?.buy)  s.buy.generatedAt  = 0
+            return data
+        })
+    }
+
+    function genreState(genre) {
+        if (preferredGenres.includes(genre)) return 'preferred'
+        if (excludedGenres.includes(genre))  return 'excluded'
+        return 'neutral'
+    }
+
+    function cycleGenre(genre) {
+        const state = genreState(genre)
+        if (state === 'neutral') {
+            setPref('genres.preferred', [...preferredGenres, genre])
+        } else if (state === 'preferred') {
+            setPref('genres.preferred', preferredGenres.filter(g => g !== genre))
+            setPref('genres.excluded',  [...excludedGenres, genre])
+        } else {
+            setPref('genres.excluded', excludedGenres.filter(g => g !== genre))
+        }
+        invalidateSuggestions()
+    }
+
+    let prefsSaved = $state(false)
+    function savePref(path, value) {
+        setPref(path, value)
+        invalidateSuggestions()
+        prefsSaved = true
+        setTimeout(() => prefsSaved = false, 2000)
+    }
 </script>
 
 <div class="profile-page">
@@ -225,7 +291,119 @@
         {:else if activeNav === 'preferences'}
         <section class="panel">
             <h2 class="panel-heading">Preferences</h2>
-            <p class="panel-desc muted">Preference settings coming soon.</p>
+
+            <!-- Genre Preferences -->
+            <div class="pref-section">
+                <div class="pref-section-title">
+                    <i class="fa-solid fa-tags"></i>
+                    Genre Preferences
+                </div>
+                <p class="pref-section-desc">
+                    Tell GameSage what you love and what to avoid. Click once to prefer
+                    <span class="chip-demo preferred">Action</span>, click again to exclude
+                    <span class="chip-demo excluded">Sports</span>, click again to clear.
+                </p>
+                <div class="genre-chips">
+                    {#each GENRES as genre}
+                        {@const state = genreState(genre)}
+                        <button
+                            class="gchip {state}"
+                            onclick={() => cycleGenre(genre)}
+                            title={state === 'preferred' ? 'Preferred — click to exclude' : state === 'excluded' ? 'Excluded — click to clear' : 'Click to prefer'}
+                        >
+                            {#if state === 'preferred'}
+                                <i class="fa-solid fa-heart"></i>
+                            {:else if state === 'excluded'}
+                                <i class="fa-solid fa-ban"></i>
+                            {/if}
+                            {genre}
+                        </button>
+                    {/each}
+                </div>
+                {#if preferredGenres.length > 0 || excludedGenres.length > 0}
+                    <div class="pref-active-note">
+                        <i class="fa-solid fa-circle-check"></i>
+                        {preferredGenres.length > 0 ? `Preferring ${preferredGenres.length} genre${preferredGenres.length !== 1 ? 's' : ''}` : ''}
+                        {preferredGenres.length > 0 && excludedGenres.length > 0 ? ' · ' : ''}
+                        {excludedGenres.length > 0  ? `Excluding ${excludedGenres.length} genre${excludedGenres.length !== 1 ? 's' : ''}` : ''}
+                        &nbsp;— suggestions will refresh automatically next visit.
+                    </div>
+                {/if}
+            </div>
+
+            <!-- AI Suggestions -->
+            <div class="pref-section">
+                <div class="pref-section-title">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    AI Suggestions
+                </div>
+
+                <div class="pref-row">
+                    <div class="pref-label-block">
+                        <div class="pref-label">Refresh Interval</div>
+                        <div class="pref-hint">How often GameSage regenerates your recommendations</div>
+                    </div>
+                    <div class="seg-btns">
+                        {#each [6, 12, 24, 48] as h}
+                            <button
+                                class="seg-btn {refreshHours === h ? 'active' : ''}"
+                                onclick={() => savePref('suggestions.refreshHours', h)}
+                            >
+                                {h}h
+                            </button>
+                        {/each}
+                    </div>
+                </div>
+
+                <div class="pref-row">
+                    <div class="pref-label-block">
+                        <div class="pref-label">Suggestion Style</div>
+                        <div class="pref-hint">Tone used when explaining why a game was recommended</div>
+                    </div>
+                    <div class="seg-btns">
+                        {#each [['brief','Brief'], ['detailed','Detailed'], ['enthusiastic','Enthusiastic']] as [val, label]}
+                            <button
+                                class="seg-btn {aiTone === val ? 'active' : ''}"
+                                onclick={() => savePref('suggestions.aiTone', val)}
+                            >
+                                {label}
+                            </button>
+                        {/each}
+                    </div>
+                </div>
+
+                {#if prefsSaved}
+                    <span class="status ok">
+                        <i class="fa-solid fa-circle-check"></i>
+                        Saved — suggestions will refresh on next load
+                    </span>
+                {/if}
+            </div>
+
+            <!-- Display -->
+            <div class="pref-section">
+                <div class="pref-section-title">
+                    <i class="fa-solid fa-display"></i>
+                    Display
+                </div>
+
+                <div class="pref-toggle-row">
+                    <div class="pref-label-block">
+                        <div class="pref-label">Compact Library</div>
+                        <div class="pref-hint">Show more games per row with smaller cards in the library</div>
+                    </div>
+                    <button
+                        class="toggle {compactLibrary ? 'on' : ''}"
+                        onclick={() => setPref('display.compactLibrary', !compactLibrary)}
+                        role="switch"
+                        aria-checked={compactLibrary}
+                        aria-label="Compact library"
+                    >
+                        <div class="toggle-thumb"></div>
+                    </button>
+                </div>
+            </div>
+
         </section>
         {/if}
 
@@ -235,7 +413,7 @@
 <style>
     .profile-page {
         display: grid;
-        grid-template-columns: 15rem 1fr;
+        grid-template-columns: min-content minmax(0, 1fr);
         gap: 2rem;
         align-items: start;
     }
@@ -246,12 +424,14 @@
         background: var(--lb0);
         border-radius: 1.2rem;
         outline: solid 1pt var(--l3);
-        padding: 1.4rem;
+        padding: 1.2rem;
         display: flex;
         flex-direction: column;
-        gap: 0.2rem;
+        gap: 0.15rem;
         position: sticky;
         top: 2.4rem;
+        width: max-content;
+        min-width: 11rem;
     }
 
     .identity {
@@ -259,61 +439,60 @@
         flex-direction: column;
         align-items: center;
         text-align: center;
-        gap: 0.35rem;
-        padding-bottom: 1.1rem;
+        gap: 0.3rem;
+        padding-bottom: 1rem;
         border-bottom: 1pt solid var(--l2);
-        margin-bottom: 0.6rem;
+        margin-bottom: 0.5rem;
     }
 
     .avatar {
-        width: 4.5rem;
-        height: 4.5rem;
+        width: 3.8rem;
+        height: 3.8rem;
         border-radius: 50%;
         object-fit: cover;
-        outline: 3px solid var(--la3);
-        margin-bottom: 0.3rem;
+        outline: 2px solid var(--la3);
+        margin-bottom: 0.25rem;
     }
 
     .avatar-placeholder {
-        width: 4.5rem;
-        height: 4.5rem;
+        width: 3.8rem;
+        height: 3.8rem;
         border-radius: 50%;
         background: var(--l2);
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.6rem;
+        font-size: 1.4rem;
         opacity: 0.35;
-        margin-bottom: 0.3rem;
+        margin-bottom: 0.25rem;
     }
 
-    .display-name { font-size: 0.95rem; font-weight: 700; }
-    .email        { font-size: 0.72rem; opacity: 0.45; }
+    .display-name { font-size: 0.88rem; font-weight: 700; white-space: nowrap; }
+    .email        { font-size: 0.68rem; opacity: 0.4; white-space: nowrap; }
 
     .sidebar-nav {
         display: flex;
         flex-direction: column;
-        gap: 0.15rem;
+        gap: 0.1rem;
         flex: 1;
     }
 
     .nav-item {
         display: flex;
         align-items: center;
-        gap: 0.65rem;
-        padding: 0.55rem 0.75rem;
-        border-radius: 0.6rem;
-        font-size: 0.86rem;
+        gap: 0.6rem;
+        padding: 0.5rem 0.7rem;
+        border-radius: 0.55rem;
+        font-size: 0.84rem;
         font-weight: 500;
         cursor: pointer;
         transition: background 120ms;
-        width: 100%;
-        text-align: left;
+        white-space: nowrap;
         color: inherit;
         opacity: 0.65;
     }
 
-    .nav-item i { width: 1rem; text-align: center; font-size: 0.78rem; }
+    .nav-item i { width: 0.9rem; text-align: center; font-size: 0.75rem; flex-shrink: 0; }
 
     .nav-item:hover  { background: var(--l1); opacity: 1; }
     .nav-item.active { background: var(--la1); color: var(--bright-accent); opacity: 1; outline: solid 1pt var(--la2); }
@@ -506,4 +685,186 @@
         margin: 0;
         flex: 1;
     }
+
+    /* ── Preferences ──────────────────── */
+
+    .pref-section {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        padding-top: 1.4rem;
+        border-top: 1pt solid var(--l2);
+    }
+
+    .pref-section:first-of-type { border-top: none; padding-top: 0; }
+
+    .pref-section-title {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 1rem;
+        font-weight: 700;
+    }
+
+    .pref-section-desc {
+        font-size: 0.82rem;
+        opacity: 0.6;
+        line-height: 1.55;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        flex-wrap: wrap;
+    }
+
+    .chip-demo {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.15rem 0.5rem;
+        border-radius: 100vh;
+        font-size: 0.72rem;
+        font-weight: 700;
+    }
+
+    .chip-demo.preferred {
+        background: var(--la1);
+        color: var(--bright-accent);
+        outline: solid 1pt var(--la3);
+    }
+
+    .chip-demo.excluded {
+        background: hsl(0, 50%, 18%);
+        color: hsl(0, 70%, 65%);
+        outline: solid 1pt hsl(0, 50%, 30%);
+    }
+
+    /* Genre chips */
+    .genre-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+    }
+
+    .gchip {
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+        padding: 0.35rem 0.75rem;
+        border-radius: 100vh;
+        font-size: 0.8rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 120ms, outline-color 120ms, transform 80ms;
+        background: var(--l1);
+        outline: solid 1pt var(--l3);
+        color: inherit;
+        opacity: 0.7;
+    }
+
+    .gchip:hover { opacity: 1; transform: scale(1.04); }
+
+    .gchip.preferred {
+        background: var(--la1);
+        outline-color: var(--la3);
+        color: var(--bright-accent);
+        opacity: 1;
+    }
+
+    .gchip.excluded {
+        background: hsl(0, 50%, 18%);
+        outline-color: hsl(0, 50%, 30%);
+        color: hsl(0, 70%, 65%);
+        opacity: 1;
+    }
+
+    .gchip i { font-size: 0.65rem; }
+
+    .pref-active-note {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-size: 0.78rem;
+        color: hsl(130, 55%, 55%);
+        flex-wrap: wrap;
+    }
+
+    .pref-active-note i { font-size: 0.72rem; flex-shrink: 0; }
+
+    /* Pref rows */
+    .pref-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1.5rem;
+        flex-wrap: wrap;
+    }
+
+    .pref-toggle-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1.5rem;
+    }
+
+    .pref-label-block { display: flex; flex-direction: column; gap: 0.2rem; }
+    .pref-label { font-size: 0.88rem; font-weight: 600; }
+    .pref-hint  { font-size: 0.73rem; opacity: 0.5; }
+
+    /* Segmented buttons */
+    .seg-btns {
+        display: flex;
+        background: var(--l1);
+        border-radius: 0.55rem;
+        outline: solid 1pt var(--l3);
+        padding: 0.2rem;
+        gap: 0.15rem;
+        flex-shrink: 0;
+    }
+
+    .seg-btn {
+        padding: 0.4rem 0.85rem;
+        border-radius: 0.38rem;
+        font-size: 0.8rem;
+        font-weight: 600;
+        cursor: pointer;
+        color: inherit;
+        opacity: 0.55;
+        transition: background 120ms, opacity 120ms;
+    }
+
+    .seg-btn:hover  { opacity: 0.85; background: var(--l2); }
+    .seg-btn.active { background: var(--la1); color: var(--bright-accent); opacity: 1; outline: solid 1pt var(--la3); }
+
+    /* Toggle */
+    .toggle {
+        width: 2.8rem;
+        height: 1.55rem;
+        border-radius: 100vh;
+        background: var(--l3);
+        outline: solid 1pt var(--l4);
+        cursor: pointer;
+        position: relative;
+        transition: background 200ms, outline-color 200ms;
+        flex-shrink: 0;
+    }
+
+    .toggle.on {
+        background: var(--accent);
+        outline-color: var(--bright-accent);
+    }
+
+    .toggle-thumb {
+        position: absolute;
+        top: 50%;
+        left: 0.2rem;
+        transform: translateY(-50%);
+        width: 1.15rem;
+        height: 1.15rem;
+        border-radius: 50%;
+        background: white;
+        transition: left 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
+        box-shadow: 0 1px 4px hsl(0,0%,0%,0.3);
+    }
+
+    .toggle.on .toggle-thumb { left: calc(100% - 1.35rem); }
 </style>
