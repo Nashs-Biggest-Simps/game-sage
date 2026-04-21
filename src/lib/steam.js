@@ -37,7 +37,7 @@ export const steamAPI = {
 
     // --- IPlayerService ---
     getOwnedGames: (callback) => {
-        makeApiCall(`https://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key=${APIkey}&steamid=${id()}&format=json`, callback)
+        makeApiCall(`https://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key=${APIkey}&steamid=${id()}&include_played_free_games=true&format=json`, callback)
     },
     getRecentlyPlayedGames: (callback) => {
         makeApiCall(`https://api.steampowered.com/IPlayerService/GetRecentlyPlayedGames/v0001/?key=${APIkey}&steamid=${id()}&count=4&format=json`, callback)
