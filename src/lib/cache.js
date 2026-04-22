@@ -21,6 +21,53 @@ const TTL = {
 // Low enough to not hammer the API, high enough to fill the cache over a few sessions.
 const DETAIL_BATCH_SIZE = 4
 
+// ─── Thumbnail resolver ──────────────────────────────────────────────────────
+// Tries thumbnail URL candidates in order via HEAD request and returns the
+// first one that exists. Exported so other modules (algorithm.js) can use it
+// for games that aren't in the library detail cache (e.g. buy suggestions).
+
+export async function resolveThumbnail(appid) {
+    const candidates = [
+        `https://cdn.akamai.steamstatic.com/steam/apps/${appid}/capsule_616x353.jpg`,
+        `https://cdn.akamai.steamstatic.com/steam/apps/${appid}/header.jpg`,
+    ]
+    for (const url of candidates) {
+        try {
+            const r = await fetch(url, { method: 'HEAD' })
+            if (r.ok) return url
+        } catch {}
+    }
+    return null
+}
+
+// ─── Game detail slimmer ─────────────────────────────────────────────────────
+// Steam's appdetails endpoint returns ~10-50KB per game (screenshots, HTML
+// descriptions, system requirements, etc.). We only store the fields we
+// actually read so the detail cache stays well under localStorage quota.
+// thumbnail is resolved here while we already have the appid in scope.
+
+async function slimGame(d) {
+    if (!d) return null
+    // Use API-provided header_image as final fallback if both HEAD checks fail
+    const thumbnail = (await resolveThumbnail(d.steam_appid)) ?? d.header_image ?? null
+    return {
+        steam_appid:       d.steam_appid,
+        name:              d.name,
+        thumbnail,
+        is_free:           d.is_free ?? false,
+        short_description: d.short_description?.slice(0, 300) ?? '',
+        genres:            (d.genres        ?? []).map(g => ({ description: g.description })),
+        categories:        (d.categories    ?? []).map(c => ({ description: c.description })),
+        developers:        (d.developers    ?? []).slice(0, 3),
+        publishers:        (d.publishers    ?? []).slice(0, 2),
+        release_date:      d.release_date   ?? null,
+        price_overview:    d.price_overview ? {
+            final_formatted:  d.price_overview.final_formatted,
+            discount_percent: d.price_overview.discount_percent,
+        } : null,
+    }
+}
+
 // ─── Internal helpers ────────────────────────────────────────────────────────
 
 function isStale(fetchedAt, ttl) {
@@ -132,17 +179,17 @@ function refreshDetailBatch(cache) {
     )
 
     batch.forEach(appid => {
-        steamAPI.getGameDetails(appid, res => {
+        steamAPI.getGameDetails(appid, async res => {
             if (res?.[appid]?.success === false) {
                 patchCache(c => {
                     if (!c.library.blacklist.includes(appid)) c.library.blacklist.push(appid)
                 })
                 return
             }
-            const gameData = res?.[appid]?.data
-            if (!gameData) return
+            const slim = await slimGame(res?.[appid]?.data)
+            if (!slim) return
             patchCache(c => {
-                c.library.details[appid] = { data: gameData, fetchedAt: Date.now() }
+                c.library.details[appid] = { data: slim, fetchedAt: Date.now() }
             })
         })
     })
@@ -181,7 +228,7 @@ export function getGameDetail(appid) {
  */
 export function fetchGameDetail(appid) {
     return new Promise((resolve) => {
-        steamAPI.getGameDetails(appid, res => {
+        steamAPI.getGameDetails(appid, async res => {
             if (res?.[appid]?.success === false) {
                 patchCache(c => {
                     if (!c.library.blacklist.includes(appid)) c.library.blacklist.push(appid)
@@ -189,13 +236,13 @@ export function fetchGameDetail(appid) {
                 resolve(null)
                 return
             }
-            const gameData = res?.[appid]?.data
-            if (gameData) {
+            const slim = await slimGame(res?.[appid]?.data)
+            if (slim) {
                 patchCache(c => {
-                    c.library.details[appid] = { data: gameData, fetchedAt: Date.now() }
+                    c.library.details[appid] = { data: slim, fetchedAt: Date.now() }
                 })
             }
-            resolve(gameData ?? null)
+            resolve(slim ?? null)
         })
     })
 }
@@ -309,15 +356,24 @@ export function buildBuyProfile(brain = null) {
         .map(([id]) => details[id].data.name)
         .slice(0, 60)
 
+    // Games friends are actively playing that the user doesn't own
+    const friendGames = [...new Set(
+        (cache.friends?.data ?? [])
+            .filter(f => f.gameextrainfo)
+            .map(f => f.gameextrainfo)
+            .filter(name => !ownedNames.includes(name))
+    )].slice(0, 10)
+
     const lines = [
         'PLAYED:', ...playedLines, '',
         'RECENT:', ...recentLines, '',
         'ALREADY_OWNED:', ...ownedNames, '',
     ]
 
-    if (brain) lines.push('USER_FEEDBACK:', brain, '')
+    if (friendGames.length) lines.push('FRIENDS_PLAYING:', ...friendGames, '')
+    if (brain)              lines.push('USER_FEEDBACK:', brain, '')
 
-    lines.push('Suggest 8 Steam games not in ALREADY_OWNED that match this taste. JSON only: {"b":[{"n":"exact title","r":"one sentence reason"},...]}')
+    lines.push('Suggest 8 Steam games not in ALREADY_OWNED that match this taste. Consider FRIENDS_PLAYING if present. JSON only: {"b":[{"n":"exact title","r":"one sentence reason"},...]}')
 
     return {
         text:        lines.join('\n'),

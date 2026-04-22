@@ -1,64 +1,70 @@
 <script>
-    //
-    // BuyCard.svelte
-    //
-    // GameSage
-    // written by Aaron Meche
-    //
+    let { name, reason, appid, storeData, thumbnail = null, onFeedback = null } = $props()
 
-    let { name, reason, appid, storeData } = $props()
-    let imageFailed = $state(null)
-    let storeUrl = $state(null)
-    let artUrl = $state(null)
-    let imgIdx = $state(0)
-    let price = $state(0)
+    let imgFailed = $state(false)
+    let feedback  = $state(null) // null | 'liked' | 'disliked'
 
-    const IMGS = (id) => [
-        `https://cdn.akamai.steamstatic.com/steam/apps/${id}/capsule_616x353.jpg`,
-        `https://cdn.akamai.steamstatic.com/steam/apps/${id}/header.jpg`,
-    ]
-    
-    $effect(() => {
-        imgFailed = imgIdx >= IMGS(appid).length
-        storeUrl = `https://store.steampowered.com/app/${appid}`
-        artUrl = IMGS(appid)[imgIdx] ?? null
-        price = storeData?.price?.final_formatted ?? (storeData?.is_free ? 'Free' : null)
-        appid
-        imgIdx = 0
-    })
+    let storeUrl = $derived(`https://store.steampowered.com/app/${appid}`)
+    let price    = $derived(storeData?.price?.final_formatted ?? (storeData?.is_free ? 'Free' : null))
 
-    function nextImg() { 
-        imgIdx++ 
+    $effect(() => { appid; imgFailed = false })
+
+    function giveFeedback(e, liked) {
+        e.preventDefault()
+        e.stopPropagation()
+        feedback = liked ? 'liked' : 'disliked'
+        onFeedback?.({ name }, liked)
     }
 </script>
 
-<!--  -->
-
-<a href={storeUrl} target="_blank" rel="noopener noreferrer" class="card">
+<a href={storeUrl} target="_blank" rel="noopener noreferrer" class="card" class:has-feedback={feedback !== null}>
     <div class="art-wrap">
-        {#if artUrl && !imgFailed}
-            <img src={artUrl} alt={name} loading="lazy" onerror={nextImg} />
+        {#if thumbnail && !imgFailed}
+            <img src={thumbnail} alt={name} loading="lazy" onerror={() => imgFailed = true} />
+        {:else}
+            <div class="art-fallback"></div>
         {/if}
-        <div class="badge">
-            <i class="fa-solid fa-cart-shopping"></i>
+
+        <div class="hover-overlay">
+            <div class="store-badge">
+                <i class="fa-solid fa-cart-shopping"></i>
+            </div>
+
+            {#if onFeedback}
+                <div class="feedback-btns">
+                    <button
+                        class="fb-btn"
+                        class:active={feedback === 'liked'}
+                        class:liked={feedback === 'liked'}
+                        title="I'd enjoy this"
+                        onclick={(e) => giveFeedback(e, true)}
+                    >
+                        <i class="fa-solid fa-thumbs-up"></i>
+                    </button>
+                    <button
+                        class="fb-btn"
+                        class:active={feedback === 'disliked'}
+                        class:disliked={feedback === 'disliked'}
+                        title="Not for me"
+                        onclick={(e) => giveFeedback(e, false)}
+                    >
+                        <i class="fa-solid fa-thumbs-down"></i>
+                    </button>
+                </div>
+            {/if}
         </div>
     </div>
+
     <div class="info">
         <div class="name">{name}</div>
         {#if reason}
             <div class="reason">{reason}</div>
         {/if}
         <div class="price">
-            {#if price}
-                {price}
-            {:else}
-                View on Steam &rarr;
-            {/if}
+            {#if price}{price}{:else}View on Steam &rarr;{/if}
         </div>
     </div>
 </a>
-
-<!--  -->
 
 <style>
     .card {
@@ -87,6 +93,12 @@
         overflow: hidden;
     }
 
+    .art-fallback {
+        width: 100%;
+        aspect-ratio: 616 / 353;
+        background: var(--l2);
+    }
+
     img {
         width: 100%;
         aspect-ratio: 616 / 353;
@@ -97,10 +109,21 @@
 
     .card:hover img { transform: scale(1.04); }
 
-    .badge {
+    /* ── Hover overlay — wraps both the store badge and feedback buttons ── */
+
+    .hover-overlay {
         position: absolute;
-        top: 0.5rem;
-        right: 0.5rem;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 0.5rem;
+        pointer-events: none;
+    }
+
+    /* Store badge top-right */
+    .store-badge {
+        align-self: flex-end;
         width: 2rem;
         height: 2rem;
         display: flex;
@@ -113,12 +136,54 @@
         opacity: 0;
         transform: scale(0.8);
         transition: opacity 150ms, transform 150ms;
+        pointer-events: none;
     }
 
-    .card:hover .badge {
+    .card:hover .store-badge {
         opacity: 1;
         transform: scale(1);
     }
+
+    /* Feedback buttons bottom-center */
+    .feedback-btns {
+        align-self: center;
+        display: flex;
+        gap: 0.4rem;
+        opacity: 0;
+        transform: translateY(4px);
+        transition: opacity 150ms, transform 150ms;
+        pointer-events: none;
+    }
+
+    .card:hover .feedback-btns,
+    .card.has-feedback .feedback-btns {
+        opacity: 1;
+        transform: translateY(0);
+        pointer-events: auto;
+    }
+
+    .fb-btn {
+        width: 2rem;
+        height: 2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        font-size: 0.7rem;
+        color: white;
+        background: hsl(0, 0%, 0%, 0.6);
+        backdrop-filter: blur(4px);
+        cursor: pointer;
+        transition: background 120ms, transform 100ms;
+        pointer-events: auto;
+    }
+
+    .fb-btn:hover          { transform: scale(1.12); }
+    .fb-btn.liked          { background: hsl(140, 60%, 38%); }
+    .fb-btn.disliked       { background: hsl(0, 60%, 45%); }
+    .fb-btn:not(.active):hover { background: hsl(0, 0%, 20%, 0.8); }
+
+    /* ── Card info ── */
 
     .info {
         padding: 0.75rem 0.9rem 0.9rem;
@@ -134,6 +199,7 @@
         line-height: 1.3;
         display: -webkit-box;
         -webkit-line-clamp: 2;
+        line-clamp: 2;
         -webkit-box-orient: vertical;
         overflow: hidden;
     }
@@ -144,6 +210,7 @@
         line-height: 1.4;
         display: -webkit-box;
         -webkit-line-clamp: 2;
+        line-clamp: 2;
         -webkit-box-orient: vertical;
         overflow: hidden;
     }

@@ -82,17 +82,27 @@ export const clearCache = () => {
     console.log("Cache cleared")
 }
 
-db.subscribe(db => {
-    let data
-    if (Object.keys(db) == undefined) {
-        data = initial_db
-        console.error("Database Fault")
-        alert("Database Fault Detected: Restart & Reload")
+db.subscribe(state => {
+    const serialized = JSON.stringify(state)
+    try {
+        storage.write(storage_ref, serialized)
+    } catch (e) {
+        if (e?.name !== 'QuotaExceededError') return
+        // Detail cache is the main culprit when quota is exceeded.
+        // Keep the 100 most-recently-fetched entries and retry once.
+        console.warn('[data] localStorage quota exceeded — trimming detail cache')
+        try {
+            const trimmed = { ...state, cache: { ...state.cache, library: { ...state.cache?.library } } }
+            const details  = state.cache?.library?.details ?? {}
+            const kept     = Object.entries(details)
+                .sort(([, a], [, b]) => (b.fetchedAt ?? 0) - (a.fetchedAt ?? 0))
+                .slice(0, 100)
+            trimmed.cache.library.details = Object.fromEntries(kept)
+            storage.write(storage_ref, JSON.stringify(trimmed))
+        } catch {
+            console.error('[data] localStorage still full after trim — session data will not persist')
+        }
     }
-    else {
-        data = JSON.stringify(db)
-    }
-    storage.write(storage_ref, data)
 })
 
 

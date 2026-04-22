@@ -18,19 +18,28 @@
     let buyLoading      = $state(true)
     let news            = $state([])
 
-    let recentGames = $derived($db?.cache?.recentlyPlayed?.data ?? [])
+    let recentGames  = $derived($db?.cache?.recentlyPlayed?.data ?? [])
+    let libraryCount = $derived(($db?.cache?.library?.appIdList ?? []).length)
 
-    function makeImgState(id) {
-        const urls = [
-            `https://cdn.akamai.steamstatic.com/steam/apps/${id}/capsule_616x353.jpg`,
-            `https://cdn.akamai.steamstatic.com/steam/apps/${id}/header.jpg`,
-        ]
-        let idx = $state(0)
-        return {
-            get src()    { return urls[idx] ?? null },
-            get failed() { return idx >= urls.length },
-            next()       { idx++ },
-        }
+    async function refreshPlay() {
+        playLoading = true
+        algo.invalidate('play')
+        playSuggestions = await algo.getPlaySuggestions()
+        playLoading = false
+    }
+
+    async function refreshBuy() {
+        buyLoading = true
+        algo.invalidate('buy')
+        buySuggestions = await algo.getBuySuggestions()
+        buyLoading = false
+    }
+
+    // Returns the confirmed thumbnail URL for a recently-played game.
+    // Reads from the library detail cache (populated by cache.js) which stores
+    // the pre-resolved thumbnail so no runtime fallback logic is needed.
+    function getRecentThumbnail(appid) {
+        return $db?.cache?.library?.details?.[appid]?.data?.thumbnail ?? null
     }
 
     function newsDate(unix) {
@@ -67,9 +76,9 @@
                 </header>
                 <div class="scroll-track horizontal-scroll">
                     {#each recentGames as g (g.appid)}
-                        {@const img  = makeImgState(g.appid)}
-                        {@const hrs  = Math.round(g.playtime_forever / 60)}
-                        {@const wkh  = Math.round((g.playtime_2weeks ?? 0) / 60)}
+                        {@const thumbnail = getRecentThumbnail(g.appid)}
+                        {@const hrs       = Math.round(g.playtime_forever / 60)}
+                        {@const wkh       = Math.round((g.playtime_2weeks ?? 0) / 60)}
                         <div
                             class="rc-card"
                             role="button"
@@ -78,8 +87,8 @@
                             onkeydown={(e) => e.key === 'Enter' && goto(resolve(`/view?id=${g.appid}`))}
                         >
                             <div class="rc-art">
-                                {#if img.src && !img.failed}
-                                    <img src={img.src} alt={g.name} loading="lazy" onerror={() => img.next()} />
+                                {#if thumbnail}
+                                    <img src={thumbnail} alt={g.name} loading="lazy" />
                                 {:else}
                                     <div class="rc-fallback"></div>
                                 {/if}
@@ -110,16 +119,20 @@
             {/if}
 
             <SuggestRow
-                title="Suggested for You"
+                title="Suggested From Your Library"
                 type="play"
                 items={playSuggestions}
                 loading={playLoading}
+                libraryCount={libraryCount}
+                onRefresh={refreshPlay}
             />
             <SuggestRow
                 title="New Games to Explore"
                 type="buy"
                 items={buySuggestions}
                 loading={buyLoading}
+                onRefresh={refreshBuy}
+                onFeedback={(game, liked) => algo.recordInteraction(game, liked)}
             />
 
             <!-- Steam News for most recently played game -->

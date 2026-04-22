@@ -4,35 +4,47 @@
 
     let {
         title,
-        type = 'play',
-        items = [],
-        loading = false,
-        emptyIcon = null,
-        emptyText = null,
+        type        = 'play',
+        items       = [],
+        loading     = false,
+        libraryCount = null,   // play only: hide/message if library < 10
+        onRefresh   = null,    // optional callback to force-refresh suggestions
+        onFeedback  = null,    // buy only: (game, liked) => void
     } = $props()
 
     const SKELETON_COUNT = 5
 
-    let resolvedIcon = $derived(emptyIcon ?? (type === 'buy' ? 'magnifying-glass' : 'gamepad'))
-    let resolvedText = $derived(emptyText ?? (
-        type === 'buy'
-            ? 'Buy suggestions will appear once your library data loads.'
-            : 'Play suggestions will appear once your library data loads.'
-    ))
+    // Play suggestions require a library large enough to be meaningful
+    let tooSmall = $derived(type === 'play' && libraryCount !== null && libraryCount < 10)
 </script>
 
 <section class="row-section">
     <header class="row-header">
         <h2 class="row-title">{title}</h2>
-        {#if type === 'buy'}
-            <span class="ai-badge">
-                <i class="fa-solid fa-wand-magic-sparkles"></i>
-                AI Picks
-            </span>
+
+        <span class="ai-badge">
+            <i class="fa-solid fa-wand-magic-sparkles"></i>
+            AI
+        </span>
+
+        {#if onRefresh}
+            <button
+                class="refresh-btn"
+                onclick={onRefresh}
+                disabled={loading}
+                title="Refresh suggestions"
+            >
+                <i class="fa-solid fa-rotate" class:spinning={loading}></i>
+            </button>
         {/if}
     </header>
 
-    {#if loading}
+    {#if tooSmall}
+        <div class="unavailable">
+            <i class="fa-solid fa-gamepad"></i>
+            <span>Library suggestions unlock once you have at least 10 games.</span>
+        </div>
+    {:else if loading}
         <div class="scroll-track horizontal-scroll">
             {#each Array(SKELETON_COUNT) as _}
                 <div class="sk-card">
@@ -47,8 +59,12 @@
         </div>
     {:else if items.length === 0}
         <div class="empty-state">
-            <i class="fa-solid fa-{resolvedIcon}"></i>
-            <span>{resolvedText}</span>
+            <i class="fa-solid fa-{type === 'buy' ? 'magnifying-glass' : 'gamepad'}"></i>
+            <span>
+                {type === 'buy'
+                    ? 'Buy suggestions will appear once your library data loads.'
+                    : 'Play suggestions will appear once your library data loads.'}
+            </span>
         </div>
     {:else}
         <div class="scroll-track horizontal-scroll">
@@ -58,7 +74,10 @@
                 {/each}
             {:else}
                 {#each items as item (item.appid)}
-                    <BuyCard {...item} />
+                    <BuyCard
+                        {...item}
+                        onFeedback={onFeedback ? (liked) => onFeedback({ name: item.name }, liked) : null}
+                    />
                 {/each}
             {/if}
         </div>
@@ -99,6 +118,30 @@
         outline: solid 1pt var(--la3);
     }
 
+    .refresh-btn {
+        margin-left: auto;
+        width: 2rem;
+        height: 2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background: var(--l2);
+        color: var(--contrast);
+        font-size: 0.75rem;
+        cursor: pointer;
+        opacity: 0.6;
+        transition: opacity 150ms, background 150ms;
+    }
+
+    .refresh-btn:hover:not(:disabled) { opacity: 1; background: var(--l3); }
+    .refresh-btn:disabled { cursor: not-allowed; opacity: 0.3; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinning { animation: spin 0.8s linear infinite; }
+
+    /* ── Scroll track ── */
+
     .scroll-track {
         gap: 0.8rem;
         padding-top: 4pt;
@@ -108,7 +151,7 @@
         align-items: stretch;
     }
 
-    /* ── Structured skeleton cards ── */
+    /* ── Skeleton cards ── */
 
     .sk-card {
         width: 14rem;
@@ -149,7 +192,10 @@
         100% { background-position: -200% 0; }
     }
 
-    .empty-state {
+    /* ── States ── */
+
+    .empty-state,
+    .unavailable {
         display: flex;
         align-items: center;
         gap: 0.8rem;
@@ -160,5 +206,6 @@
         opacity: 0.5;
     }
 
-    .empty-state i { font-size: 1.1rem; flex-shrink: 0; }
+    .empty-state i,
+    .unavailable i { font-size: 1.1rem; flex-shrink: 0; }
 </style>

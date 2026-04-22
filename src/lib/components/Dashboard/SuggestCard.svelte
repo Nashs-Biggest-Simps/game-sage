@@ -5,17 +5,8 @@
 
     let { game, reason } = $props()
 
-    let imgIdx  = $state(0)
-    const IMGS  = (id) => [
-        `https://cdn.akamai.steamstatic.com/steam/apps/${id}/capsule_616x353.jpg`,
-        `https://cdn.akamai.steamstatic.com/steam/apps/${id}/header.jpg`,
-    ]
-    let artUrl   = $derived(IMGS(game?.steam_appid)[imgIdx] ?? null)
-    let imgFailed = $derived(imgIdx >= IMGS(game?.steam_appid).length)
-
-    $effect(() => { game?.steam_appid; imgIdx = 0 })
-
-    function nextImg() { imgIdx++ }
+    let imgFailed = $state(false)
+    $effect(() => { game?.steam_appid; imgFailed = false })
 
     let playtime = $derived($db?.cache?.library?.playtime?.[game?.steam_appid] ?? 0)
     let hours    = $derived(Math.round(playtime / 60))
@@ -34,8 +25,15 @@
     onkeydown={(e) => e.key === 'Enter' && goto(resolve(`/view?id=${game?.steam_appid}`))}
 >
     <div class="art-wrap">
-        {#if artUrl && !imgFailed}
-            <img src={artUrl} alt={game?.name} loading="lazy" onerror={nextImg} />
+        {#if game?.thumbnail && !imgFailed}
+            <img
+                src={game.thumbnail}
+                alt={game?.name}
+                loading="lazy"
+                onerror={() => imgFailed = true}
+            />
+        {:else}
+            <div class="art-fallback"></div>
         {/if}
         <button class="play-btn" onclick={launch} title="Launch in Steam">
             <i class="fa-solid fa-play"></i>
@@ -86,6 +84,12 @@
         transition: transform 200ms;
     }
 
+    .art-fallback {
+        width: 100%;
+        aspect-ratio: 616 / 353;
+        background: var(--l2);
+    }
+
     .card:hover img { transform: scale(1.04); }
 
     .play-btn {
@@ -129,6 +133,7 @@
         line-height: 1.3;
         display: -webkit-box;
         -webkit-line-clamp: 2;
+        line-clamp: 2;
         -webkit-box-orient: vertical;
         overflow: hidden;
     }
@@ -139,6 +144,7 @@
         line-height: 1.4;
         display: -webkit-box;
         -webkit-line-clamp: 2;
+        line-clamp: 2;
         -webkit-box-orient: vertical;
         overflow: hidden;
     }
