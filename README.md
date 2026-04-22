@@ -73,3 +73,12 @@ While built as an academic project, GameSage is designed with real-world scalabi
 - Affiliate referral links to the Steam Store for AI-recommended purchases
 
 These ideas remain flexible and will be refined based on user feedback.
+
+---
+
+## Key Design Decisions
+
+- Performance-first: Incremental loading + aggressive caching keeps even 2,000+ game libraries responsive.
+- User-centric AI: The “Brain” feedback system (liked/disliked queues) lets the model learn your taste over time.
+- Storage-conscious: Raw Steam data is slimmed to ~500 bytes per game before persistence.
+- Secure & private: No user data is stored on our servers—everything lives in the browser.
