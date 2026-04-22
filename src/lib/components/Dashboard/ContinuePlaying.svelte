@@ -6,7 +6,7 @@
     let heroUrl = $state(null)
     let loadedAppid = $state(null)
 
-    const game = $derived($db?.cache?.recentlyPlayed?.data?.[0] ?? null)
+    const game = $derived($db?.cache?.recently_played?.items?.[0] ?? null)
     const hours = $derived(game ? Math.round(game.playtime_forever / 60) : 0)
     const recentHours = $derived(game ? Math.round((game.playtime_2weeks || 0) / 60) : 0)
 

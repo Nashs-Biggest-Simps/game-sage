@@ -2,7 +2,7 @@
     import { db } from '$lib/data'
 
     let playtime    = $derived($db?.cache?.library?.playtime ?? {})
-    let recent      = $derived($db?.cache?.recentlyPlayed?.data ?? [])
+    let recent      = $derived($db?.cache?.recently_played?.items ?? [])
 
     let totalGames  = $derived(Object.keys(playtime).length)
     let totalHours  = $derived(Math.round(Object.values(playtime).reduce((a, b) => a + b, 0) / 60))

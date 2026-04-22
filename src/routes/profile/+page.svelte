@@ -30,7 +30,7 @@
 
     // ── Steam derived data ───────────────────────────────────────────────────
 
-    let librarySize  = $derived($db?.cache?.library?.appIdList?.length ?? 0)
+    let librarySize  = $derived($db?.cache?.library?.ids?.length ?? 0)
     let totalMinutes = $derived(() => {
         const pt = $db?.cache?.library?.playtime ?? {}
         return Object.values(pt).reduce((s, m) => s + m, 0)
@@ -42,7 +42,7 @@
     })
     let mostPlayedGame = $derived(() => {
         const pt = $db?.cache?.library?.playtime ?? {}
-        const details = $db?.cache?.library?.details ?? {}
+        const details = $db?.game_details ?? {}
         const top = Object.entries(pt).sort(([,a],[,b]) => b - a)[0]
         if (!top) return null
         const [id, mins] = top
@@ -92,7 +92,7 @@
         if (!ID_REGEX.test(trimmed)) { saveStatus = 'error'; setTimeout(() => saveStatus = null, 3000); return }
         const changed = trimmed !== savedID
         db.update(data => {
-            if (changed) { data.cache = {}; data.algr = {} }
+            if (changed) { data.cache = {}; data.algr = {}; data.game_details = {} }
             data.steamID = trimmed
             return data
         })

@@ -1,35 +1,37 @@
 // data.js
 // by Aaron Meche
 
-// This file exports a "db" constant
-// that allows for easy and convenient
-// local data storage on client browsers
-
-
 import { writable } from 'svelte/store'
 
-const app_title = "gamesage_0.0.10"
+const app_title   = 'game-sage_prod_0.0.0'
 const storage_ref = `ldb-${app_title}`
 
 let default_filters = {
-    "Display": "All",
-    "Genre": "All",
-    "Platform": "All",
-    "Max_Playtime": "None",
-    "Max_Price": "None",
-    "Sort": "Relevance"
+    Display:      'All',
+    Genre:        'All',
+    Platform:     'All',
+    Max_Playtime: 'None',
+    Max_Price:    'None',
+    Sort:         'Relevance',
 }
 
 let initial_db = {
-    user: {},
-    algr: {},
-    cache: {},
+    user:         {},
+    algr:         {},
+    game_details: {},
+    cache: {
+        user:            { data: null, fetchedAt: null },
+        library:         { ids: [], playtime: {}, blacklist: [], fetchedAt: null },
+        recently_played: { items: [], fetchedAt: null },
+        friends:         { data: [], fetchedAt: null },
+        suggestions:     { play: null, buy: null },
+    },
     filters: default_filters,
     steamID: '',
     prefs: {
-        genres: { preferred: [], excluded: [] },
+        genres:      { preferred: [], excluded: [] },
         suggestions: { refreshHours: 24, aiTone: 'brief', maxResults: 9 },
-        display: { compactLibrary: false, accentColor: 'default' },
+        display:     { compactLibrary: false, accentColor: 'default' },
         dashboard: {
             showContinuePlaying: true,
             showRecentlyPlayed:  true,
@@ -44,42 +46,34 @@ let initial_db = {
 }
 
 const storage = {
-    read: function (location) {
-        if (typeof window =="undefined") return
-        return localStorage[location] || null
-    },
-    write: function (location, value) {
-        if (typeof window =="undefined") return
-        localStorage[location] = value
-    },
-    clear: function() {
-        if (typeof window =="undefined") return
-        localStorage.clear()
-    },
-    exists: function (location) {
-		if (typeof window =="undefined") return
-        if (localStorage[location])      return true
-		else                             return false
-	}
+    read:   loc => { if (typeof window === 'undefined') return null; return localStorage[loc] || null },
+    write:  (loc, val) => { if (typeof window === 'undefined') return; localStorage[loc] = val },
+    exists: loc => { if (typeof window === 'undefined') return false; return !!localStorage[loc] },
 }
 
-export const db = storage.exists(storage_ref) ? writable(JSON.parse(storage.read(storage_ref))) : writable(initial_db)
+export const db = storage.exists(storage_ref)
+    ? writable(JSON.parse(storage.read(storage_ref)))
+    : writable(initial_db)
 
 export const clearDB = () => {
-    db.update(data => {
-        data = initial_db
-        return data
-    })
-    console.log("Cleared db")
+    db.update(() => initial_db)
+    console.log('Cleared db')
 }
 
 export const clearCache = () => {
     db.update(data => {
-        data.cache = {}
-        data.algr  = {}
+        data.game_details = {}
+        data.algr         = {}
+        data.cache = {
+            user:            { data: null, fetchedAt: null },
+            library:         { ids: [], playtime: {}, blacklist: [], fetchedAt: null },
+            recently_played: { items: [], fetchedAt: null },
+            friends:         { data: [], fetchedAt: null },
+            suggestions:     { play: null, buy: null },
+        }
         return data
     })
-    console.log("Cache cleared")
+    console.log('Cache cleared')
 }
 
 db.subscribe(state => {
@@ -88,22 +82,17 @@ db.subscribe(state => {
         storage.write(storage_ref, serialized)
     } catch (e) {
         if (e?.name !== 'QuotaExceededError') return
-        // Detail cache is the main culprit when quota is exceeded.
-        // Keep the 100 most-recently-fetched entries and retry once.
-        console.warn('[data] localStorage quota exceeded — trimming detail cache')
+        console.warn('[data] localStorage quota exceeded — trimming game_details cache')
         try {
-            const trimmed = { ...state, cache: { ...state.cache, library: { ...state.cache?.library } } }
-            const details  = state.cache?.library?.details ?? {}
+            const trimmed  = { ...state }
+            const details  = state.game_details ?? {}
             const kept     = Object.entries(details)
                 .sort(([, a], [, b]) => (b.fetchedAt ?? 0) - (a.fetchedAt ?? 0))
-                .slice(0, 100)
-            trimmed.cache.library.details = Object.fromEntries(kept)
+                .slice(0, 150)
+            trimmed.game_details = Object.fromEntries(kept)
             storage.write(storage_ref, JSON.stringify(trimmed))
         } catch {
             console.error('[data] localStorage still full after trim — session data will not persist')
         }
     }
 })
-
-
-

@@ -18,8 +18,8 @@
     let buyLoading      = $state(true)
     let news            = $state([])
 
-    let recentGames  = $derived($db?.cache?.recentlyPlayed?.data ?? [])
-    let libraryCount = $derived(($db?.cache?.library?.appIdList ?? []).length)
+    let recentGames  = $derived($db?.cache?.recently_played?.items ?? [])
+    let libraryCount = $derived(($db?.cache?.library?.ids ?? []).length)
 
     async function refreshPlay() {
         playLoading = true
@@ -39,7 +39,7 @@
     // Reads from the library detail cache (populated by cache.js) which stores
     // the pre-resolved thumbnail so no runtime fallback logic is needed.
     function getRecentThumbnail(appid) {
-        return $db?.cache?.library?.details?.[appid]?.data?.thumbnail ?? null
+        return $db?.game_details?.[appid]?.data?.thumbnail ?? null
     }
 
     function newsDate(unix) {

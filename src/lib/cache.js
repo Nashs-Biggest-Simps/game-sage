@@ -1,7 +1,7 @@
 // cache.js
 // Centralized cache manager for GameSage.
-// Handles TTL-based invalidation and incremental Steam data loading
-// so the rest of the app can read from db.cache without worrying about staleness.
+// All game detail objects live in db.game_details[appid].
+// Collections store only arrays of appids; details are resolved on demand.
 
 import { get } from 'svelte/store'
 import { db } from '$lib/data'
@@ -10,21 +10,16 @@ import { steamAPI } from '$lib/steam'
 // ─── TTLs (milliseconds) ─────────────────────────────────────────────────────
 
 const TTL = {
-    user:           1  * 60 * 60 * 1000,       //  1 hour
-    libraryList:    6  * 60 * 60 * 1000,       //  6 hours
-    gameDetails:    7  * 24 * 60 * 60 * 1000,  //  7 days
-    recentlyPlayed: 15 * 60 * 1000,            // 15 minutes
-    friends:        60 * 1000,                 // 60 seconds
+    user:           1  * 60 * 60 * 1000,
+    libraryList:    6  * 60 * 60 * 1000,
+    gameDetails:    7  * 24 * 60 * 60 * 1000,
+    recentlyPlayed: 15 * 60 * 1000,
+    friends:        60 * 1000,
 }
 
-// Number of game-detail requests to fire per update cycle.
-// Low enough to not hammer the API, high enough to fill the cache over a few sessions.
-const DETAIL_BATCH_SIZE = 4
+const DETAIL_BATCH_SIZE = 10
 
 // ─── Thumbnail resolver ──────────────────────────────────────────────────────
-// Tries thumbnail URL candidates in order via HEAD request and returns the
-// first one that exists. Exported so other modules (algorithm.js) can use it
-// for games that aren't in the library detail cache (e.g. buy suggestions).
 
 export async function resolveThumbnail(appid) {
     const candidates = [
@@ -41,14 +36,9 @@ export async function resolveThumbnail(appid) {
 }
 
 // ─── Game detail slimmer ─────────────────────────────────────────────────────
-// Steam's appdetails endpoint returns ~10-50KB per game (screenshots, HTML
-// descriptions, system requirements, etc.). We only store the fields we
-// actually read so the detail cache stays well under localStorage quota.
-// thumbnail is resolved here while we already have the appid in scope.
 
 async function slimGame(d) {
     if (!d) return null
-    // Use API-provided header_image as final fallback if both HEAD checks fail
     const thumbnail = (await resolveThumbnail(d.steam_appid)) ?? d.header_image ?? null
     return {
         steam_appid:       d.steam_appid,
@@ -75,20 +65,23 @@ function isStale(fetchedAt, ttl) {
     return (Date.now() - fetchedAt) > ttl
 }
 
-// Synchronously read the current store value
-function snap() {
-    return get(db)
-}
+function snap() { return get(db) }
 
-// Apply an update to db.cache, guaranteeing the nested structure always exists
 function patchCache(updater) {
     db.update(data => {
-        if (!data.cache)                       data.cache = {}
-        if (!data.cache.library)               data.cache.library = {}
-        if (!data.cache.library.details)       data.cache.library.details = {}
-        if (!data.cache.library.blacklist)     data.cache.library.blacklist = []
-        if (!data.cache.recentlyPlayed)        data.cache.recentlyPlayed = {}
+        data.cache                   ??= {}
+        data.cache.library           ??= {}
+        data.cache.library.blacklist ??= []
+        data.cache.recently_played   ??= {}
         updater(data.cache)
+        return data
+    })
+}
+
+function patchGameDetail(appid, slimData, source = 'library') {
+    db.update(data => {
+        data.game_details ??= {}
+        data.game_details[appid] = { data: slimData, fetchedAt: Date.now(), source }
         return data
     })
 }
@@ -101,7 +94,7 @@ function refreshUser(cache) {
         const player = res?.response?.players?.[0]
         if (!player) return
         db.update(data => {
-            if (!data.cache) data.cache = {}
+            data.cache      ??= {}
             data.cache.user = { data: player, fetchedAt: Date.now() }
             return data
         })
@@ -113,24 +106,20 @@ function refreshLibraryList(cache) {
     steamAPI.getOwnedGames(res => {
         const games = res?.response?.games || []
         patchCache(c => {
-            c.library.appIdList = games.map(g => g.appid)
-            c.library.playtime  = Object.fromEntries(
-                games.map(g => [g.appid, g.playtime_forever])
-            )
+            c.library.ids      = games.map(g => g.appid)
+            c.library.playtime = Object.fromEntries(games.map(g => [g.appid, g.playtime_forever]))
             c.library.fetchedAt = Date.now()
         })
-        // Kick off detail loading as soon as the list is available
-        const freshCache = snap().cache
-        refreshDetailBatch(freshCache)
+        refreshDetailBatch(snap().cache)
     })
 }
 
 function refreshRecentlyPlayed(cache) {
-    if (!isStale(cache.recentlyPlayed?.fetchedAt, TTL.recentlyPlayed)) return
+    if (!isStale(cache.recently_played?.fetchedAt, TTL.recentlyPlayed)) return
     steamAPI.getRecentlyPlayedGames(res => {
         patchCache(c => {
-            c.recentlyPlayed = {
-                data:      res?.response?.games || [],
+            c.recently_played = {
+                items:     res?.response?.games || [],
                 fetchedAt: Date.now(),
             }
         })
@@ -158,15 +147,12 @@ export function refreshFriends() {
     })
 }
 
-// Fetch details for the next batch of games that are missing or stale.
-// This is designed to be called repeatedly across sessions — each call
-// fills in a few more entries until the full library is cached.
 function refreshDetailBatch(cache) {
-    const appIdList = cache.library?.appIdList || []
-    const details   = cache.library?.details   || {}
-
+    const ids       = cache.library?.ids || []
     const blacklist = new Set(cache.library?.blacklist || [])
-    const pending = appIdList.filter(id =>
+    const details   = snap().game_details || {}
+
+    const pending = ids.filter(id =>
         !blacklist.has(id) &&
         (!details[id]?.data || isStale(details[id].fetchedAt, TTL.gameDetails))
     )
@@ -174,9 +160,7 @@ function refreshDetailBatch(cache) {
     if (pending.length === 0) return
 
     const batch = pending.slice(0, DETAIL_BATCH_SIZE)
-    console.log(
-        `[Cache] Fetching details: ${batch.length} now, ${pending.length - batch.length} remaining`
-    )
+    console.log(`[Cache] Fetching details: ${batch.length} now, ${pending.length - batch.length} remaining`)
 
     batch.forEach(appid => {
         steamAPI.getGameDetails(appid, async res => {
@@ -188,24 +172,18 @@ function refreshDetailBatch(cache) {
             }
             const slim = await slimGame(res?.[appid]?.data)
             if (!slim) return
-            patchCache(c => {
-                c.library.details[appid] = { data: slim, fetchedAt: Date.now() }
-            })
+            patchGameDetail(appid, slim, 'library')
         })
     })
 }
 
 // ─── Public API ──────────────────────────────────────────────────────────────
 
-/**
- * Initialize cache structure and run one update cycle.
- * Call this from +layout.svelte on mount.
- */
 export function startCacheUpdateCycle() {
     patchCache(() => {})
 
     const data = snap()
-    if (!data.steamID) return   // nothing to fetch without a Steam ID
+    if (!data.steamID) return
 
     const cache = data.cache
 
@@ -215,19 +193,12 @@ export function startCacheUpdateCycle() {
     refreshDetailBatch(cache)
 }
 
-/**
- * Return the cached Steam store detail object for a single appid, or null.
- */
 export function getGameDetail(appid) {
-    return snap().cache?.library?.details?.[appid]?.data ?? null
+    return snap().game_details?.[appid]?.data ?? null
 }
 
-/**
- * Fetch and cache details for a single game immediately.
- * Returns a Promise that resolves with the game data (or null on failure).
- */
-export function fetchGameDetail(appid) {
-    return new Promise((resolve) => {
+export function fetchGameDetail(appid, source = 'library') {
+    return new Promise(resolve => {
         steamAPI.getGameDetails(appid, async res => {
             if (res?.[appid]?.success === false) {
                 patchCache(c => {
@@ -237,72 +208,45 @@ export function fetchGameDetail(appid) {
                 return
             }
             const slim = await slimGame(res?.[appid]?.data)
-            if (slim) {
-                patchCache(c => {
-                    c.library.details[appid] = { data: slim, fetchedAt: Date.now() }
-                })
-            }
+            if (slim) patchGameDetail(appid, slim, source)
             resolve(slim ?? null)
         })
     })
 }
 
-/**
- * Return all cached game detail objects as a flat array.
- */
 export function getCachedLibrary() {
-    const library   = snap().cache?.library ?? {}
-    const details   = library.details  ?? {}
-    const blacklist = new Set(library.blacklist ?? [])
-    return Object.entries(details)
-        .filter(([id, entry]) => entry?.data && !blacklist.has(id))
+    const { game_details = {}, cache } = snap()
+    const blacklist = new Set(cache?.library?.blacklist ?? [])
+    return Object.entries(game_details)
+        .filter(([id, entry]) => entry?.data && entry.source !== 'buy' && !blacklist.has(Number(id)))
         .map(([, entry]) => entry.data)
 }
 
-/**
- * Build a compact, token-efficient user profile string for the Claude prompt.
- * Returns an object with the prompt text and validity metadata.
- *
- * Format (all on separate lines):
- *   PLAYED:
- *   Game Name[Genre1,Genre2]:Xh
- *   ...
- *   RECENT:
- *   Game Name:Xh
- *   ...
- *   UNPLAYED_OWNED:
- *   appid|Game Name|Genre1,Genre2
- *   ...
- *   <instruction line>
- */
 export function buildCompactProfile(brain = null) {
-    const data     = snap()
-    const cache    = data.cache ?? {}
-    const details  = cache.library?.details  ?? {}
-    const playtime = cache.library?.playtime ?? {}
-    const recent   = cache.recentlyPlayed?.data ?? []
+    const data        = snap()
+    const cache       = data.cache ?? {}
+    const gameDetails = data.game_details ?? {}
+    const playtime    = cache.library?.playtime ?? {}
+    const recent      = cache.recently_played?.items ?? []
 
-    // Top 20 most-played games that have cached details
     const playedLines = Object.entries(playtime)
-        .filter(([id, mins]) => mins > 0 && details[id]?.data)
+        .filter(([id, mins]) => mins > 0 && gameDetails[id]?.data)
         .sort(([, a], [, b]) => b - a)
         .slice(0, 20)
         .map(([id, mins]) => {
-            const d      = details[id].data
+            const d      = gameDetails[id].data
             const genres = (d.genres || []).map(g => g.description).join(',')
             return `${d.name}[${genres}]:${Math.round(mins / 60)}h`
         })
 
-    // All unplayed owned games that have cached details (playtime === 0)
     const unplayedLines = Object.entries(playtime)
-        .filter(([id, mins]) => mins === 0 && details[id]?.data)
+        .filter(([id, mins]) => mins === 0 && gameDetails[id]?.data)
         .map(([id]) => {
-            const d      = details[id].data
+            const d      = gameDetails[id].data
             const genres = (d.genres || []).map(g => g.description).join(',')
             return `${id}|${d.name}|${genres}`
         })
 
-    // Up to 5 recently active games
     const recentLines = recent
         .slice(0, 5)
         .map(g => `${g.name}:${Math.round((g.playtime_2weeks || 0) / 60)}h`)
@@ -324,24 +268,19 @@ export function buildCompactProfile(brain = null) {
     }
 }
 
-/**
- * Build a compact profile for buy suggestions (games not owned).
- * Includes PLAYED, RECENT, and a list of already-owned game names so
- * the AI knows what to exclude.
- */
 export function buildBuyProfile(brain = null) {
-    const data     = snap()
-    const cache    = data.cache ?? {}
-    const details  = cache.library?.details  ?? {}
-    const playtime = cache.library?.playtime ?? {}
-    const recent   = cache.recentlyPlayed?.data ?? []
+    const data        = snap()
+    const cache       = data.cache ?? {}
+    const gameDetails = data.game_details ?? {}
+    const playtime    = cache.library?.playtime ?? {}
+    const recent      = cache.recently_played?.items ?? []
 
     const playedLines = Object.entries(playtime)
-        .filter(([id, mins]) => mins > 0 && details[id]?.data)
+        .filter(([id, mins]) => mins > 0 && gameDetails[id]?.data)
         .sort(([, a], [, b]) => b - a)
         .slice(0, 25)
         .map(([id, mins]) => {
-            const d      = details[id].data
+            const d      = gameDetails[id].data
             const genres = (d.genres || []).map(g => g.description).join(',')
             return `${d.name}[${genres}]:${Math.round(mins / 60)}h`
         })
@@ -350,13 +289,11 @@ export function buildBuyProfile(brain = null) {
         .slice(0, 5)
         .map(g => `${g.name}:${Math.round((g.playtime_2weeks || 0) / 60)}h`)
 
-    // All owned game names so AI avoids re-suggesting them
     const ownedNames = Object.entries(playtime)
-        .filter(([id]) => details[id]?.data)
-        .map(([id]) => details[id].data.name)
+        .filter(([id]) => gameDetails[id]?.data)
+        .map(([id]) => gameDetails[id].data.name)
         .slice(0, 60)
 
-    // Games friends are actively playing that the user doesn't own
     const friendGames = [...new Set(
         (cache.friends?.data ?? [])
             .filter(f => f.gameextrainfo)

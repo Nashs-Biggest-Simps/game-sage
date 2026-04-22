@@ -17,9 +17,9 @@
     let storeLoading = $state(false)
     let searched     = $state(false)
 
-    let libraryDetails = $derived($db?.cache?.library?.details ?? {})
+    let libraryDetails  = $derived($db?.game_details ?? {})
     let libraryPlaytime = $derived($db?.cache?.library?.playtime ?? {})
-    let ownedAppIds    = $derived($db?.cache?.library?.appIdList ?? [])
+    let ownedAppIds     = $derived($db?.cache?.library?.ids ?? [])
 
     let ownedResults = $derived(() => {
         if (!query.trim()) return []
@@ -165,8 +165,8 @@
                     onclick={() => goto(resolve(`/view?id=${g.appid}`))}
                 >
                     <div class="card-art">
-                        {#if detail?.header_image}
-                            <img src={detail.header_image} alt={detail.name} loading="lazy" />
+                        {#if detail?.thumbnail}
+                            <img src={detail.thumbnail} alt={detail.name} loading="lazy" />
                         {:else}
                             <div class="art-fallback"></div>
                         {/if}

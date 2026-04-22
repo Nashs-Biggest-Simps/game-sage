@@ -54,15 +54,6 @@ function searchStore(name) {
     })
 }
 
-// Keep only the fields BuyCard needs to avoid bloating the suggestions cache
-function slimStoreData(s) {
-    if (!s) return null
-    return {
-        is_free: s.is_free ?? false,
-        price:   s.price ? { final_formatted: s.price.final_formatted } : null,
-    }
-}
-
 export class Algorithm {
     #brain = new Brain()
 
@@ -83,11 +74,25 @@ export class Algorithm {
         return get(db).cache?.suggestions?.[type] ?? null
     }
 
-    #persistCache(type, items) {
+    #persistCache(type, ids, reasons) {
         db.update(data => {
-            data.cache ??= {}
+            data.cache           ??= {}
             data.cache.suggestions ??= {}
-            data.cache.suggestions[type] = { items, generatedAt: Date.now() }
+            data.cache.suggestions[type] = { ids, reasons, generatedAt: Date.now() }
+            return data
+        })
+    }
+
+    // Removes game_details entries with source 'buy' that are no longer suggested.
+    #cleanupBuyDetails(keepIds) {
+        const keepSet = new Set(keepIds.map(String))
+        db.update(data => {
+            if (!data.game_details) return data
+            for (const id of Object.keys(data.game_details)) {
+                if (data.game_details[id]?.source === 'buy' && !keepSet.has(id)) {
+                    delete data.game_details[id]
+                }
+            }
             return data
         })
     }
@@ -104,12 +109,13 @@ export class Algorithm {
     }
 
     // Returns [{ game, reason }] — games from the user's unplayed library.
-    // Items are persisted as fully-resolved objects so they load from cache
-    // without depending on the detail cache being populated.
+    // Cache stores only ids + reasons; game objects resolved from game_details on load.
     async getPlaySuggestions() {
         const cached = this.#getCache('play')
-        if (isFresh(cached?.generatedAt) && cached.items?.length) {
-            return cached.items
+        if (isFresh(cached?.generatedAt) && cached.ids?.length) {
+            return cached.ids
+                .map(id => ({ game: getGameDetail(id), reason: cached.reasons[id] }))
+                .filter(item => item.game)
         }
 
         const brain = this.#brain.hasData() ? this.#brain.toPromptString() : null
@@ -124,27 +130,46 @@ export class Algorithm {
             const { s: raw } = await this.#callSage('play', text)
             if (!Array.isArray(raw)) throw new Error('Unexpected response shape')
 
-            // Resolve each appid to its cached game object immediately so the
-            // persisted items are self-contained — no detail cache dependency on reload.
-            const items = raw.map(({ id, r: reason }) => {
-                const game = getGameDetail(id)
-                return game ? { game, reason } : null
-            }).filter(Boolean)
+            const ids     = []
+            const reasons = {}
+            for (const { id, r: reason } of raw) {
+                if (getGameDetail(id)) {
+                    ids.push(id)
+                    reasons[id] = reason
+                }
+            }
 
-            this.#persistCache('play', items)
-            return items
+            this.#persistCache('play', ids, reasons)
+            return ids.map(id => ({ game: getGameDetail(id), reason: reasons[id] }))
         } catch (err) {
             console.error('[Algorithm] getPlaySuggestions failed:', err)
             return []
         }
     }
 
-    // Returns [{ name, reason, appid, storeData }] — games not yet owned.
-    // storeData is slimmed to only the fields BuyCard reads.
+    // Returns [{ name, reason, appid, storeData, thumbnail }] — games not yet owned.
+    // Details written to game_details[appid] with source 'buy'; stale entries cleaned up on refresh.
     async getBuySuggestions() {
         const cached = this.#getCache('buy')
-        if (isFresh(cached?.generatedAt) && cached.items?.length) {
-            return cached.items
+        if (isFresh(cached?.generatedAt) && cached.ids?.length) {
+            const data = get(db)
+            return cached.ids
+                .map(id => {
+                    const entry = data.game_details?.[id]
+                    if (!entry?.data) return null
+                    const d = entry.data
+                    return {
+                        name:      d.name,
+                        reason:    cached.reasons[id],
+                        appid:     id,
+                        thumbnail: d.thumbnail,
+                        storeData: {
+                            is_free: d.is_free,
+                            price:   d.price_overview ? { final_formatted: d.price_overview.final_formatted } : null,
+                        },
+                    }
+                })
+                .filter(Boolean)
         }
 
         const brain = this.#brain.hasData() ? this.#brain.toPromptString() : null
@@ -159,26 +184,55 @@ export class Algorithm {
             const { b: suggestions } = await this.#callSage('buy', text)
             if (!Array.isArray(suggestions)) throw new Error('Unexpected response shape')
 
-            const resolved = await Promise.all(
+            const ids     = []
+            const reasons = {}
+            const items   = []
+
+            await Promise.all(
                 suggestions.map(async ({ n: name, r: reason }) => {
                     const match = await searchStore(name)
-                    if (!match) return null
+                    if (!match) return
+
                     const appid     = match.id
                     const thumbnail = await resolveThumbnail(appid)
-                    return { name, reason, appid, storeData: slimStoreData(match), thumbnail }
+                    const slimData  = {
+                        steam_appid:   appid,
+                        name:          match.name ?? name,
+                        thumbnail,
+                        is_free:       match.is_free ?? false,
+                        price_overview: match.price ? { final_formatted: match.price.final_formatted } : null,
+                    }
+
+                    db.update(data => {
+                        data.game_details ??= {}
+                        data.game_details[appid] = { data: slimData, fetchedAt: Date.now(), source: 'buy' }
+                        return data
+                    })
+
+                    ids.push(String(appid))
+                    reasons[appid] = reason
+                    items.push({
+                        name:      slimData.name,
+                        reason,
+                        appid,
+                        thumbnail,
+                        storeData: {
+                            is_free: slimData.is_free,
+                            price:   slimData.price_overview ? { final_formatted: slimData.price_overview.final_formatted } : null,
+                        },
+                    })
                 })
             )
 
-            const items = resolved.filter(Boolean)
-            this.#persistCache('buy', items)
-            return items
+            this.#cleanupBuyDetails(ids)
+            this.#persistCache('buy', ids, reasons)
+            return items.filter(Boolean)
         } catch (err) {
             console.error('[Algorithm] getBuySuggestions failed:', err)
             return []
         }
     }
 
-    // Call when the user explicitly likes or dislikes a suggestion
     recordInteraction(game, liked) {
         this.#brain.record({ name: game.name }, liked)
         this.#saveBrain()

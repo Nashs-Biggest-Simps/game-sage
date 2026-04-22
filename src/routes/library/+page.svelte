@@ -5,9 +5,9 @@
     const DISPLAY_OPTIONS = ['All', 'Never Played']
     const SORT_OPTIONS    = ['None', 'Most Played', 'A → Z', 'Z → A', 'Never Played']
 
-    let appIdList   = $derived($db?.cache?.library?.appIdList ?? null)
-    let playtime    = $derived($db?.cache?.library?.playtime  ?? {})
-    let details     = $derived($db?.cache?.library?.details   ?? {})
+    let appIdList   = $derived($db?.cache?.library?.ids ?? null)
+    let playtime    = $derived($db?.cache?.library?.playtime ?? {})
+    let details     = $derived($db?.game_details ?? {})
     let sortKey     = $derived($db?.filters?.Sort    ?? 'None')
     let filterMode  = $derived($db?.filters?.Display ?? 'All')
 

@@ -7,9 +7,9 @@
 
     // ── Personal data ─────────────────────────────────────────────────────────
 
-    let recentGames = $derived($db?.cache?.recentlyPlayed?.data ?? [])
-    let playtime    = $derived($db?.cache?.library?.playtime    ?? {})
-    let details     = $derived($db?.cache?.library?.details     ?? {})
+    let recentGames = $derived($db?.cache?.recently_played?.items ?? [])
+    let playtime    = $derived($db?.cache?.library?.playtime     ?? {})
+    let details     = $derived($db?.game_details                 ?? {})
 
     let weekHours = $derived(
         recentGames.reduce((sum, g) => sum + Math.round((g.playtime_2weeks ?? 0) / 60), 0)
@@ -29,19 +29,13 @@
         return entries.map(g => ({ ...g, pct: Math.round((g.hours / maxHours) * 100) }))
     })
 
-    // ── Image fallback ────────────────────────────────────────────────────────
-
     function makeImgState(id, detail = null) {
-        const urls = [
-            detail?.header_image ?? null,
-            `https://cdn.akamai.steamstatic.com/steam/apps/${id}/capsule_616x353.jpg`,
-            `https://cdn.akamai.steamstatic.com/steam/apps/${id}/header.jpg`,
-        ].filter(Boolean)
-        let idx = $state(0)
+        const thumbnail = detail?.thumbnail ?? null
+        let failed = $state(false)
         return {
-            get src()    { return urls[idx] ?? null },
-            get failed() { return idx >= urls.length },
-            next()       { idx++ },
+            get src()    { return failed ? null : thumbnail },
+            get failed() { return failed || !thumbnail },
+            next()       { failed = true },
         }
     }
 

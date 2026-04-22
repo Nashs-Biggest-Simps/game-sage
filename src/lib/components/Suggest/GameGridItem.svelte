@@ -6,23 +6,16 @@
 
     let { appid, playtime = 0 } = $props()
 
-    let detail   = $derived($db?.cache?.library?.details?.[appid]?.data ?? null)
-    let hours    = $derived(Math.round(playtime / 60))
-    let fetching = $state(false)
+    let detail    = $derived($db?.game_details?.[appid]?.data ?? null)
+    let hours     = $derived(Math.round(playtime / 60))
+    let fetching  = $state(false)
+    let imgFailed = $state(false)
 
-    let imgIdx  = $state(0)
-    let imgUrls = $derived([
-        detail?.header_image ?? null,
-        `https://cdn.akamai.steamstatic.com/steam/apps/${appid}/capsule_616x353.jpg`,
-        `https://cdn.akamai.steamstatic.com/steam/apps/${appid}/header.jpg`,
-        `https://cdn.akamai.steamstatic.com/steam/apps/${appid}/capsule_231x87.jpg`,
-    ].filter(Boolean))
-    let imgSrc    = $derived(imgUrls[imgIdx] ?? null)
-    let imgFailed = $derived(imgIdx >= imgUrls.length)
+    let imgSrc = $derived(detail?.thumbnail ?? null)
 
-    $effect(() => { appid; imgIdx = 0 })
+    $effect(() => { appid; imgFailed = false })
 
-    function nextImg() { imgIdx++ }
+    function nextImg() { imgFailed = true }
 
     async function onMouseEnter() {
         if (!detail && !fetching) {
