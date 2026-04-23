@@ -19,7 +19,6 @@
 	"dependencies": {
 		"@sveltejs/adapter-node": "^5.5.4",
 		"firebase": "^12.9.0",
-		"rue-algr": "^0.0.1",
 		"rue-lang": "^1.0.20",
 		"rueter-ai": "^0.3.1"
 	}
