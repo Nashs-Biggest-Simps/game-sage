@@ -67,7 +67,7 @@
         {#if hours > 0}
             <div class="playtime-badge">
                 <i class="fa-solid fa-clock"></i>
-                {hours >= 1000 ? `${(hours/1000).toFixed(1)}k` : hours.toLocaleString()}h
+                {hours.toLocaleString()}h
             </div>
         {:else if detail}
             <div class="playtime-badge unplayed">Unplayed</div>
@@ -282,12 +282,14 @@
     .name {
         font-size: 0.95rem;
         font-weight: 700;
-        line-height: 1.3;
+        line-height: 1.5;
         display: -webkit-box;
-        -webkit-line-clamp: 2;
-        line-clamp: 2;
+        line-clamp: 1;
+        -webkit-line-clamp: 1;
+        text-overflow: ellipsis;
         -webkit-box-orient: vertical;
         overflow: hidden;
+        
     }
 
     .name-placeholder {
@@ -304,22 +306,5 @@
         100% { background-position: -200% 0; }
     }
 
-    .tags { display: flex; gap: 0.35rem; flex-wrap: wrap; }
-
-    .tag {
-        font-size: 0.72rem;
-        font-weight: 500;
-        padding: 0.2rem 0.55rem;
-        background: var(--l2);
-        border-radius: 100vh;
-        opacity: 0.8;
-    }
-
-    .tags-placeholder {
-        height: 0.72rem;
-        width: 45%;
-        border-radius: 100vh;
-        background: var(--l2);
-        opacity: 0.4;
-    }
+    .tags { display: flex; gap: 0.4rem; flex-wrap: wrap; }
 </style>

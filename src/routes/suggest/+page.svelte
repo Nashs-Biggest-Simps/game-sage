@@ -4,10 +4,9 @@
     import { steamAPI } from '$lib/steam'
     import { Algorithm } from '$lib/algorithm'
     import SuggestRow   from '$lib/components/Dashboard/SuggestRow.svelte'
-    import SuggestCard  from '$lib/components/Dashboard/SuggestCard.svelte'
-    import BuyCard      from '$lib/components/Dashboard/BuyCard.svelte'
 
     const algo = new Algorithm()
+    const LOCAL_ROW_LIMIT = 12
 
     // ── Row state ────────────────────────────────────────────────────────────────
     let hotItems      = $state([])
@@ -22,6 +21,11 @@
     let hasSteamID      = $derived(!!$db?.steamID)
     let preferredGenres = $derived($db?.prefs?.genres?.preferred ?? [])
     let excludedGenres  = $derived($db?.prefs?.genres?.excluded  ?? [])
+    let libraryDetails  = $derived($db?.cache?.library?.details ?? {})
+    let libraryPlaytime = $derived($db?.cache?.library?.playtime ?? {})
+    let libraryGames    = $derived(buildLibraryGames(libraryDetails, libraryPlaytime))
+    let localLibraryItems = $derived(buildLocalLibrarySuggestions(libraryGames, preferredGenres, excludedGenres))
+    let fallbackItems      = $derived(buildNoAiSuggestions(libraryGames, localLibraryItems, preferredGenres, excludedGenres))
 
     let mounted = $state(false)
     let prefDebounce = null
@@ -45,12 +49,111 @@
     const SECTIONS = [
         { id: 'hot',     label: 'Hot Right Now',    icon: 'fire'               },
         { id: 'play',    label: 'For You',           icon: 'gamepad'            },
+        { id: 'library', label: 'From Library',      icon: 'grip'               },
+        { id: 'fallback', label: 'No-AI Picks',      icon: 'shield-halved'      },
         { id: 'buy',     label: 'Consider Buying',   icon: 'cart-shopping'      },
         { id: 'friends', label: 'Friends Playing',   icon: 'user-group'         },
     ]
 
     function scrollTo(id) {
         document.getElementById(`section-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+
+    function genreNames(game) {
+        return (game?.genres ?? []).map(g => g.description).filter(Boolean)
+    }
+
+    function hasExcludedGenre(game, excluded) {
+        if (!excluded.length) return false
+        const genres = genreNames(game).map(g => g.toLowerCase())
+        return excluded.some(g => genres.includes(g.toLowerCase()))
+    }
+
+    function buildLibraryGames(details, playtime) {
+        return Object.entries(details)
+            .map(([id, entry]) => {
+                const game = entry?.data
+                if (!game?.steam_appid) return null
+                return {
+                    game,
+                    playtime: playtime[id] ?? playtime[game.steam_appid] ?? 0,
+                }
+            })
+            .filter(Boolean)
+    }
+
+    function buildGenreWeights(games) {
+        const weights = new Map()
+        for (const { game, playtime } of games) {
+            if (playtime <= 0) continue
+            const hours = Math.max(1, Math.round(playtime / 60))
+            for (const genre of genreNames(game)) {
+                weights.set(genre, (weights.get(genre) ?? 0) + hours)
+            }
+        }
+        return weights
+    }
+
+    function topGenreMatch(game, weights, preferred = []) {
+        const genres = genreNames(game)
+        const preferredLower = preferred.map(g => g.toLowerCase())
+        const preferredMatch = genres.find(g => preferredLower.includes(g.toLowerCase()))
+        if (preferredMatch) return preferredMatch
+
+        return genres
+            .map(g => ({ genre: g, weight: weights.get(g) ?? 0 }))
+            .sort((a, b) => b.weight - a.weight)[0]?.genre ?? null
+    }
+
+    function buildLocalLibrarySuggestions(games, preferred, excluded) {
+        const weights = buildGenreWeights(games)
+        const preferredLower = preferred.map(g => g.toLowerCase())
+
+        return games
+            .filter(({ game, playtime }) => playtime === 0 && !hasExcludedGenre(game, excluded))
+            .map(({ game }) => {
+                const match = topGenreMatch(game, weights, preferred)
+                const genres = genreNames(game)
+                const score = genres.reduce((sum, genre) => {
+                    const preferenceBoost = preferredLower.includes(genre.toLowerCase()) ? 500 : 0
+                    return sum + (weights.get(genre) ?? 0) + preferenceBoost
+                }, 0)
+
+                return {
+                    game,
+                    score,
+                    reason: match
+                        ? `Recommended from your library because it matches ${match}.`
+                        : 'Recommended from your unplayed library.',
+                }
+            })
+            .sort((a, b) => b.score - a.score || a.game.name.localeCompare(b.game.name))
+            .slice(0, LOCAL_ROW_LIMIT)
+    }
+
+    function buildNoAiSuggestions(games, librarySuggestions, preferred, excluded) {
+        const used = new Set(librarySuggestions.map(item => item.game?.steam_appid))
+        const weights = buildGenreWeights(games)
+
+        return games
+            .filter(({ game }) => !used.has(game.steam_appid) && !hasExcludedGenre(game, excluded))
+            .map(({ game, playtime }) => {
+                const match = topGenreMatch(game, weights, preferred)
+                const score = (playtime > 0 ? Math.log(playtime + 1) * 100 : 0)
+                    + genreNames(game).reduce((sum, genre) => sum + (weights.get(genre) ?? 0), 0)
+
+                return {
+                    game,
+                    score,
+                    reason: playtime > 0
+                        ? 'No-AI pick based on your existing playtime.'
+                        : match
+                            ? `No-AI pick from your library with ${match} tags.`
+                            : 'No-AI pick from your cached library.',
+                }
+            })
+            .sort((a, b) => b.score - a.score || a.game.name.localeCompare(b.game.name))
+            .slice(0, LOCAL_ROW_LIMIT)
     }
 
     // ── Data fetching ────────────────────────────────────────────────────────────
@@ -178,6 +281,50 @@
                     <div>
                         <div class="no-steam-title">Suggested for You</div>
                         <div class="no-steam-desc">Add your Steam ID in your profile to get personalized play recommendations.</div>
+                    </div>
+                </div>
+            {/if}
+        </section>
+
+        <!-- Recommended From Library: local library suggestions -->
+        <section id="section-library">
+            {#if hasSteamID}
+                <SuggestRow
+                    title="Recommended From Your Library"
+                    type="play"
+                    items={localLibraryItems}
+                    loading={false}
+                    emptyIcon="grip"
+                    emptyText="Library recommendations appear once your cached library details load."
+                />
+            {:else}
+                <div class="no-steam-row">
+                    <div class="no-steam-icon"><i class="fa-solid fa-grip"></i></div>
+                    <div>
+                        <div class="no-steam-title">Recommended From Your Library</div>
+                        <div class="no-steam-desc">Add your Steam ID to get recommendations from your owned games.</div>
+                    </div>
+                </div>
+            {/if}
+        </section>
+
+        <!-- No-AI Suggestions: deterministic fallback picks -->
+        <section id="section-fallback">
+            {#if hasSteamID}
+                <SuggestRow
+                    title="No-AI Suggestions"
+                    type="play"
+                    items={fallbackItems}
+                    loading={false}
+                    emptyIcon="shield-halved"
+                    emptyText="No-AI suggestions appear once your cached library details load."
+                />
+            {:else}
+                <div class="no-steam-row">
+                    <div class="no-steam-icon"><i class="fa-solid fa-shield-halved"></i></div>
+                    <div>
+                        <div class="no-steam-title">No-AI Suggestions</div>
+                        <div class="no-steam-desc">Add your Steam ID to unlock suggestions that work without the AI system.</div>
                     </div>
                 </div>
             {/if}

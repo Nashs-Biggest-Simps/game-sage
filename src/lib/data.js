@@ -6,9 +6,9 @@
 // local data storage on client browsers
 
 
-import { writable } from 'svelte/store'
+import { writable, readable } from 'svelte/store'
 
-const app_title = "gamesage_0.0.10"
+const app_title = "gamesage_0.0.11"
 const storage_ref = `ldb-${app_title}`
 
 let default_filters = {
@@ -22,7 +22,6 @@ let default_filters = {
 
 let initial_db = {
     user: {},
-    algr: {},
     cache: {},
     filters: default_filters,
     steamID: '',
@@ -104,6 +103,3 @@ db.subscribe(state => {
         }
     }
 })
-
-
-

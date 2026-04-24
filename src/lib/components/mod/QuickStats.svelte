@@ -1,3 +1,4 @@
+<!-- created by Aaron Meche -->
 <script>
     import { db } from '$lib/data'
 
@@ -11,7 +12,15 @@
     let pctPlayed   = $derived(totalGames > 0 ? Math.round(((totalGames - neverPlayed) / totalGames) * 100) : 0)
 </script>
 
-<div class="stats-grid">
+<!--  -->
+
+<div class="panel">
+    <h3 class="panel-title">
+        <i class="fa-solid fa-chart-simple"></i>
+        Your Stats
+    </h3>
+    
+    <div class="stats-grid">
     <div class="stat primary">
         <div class="value">{weekHours}</div>
         <div class="label">Hours This Week</div>
@@ -30,17 +39,20 @@
     </div>
 </div>
 
-{#if totalGames > 0}
-<div class="bar-wrap">
-    <div class="bar-label">
-        <span>Library explored</span>
-        <span class="pct">{pctPlayed}%</span>
+    {#if totalGames > 0}
+    <div class="bar-wrap">
+        <div class="bar-label">
+            <span>Library explored</span>
+            <span class="pct">{pctPlayed}%</span>
+        </div>
+        <div class="bar-track">
+            <div class="bar-fill" style="width: {pctPlayed}%"></div>
+        </div>
     </div>
-    <div class="bar-track">
-        <div class="bar-fill" style="width: {pctPlayed}%"></div>
-    </div>
+    {/if}
 </div>
-{/if}
+
+<!--  -->
 
 <style>
     .stats-grid {

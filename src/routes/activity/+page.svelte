@@ -4,6 +4,7 @@
     import { refreshFriends }    from '$lib/cache'
     import { resolve }           from '$app/paths'
     import { goto }              from '$app/navigation'
+  import RecentlyPlayed from '$lib/components/mod/RecentlyPlayed.svelte';
 
     // ── Personal data ─────────────────────────────────────────────────────────
 
@@ -102,7 +103,6 @@
 
     <!-- ── Left: personal activity ───────────────────────────────── -->
     <main class="main">
-
         <div class="page-header">
             <h1 class="page-title">Activity</h1>
             <div class="stat-pills">
@@ -121,70 +121,8 @@
             </div>
         </div>
 
-        <!-- Recently Played — 2×2 grid -->
         <section class="panel">
-            <div class="panel-title">
-                <i class="fa-solid fa-rotate-left"></i>
-                Recently Played
-            </div>
-
-            {#if recentGames.length === 0}
-                <div class="empty-row">
-                    <i class="fa-solid fa-circle-notch fa-spin"></i>
-                    <span>Loading recent sessions…</span>
-                </div>
-            {:else}
-                <div class="recent-grid">
-                    {#each recentGames as g (g.appid)}
-                        {@const detail  = details[g.appid]?.data ?? null}
-                        {@const img     = makeImgState(g.appid, detail)}
-                        {@const weekH   = Math.round((g.playtime_2weeks ?? 0) / 60)}
-                        {@const totalH  = Math.round(g.playtime_forever / 60)}
-                        <div
-                            class="rc-card"
-                            role="button"
-                            tabindex="0"
-                            onclick={() => goto(resolve(`/view?id=${g.appid}`))}
-                            onkeydown={(e) => e.key === 'Enter' && goto(resolve(`/view?id=${g.appid}`))}
-                        >
-                            <div class="rc-art">
-                                {#if img.src && !img.failed}
-                                    <img src={img.src} alt={g.name} loading="lazy" onerror={() => img.next()} />
-                                {:else}
-                                    <div class="rc-art-fallback"></div>
-                                {/if}
-                                <div class="rc-overlay">
-                                    <button
-                                        class="rc-play"
-                                        aria-label="Play {g.name}"
-                                        onclick={(e) => { e.stopPropagation(); window.location.href = `steam://run/${g.appid}` }}
-                                    >
-                                        <i class="fa-solid fa-play"></i>
-                                    </button>
-                                </div>
-                                {#if weekH > 0}
-                                    <div class="rc-badge">
-                                        <i class="fa-solid fa-fire"></i>
-                                        {weekH}h this week
-                                    </div>
-                                {/if}
-                            </div>
-                            <div class="rc-info">
-                                <div class="rc-name">{g.name}</div>
-                                <div class="rc-stats">
-                                    <span class="rc-total">
-                                        <i class="fa-solid fa-clock"></i>
-                                        {totalH > 0 ? `${totalH.toLocaleString()}h total` : 'Unplayed'}
-                                    </span>
-                                    {#if detail?.genres?.length}
-                                        <span class="rc-genre">{detail.genres[0].description}</span>
-                                    {/if}
-                                </div>
-                            </div>
-                        </div>
-                    {/each}
-                </div>
-            {/if}
+            <RecentlyPlayed style="grid" />
         </section>
 
         <!-- Top Games All Time -->
@@ -538,28 +476,6 @@
     }
 
     .stat-pills { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-
-    .pill {
-        display: flex;
-        align-items: center;
-        gap: 0.4rem;
-        padding: 0.3rem 0.75rem;
-        background: var(--l1);
-        border-radius: 100vh;
-        outline: solid 1pt var(--l3);
-        font-size: 0.78rem;
-        font-weight: 600;
-        opacity: 0.75;
-    }
-
-    .pill.accent {
-        background: var(--la1);
-        outline-color: var(--la3);
-        color: var(--bright-accent);
-        opacity: 1;
-    }
-
-    .pill i { font-size: 0.72rem; }
 
     /* ── Panels ──────────────────── */
 

@@ -100,3 +100,92 @@ a,button,input{
     border-radius: 0.4rem;
     line-height: 1.5;
 }
+
+.panel {
+    background: var(--lb0);
+    border-radius: 1.2rem;
+    outline: solid 1pt var(--l3);
+    padding: 1.4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+}
+
+.panel-title {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin: 0;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    opacity: 0.6;
+}
+
+.row-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.row-header {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+}
+
+.row-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+}
+
+.pill {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.75rem;
+    background: var(--l1);
+    border-radius: 100vh;
+    outline: solid 1pt var(--l3);
+    font-size: 0.8rem;
+    font-weight: 600;
+    opacity: 0.75;
+}
+
+.pill.accent {
+    background: var(--la1);
+    outline-color: var(--la3);
+    color: var(--bright-accent);
+    opacity: 1;
+}
+
+.pill.shadow { 
+    opacity: 0.5;
+}
+
+.pill i { 
+    font-size: 0.72rem; 
+}
+
+.tag {
+    font-size: 0.65rem;
+    font-weight: 500;
+    padding: 0.2rem 0.55rem;
+    background: var(--l2);
+    border-radius: 100vh;
+    opacity: 0.8;
+}
+
+.tag-placeholder {
+    height: 0.72rem;
+    width: 45%;
+    border-radius: 100vh;
+    background: var(--l2);
+    opacity: 0.4;
+}

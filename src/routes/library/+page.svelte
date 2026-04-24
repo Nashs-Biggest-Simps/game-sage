@@ -1,6 +1,6 @@
 <script>
     import { db } from '$lib/data'
-    import GameGrid from '$lib/components/Suggest/GameGrid.svelte'
+    import GameGrid from '$lib/components/games/GameGrid.svelte'
 
     const DISPLAY_OPTIONS = ['All', 'Never Played']
     const SORT_OPTIONS    = ['None', 'Most Played', 'A → Z', 'Z → A', 'Never Played']
@@ -50,12 +50,12 @@
             <h1 class="page-title">Library</h1>
             {#if total > 0}
                 <div class="stats-chips">
-                    <span class="chip">{total.toLocaleString()} games</span>
+                    <span class="pill">{total.toLocaleString()} games</span>
                     {#if playedCount > 0}
-                        <span class="chip played">{playedCount.toLocaleString()} played</span>
+                        <span class="pill accent">{playedCount.toLocaleString()} played</span>
                     {/if}
                     {#if unplayedCount > 0}
-                        <span class="chip unplayed">{unplayedCount.toLocaleString()} unplayed</span>
+                        <span class="pill shadow">{unplayedCount.toLocaleString()} unplayed</span>
                     {/if}
                 </div>
             {/if}
@@ -65,10 +65,7 @@
             <label class="select-wrap">
                 <span class="select-label">Display</span>
                 <span class="select-value" aria-hidden="true">{filterMode}</span>
-                <select
-                    value={filterMode}
-                    onchange={(e) => setFilter('Display', e.target.value)}
-                >
+                <select value={filterMode} onchange={(e) => setFilter('Display', e.target.value)}>
                     {#each DISPLAY_OPTIONS as opt}
                         <option value={opt}>{opt}</option>
                     {/each}
@@ -153,18 +150,6 @@
         gap: 0.45rem;
         flex-wrap: wrap;
     }
-
-    .chip {
-        font-size: 0.75rem;
-        font-weight: 600;
-        padding: 0.22rem 0.65rem;
-        background: var(--l2);
-        border-radius: 100vh;
-        opacity: 0.7;
-    }
-
-    .chip.played   { background: var(--la1); color: var(--bright-accent); opacity: 1; }
-    .chip.unplayed { background: var(--l2);  opacity: 0.45; }
 
     .toolbar-right {
         display: flex;

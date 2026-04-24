@@ -55,42 +55,50 @@
 
 <!--  -->
 
-<div class="feed">
-    {#if loading}
-        {#each Array(5) as _}
-            <div class="skeleton"></div>
-        {/each}
-
-    {:else if error || friends.length === 0}
-        <div class="empty">
-            <i class="fa-solid fa-user-group"></i>
-            <span>No friend activity — friends list may be private</span>
-        </div>
-
-    {:else}
-        {#each friends as f (f.steamid)}
-            <div class="friend {statusClass(f)}">
-                <div class="avatar-wrap">
-                    <img class="avatar" src={f.avatarfull} alt="" loading="lazy" />
-                    <div class="dot" title={STATE_LABEL[f.personastate ?? 0]}></div>
-                </div>
-                <div class="info">
-                    <div class="name">{f.personaname}</div>
-                    {#if f.gameid}
-                        <div class="activity playing">
-                            <i class="fa-solid fa-gamepad"></i>
-                            {f.gameextrainfo}
-                        </div>
-                    {:else if f.lastlogoff}
-                        <div class="activity">{timeAgo(f.lastlogoff)}</div>
-                    {:else}
-                        <div class="activity">{STATE_LABEL[f.personastate ?? 0]}</div>
-                    {/if}
-                </div>
+<div class="panel">
+    <h3 class="panel-title">
+        <i class="fa-solid fa-user-group"></i>
+        Friend Activity
+    </h3>
+    
+    <div class="feed">
+        {#if loading}
+            {#each Array(5) as _}
+                <div class="skeleton"></div>
+            {/each}
+    
+        {:else if error || friends.length === 0}
+            <div class="empty">
+                <i class="fa-solid fa-user-group"></i>
+                <span>No friend activity — friends list may be private</span>
             </div>
-        {/each}
-    {/if}
+    
+        {:else}
+            {#each friends as f (f.steamid)}
+                <div class="friend {statusClass(f)}">
+                    <div class="avatar-wrap">
+                        <img class="avatar" src={f.avatarfull} alt="" loading="lazy" />
+                        <div class="dot" title={STATE_LABEL[f.personastate ?? 0]}></div>
+                    </div>
+                    <div class="info">
+                        <div class="name">{f.personaname}</div>
+                        {#if f.gameid}
+                            <div class="activity playing">
+                                <i class="fa-solid fa-gamepad"></i>
+                                {f.gameextrainfo}
+                            </div>
+                        {:else if f.lastlogoff}
+                            <div class="activity">{timeAgo(f.lastlogoff)}</div>
+                        {:else}
+                            <div class="activity">{STATE_LABEL[f.personastate ?? 0]}</div>
+                        {/if}
+                    </div>
+                </div>
+            {/each}
+        {/if}
+    </div>
 </div>
+
 
 <!--  -->
 
