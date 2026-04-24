@@ -1,88 +1,56 @@
-
-// Steam API Call File
-
 import { get } from 'svelte/store'
 import { db } from '$lib/data'
 
-const APIkey = "20C1F35B7542A2AA3770FBCA32674486"
-
-function id() {
+function steamID() {
     return get(db)?.steamID ?? ''
 }
 
-async function makeApiCall(url, callback) {
-    console.log("API Call Made:", url)
-    const res = await fetch(`/api?endpoint=${url}`)
-    const data = await res.json()
+async function makeApiCall(action, params = {}, callback) {
+    const query = new URLSearchParams({
+        action,
+        ...params,
+    })
+
+    const response = await fetch(`/api?${query.toString()}`)
+    const data = await response.json()
+
+    if (!response.ok) {
+        const message = data?.message ?? data?.error ?? `Request failed for ${action}`
+        throw new Error(message)
+    }
+
     if (callback) callback(data)
-    else return data
+    return data
+}
+
+function withSteamID(params = {}) {
+    return {
+        steamid: steamID(),
+        ...params,
+    }
 }
 
 export const steamAPI = {
+    getPlayerSummary: (callback) => makeApiCall('playerSummary', withSteamID(), callback),
+    getPlayerSummaries: (steamids, callback) => makeApiCall('playerSummaries', {
+        ids: Array.isArray(steamids) ? steamids.join(',') : steamids,
+    }, callback),
+    getFriendList: (callback) => makeApiCall('friendList', withSteamID(), callback),
+    getPlayerBans: (callback) => makeApiCall('playerBans', withSteamID(), callback),
 
-    // --- ISteamUser ---
-    getPlayerSummary: (callback) => {
-        makeApiCall(`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=${APIkey}&steamids=${id()}`, callback)
-    },
-    getPlayerSummaries: (steamids, callback) => {
-        const ids = Array.isArray(steamids) ? steamids.join(',') : steamids
-        makeApiCall(`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=${APIkey}&steamids=${ids}`, callback)
-    },
-    getFriendList: (callback) => {
-        makeApiCall(`https://api.steampowered.com/ISteamUser/GetFriendList/v0001/?key=${APIkey}&steamid=${id()}&relationship=friend`, callback)
-    },
-    getPlayerBans: (callback) => {
-        makeApiCall(`https://api.steampowered.com/ISteamUser/GetPlayerBans/v1/?key=${APIkey}&steamids=${id()}`, callback)
-    },
+    getOwnedGames: (callback) => makeApiCall('ownedGames', withSteamID(), callback),
+    getRecentlyPlayedGames: (callback) => makeApiCall('recentlyPlayed', withSteamID({ count: 6 }), callback),
+    getSteamLevel: (callback) => makeApiCall('steamLevel', withSteamID(), callback),
+    getBadges: (callback) => makeApiCall('badges', withSteamID(), callback),
 
-    // --- IPlayerService ---
-    getOwnedGames: (callback) => {
-        makeApiCall(`https://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key=${APIkey}&steamid=${id()}&include_played_free_games=true&format=json`, callback)
-    },
-    getRecentlyPlayedGames: (callback) => {
-        makeApiCall(`https://api.steampowered.com/IPlayerService/GetRecentlyPlayedGames/v0001/?key=${APIkey}&steamid=${id()}&count=4&format=json`, callback)
-    },
-    getSteamLevel: (callback) => {
-        makeApiCall(`https://api.steampowered.com/IPlayerService/GetSteamLevel/v1/?key=${APIkey}&steamid=${id()}`, callback)
-    },
-    getBadges: (callback) => {
-        makeApiCall(`https://api.steampowered.com/IPlayerService/GetBadges/v1/?key=${APIkey}&steamid=${id()}`, callback)
-    },
+    getPlayerAchievements: (appid, callback) => makeApiCall('playerAchievements', withSteamID({ appid }), callback),
+    getUserStatsForGame: (appid, callback) => makeApiCall('userStatsForGame', withSteamID({ appid }), callback),
+    getGameSchema: (appid, callback) => makeApiCall('gameSchema', { appid }, callback),
+    getGlobalAchievementPercentages: (appid, callback) => makeApiCall('globalAchievementPercentages', { appid }, callback),
 
-    // --- ISteamUserStats ---
-    getPlayerAchievements: (appid, callback) => {
-        makeApiCall(`https://api.steampowered.com/ISteamUserStats/GetPlayerAchievements/v0001/?key=${APIkey}&steamid=${id()}&appid=${appid}&format=json`, callback)
-    },
-    getUserStatsForGame: (appid, callback) => {
-        makeApiCall(`https://api.steampowered.com/ISteamUserStats/GetUserStatsForGame/v0002/?key=${APIkey}&steamid=${id()}&appid=${appid}`, callback)
-    },
-    getGameSchema: (appid, callback) => {
-        makeApiCall(`https://api.steampowered.com/ISteamUserStats/GetSchemaForGame/v2/?key=${APIkey}&appid=${appid}`, callback)
-    },
-    getGlobalAchievementPercentages: (appid, callback) => {
-        makeApiCall(`https://api.steampowered.com/ISteamUserStats/GetGlobalAchievementPercentagesForApp/v0002/?gameid=${appid}&format=json`, callback)
-    },
-
-    // --- ISteamNews ---
-    getNewsForApp: (appid, callback) => {
-        makeApiCall(`https://api.steampowered.com/ISteamNews/GetNewsForApp/v0002/?appid=${appid}&count=10&maxlength=500&format=json`, callback)
-    },
-
-    // --- Steam Store API ---
-    getGameDetails: (appid, callback) => {
-        makeApiCall(`https://store.steampowered.com/api/appdetails?appids=${appid}&cc=us`, callback)
-    },
-    searchStore: (query, callback) => {
-        makeApiCall(`https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(query)}&cc=us&l=en`, callback)
-    },
-
-    // --- HowLongToBeat ---
-    howLongToBeat: (appid, callback) => {
-        makeApiCall(`https://hltbapi.codepotatoes.de/steam/${appid}`, callback)
-    },
-
-    // --- Steam Store Featured ---
-    getFeaturedGames: (callback) => {
-        makeApiCall(`https://store.steampowered.com/api/featuredcategories/?cc=us`, callback)
-    },
+    getNewsForApp: (appid, callback) => makeApiCall('newsForApp', { appid }, callback),
+    getGameDetails: (appid, callback) => makeApiCall('gameDetails', { appid }, callback),
+    searchStore: (query, callback) => makeApiCall('searchStore', { query }, callback),
+    howLongToBeat: (appid, callback) => makeApiCall('howLongToBeat', { appid }, callback),
+    getFeaturedGames: (callback) => makeApiCall('featuredGames', {}, callback),
 }

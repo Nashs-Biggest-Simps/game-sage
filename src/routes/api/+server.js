@@ -1,13 +1,18 @@
-
-
-
-import { json } from '@sveltejs/kit'
+import { error, json } from '@sveltejs/kit'
+import { fetchSteamAction } from '$lib/server/steam-api'
 
 export async function GET({ url }) {
-	const endpoint = decodeURIComponent(url.search?.split("?endpoint=")[1])
+    const action = url.searchParams.get('action')
 
-	const res = await fetch(endpoint)
-	const data = await res.json()
+    if (!action) {
+        throw error(400, 'Missing "action" query parameter.')
+    }
 
-	return json(data)
+    try {
+        const data = await fetchSteamAction(action, url.searchParams)
+        return json(data)
+    } catch (cause) {
+        console.error(`[/api] ${action} failed:`, cause)
+        throw error(502, cause instanceof Error ? cause.message : 'Upstream request failed.')
+    }
 }

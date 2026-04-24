@@ -1,102 +1,206 @@
-def hue: 240;
-def sat: 8%;
-def strt: 6%;
-def diff: -6%;
-
-func getLayer(layer = 0, extraSat = 0, extraLight = 0) {
-    let hue = 212;
-    let sat = 22
-    let satDiff = 6
+func tone(layer = 0, extraSat = 0, extraLight = 0) {
+    let hue = 214;
+    let sat = 28;
+    let satStep = 4;
     let light = 8;
-    let lightDiff = 6
-    return `hsl(${hue}, ${sat + (Number(extraSat) || 0) + (layer * satDiff)}%, ${light + (Number(extraLight)) + (layer * lightDiff)}%)`;
+    let lightStep = 5;
+    return `hsl(${hue}, ${sat + (Number(extraSat) || 0) + (layer * satStep)}%, ${light + (Number(extraLight) || 0) + (layer * lightStep)}%)`;
 }
 
-def bg: getLayer(0);
-def l05: getLayer(0.5);
-def l1: getLayer(1);
-def l2: getLayer(2);
-def l3: getLayer(3);
-def l4: getLayer(4);
-def l5: getLayer(5);
-def l6: getLayer(6);
+def bg: tone(0);
+def bg-elevated: tone(0, 6, 2);
+def l1: tone(1);
+def l2: tone(2);
+def l3: tone(3);
+def l4: tone(4);
 
-def la0: getLayer(0, 16);
-def la05: getLayer(0.5, 16);
-def la1: getLayer(1, 16);
-def la2: getLayer(2, 16);
-def la3: getLayer(3, 16);
-def la4: getLayer(4, 16);
-def la5: getLayer(5, 16);
-def la6: getLayer(6, 16);
+def panel: hsl(214, 34%, 12%, 0.88);
+def panel-soft: hsl(214, 32%, 16%, 0.78);
+def panel-strong: hsl(214, 48%, 18%, 0.9);
+def panel-border: hsl(214, 28%, 25%, 0.76);
+def panel-border-strong: hsl(212, 74%, 46%, 0.62);
+def panel-shadow: 0 18px 44px hsl(220, 68%, 4%, 0.35);
 
-def lb0: getLayer(0, 0, 4);
-def lb05: getLayer(0.5, 0, 4);
-def lb1: getLayer(1, 0, 4);
-def lb2: getLayer(2, 0, 4);
-def lb3: getLayer(3, 0, 4);
-def lb4: getLayer(4, 0, 4);
-def lb5: getLayer(5, 0, 4);
-def lb6: getLayer(6, 0, 4);
+def accent: hsl(212, 82%, 56%);
+def accent-strong: hsl(209, 100%, 72%);
+def accent-soft: hsl(213, 82%, 56%, 0.12);
+def success: hsl(144, 52%, 48%);
+def warning: hsl(35, 82%, 58%);
+def danger: hsl(0, 72%, 58%);
 
-def soft-accent: hsl(212, 50%, 40%);
-def accent: hsl(212, 75%, 50%);
-def accent-low: hsl(212, 75%, 50%, 4%);
-def bright-accent: hsl(212, 75%, 65%);
-def warning: #ca0000;
-def contrast: white;
+def text-primary: hsl(210, 22%, 96%);
+def text-muted: hsl(214, 18%, 68%);
+def text-dim: hsl(214, 16%, 52%);
 
-def inline-moat: 8vw;
+def radius-lg: 1.5rem;
+def radius-md: 1.15rem;
+def radius-sm: 0.8rem;
+def inline-moat: clamp(1.2rem, 4vw, 4.2rem);
+
+html{
+    height: 100%;
+}
 
 body{
-    height: 100%;
+    min-height: 100%;
     margin: 0;
-    background: var(--bg);
+    background: radial-gradient(circle at top left, hsl(212, 80%, 25%, 0.22), transparent 34%), radial-gradient(circle at top right, hsl(220, 72%, 16%, 0.4), transparent 28%), linear-gradient(180deg, hsl(214, 38%, 10%), hsl(216, 40%, 7%));
     font-size: 1rem;
-    font-family: Figtree;
-    color: var(--contrast);
+    font-family: Figtree, system-ui, sans-serif;
+    color: var(--text-primary);
+    text-rendering: optimizeLegibility;
 }
 
-a,button,input{
-    all: unset;
-    display: block;
+*{
+    box-sizing: border-box;
+}
+
+*::before{
+    box-sizing: border-box;
+}
+
+*::after{
+    box-sizing: border-box;
+}
+
+a{
+    color: inherit;
+    text-decoration: none;
+}
+
+button{
+    font: inherit;
+    color: inherit;
+}
+
+input{
+    font: inherit;
+    color: inherit;
+}
+
+select{
+    font: inherit;
+    color: inherit;
+}
+
+textarea{
+    font: inherit;
+    color: inherit;
+}
+
+button{
+    border: 0;
+    cursor: pointer;
+    background: none;
+}
+
+img{
+    max-width: 100%;
 }
 
 .horizontal-scroll{
     display: flex;
-    background: none;
-    overflow-x: scroll;
-    font-size: 0;
+    overflow-x: auto;
     white-space: nowrap;
+    scrollbar-width: none;
+    ::-webkit-scrollbar{
+        display: none;
+    }
 }
+
 .horizontal-scroll > *{
-    display: inline-block;
-    font-size: initial;
-}
-.horizontal-scroll::-webkit-scrollbar{
-    display: none;
-}
-.horizontal-scroll::-moz-progress-bar{
-    display: none;
+    flex-shrink: 0;
+    white-space: normal;
 }
 
+.btn-primary{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.65rem;
+    min-height: 2.85rem;
+    padding: 0.8rem 1.2rem;
+    border-radius: 999px;
+    font-weight: 700;
+    transition: transform 150ms ease, background 150ms ease, border-color 150ms ease, color 150ms ease;
+}
 
-/* Red Alert */
+.btn-secondary{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.65rem;
+    min-height: 2.85rem;
+    padding: 0.8rem 1.2rem;
+    border-radius: 999px;
+    font-weight: 700;
+    transition: transform 150ms ease, background 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.btn-ghost{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.65rem;
+    min-height: 2.85rem;
+    padding: 0.8rem 1.2rem;
+    border-radius: 999px;
+    font-weight: 700;
+    transition: transform 150ms ease, background 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.btn-primary{
+    background: linear-gradient(180deg, hsl(212, 92%, 62%), hsl(216, 84%, 54%));
+    color: white;
+    box-shadow: 0 18px 36px hsl(214, 74%, 30%, 0.4);
+    :hover{
+        transform: translateY(-2px);
+    }
+}
+
+.btn-secondary{
+    background: var(--panel-strong);
+    border: 1px solid var(--panel-border-strong);
+    color: var(--text-primary);
+    :hover{
+        transform: translateY(-2px);
+    }
+}
+
+.btn-ghost{
+    background: transparent;
+    border: 1px solid var(--panel-border);
+    color: var(--text-muted);
+    :hover{
+        transform: translateY(-2px);
+    }
+}
+
+.chip{
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.34rem 0.68rem;
+    border-radius: 999px;
+    background: var(--panel-soft);
+    border: 1px solid var(--panel-border);
+    color: var(--text-muted);
+    font-size: 0.74rem;
+    font-weight: 700;
+}
+
 .alert{
-    padding: 0.8rem 1.2rem;
-    margin-bottom: 1.2rem;
-    background: hsl(0, 50%, 20%, 50%);
-    outline: solid 2pt hsl(0, 50%, 40%);
-    border-radius: 0.4rem;
-    line-height: 1.5;
+    padding: 0.95rem 1.1rem;
+    background: hsl(0, 50%, 16%, 0.55);
+    border: 1px solid hsl(0, 60%, 34%, 0.7);
+    border-radius: var(--radius-sm);
+    line-height: 1.55;
 }
 
-/* Orange Warning */
 .warning{
-    padding: 0.8rem 1.2rem;
-    margin-bottom: 1.2rem;
-    background: hsl(30, 50%, 20%, 50%);
-    outline: solid 2pt hsl(30, 50%, 40%);
-    border-radius: 0.4rem;
-    line-height: 1.5;
+    padding: 0.95rem 1.1rem;
+    background: hsl(35, 62%, 16%, 0.58);
+    border: 1px solid hsl(35, 76%, 36%, 0.7);
+    border-radius: var(--radius-sm);
+    line-height: 1.55;
 }

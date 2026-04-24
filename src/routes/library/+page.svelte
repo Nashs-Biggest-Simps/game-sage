@@ -1,240 +1,174 @@
 <script>
-    import { db } from '$lib/data'
-    import GameGrid from '$lib/components/Suggest/GameGrid.svelte'
+    import { onMount } from 'svelte'
+    import { applyLibraryDefaults, db, setFilter } from '$lib/data'
+    import PageHeader from '$lib/components/layout/PageHeader.svelte'
+    import SurfacePanel from '$lib/components/layout/SurfacePanel.svelte'
+    import EmptyState from '$lib/components/layout/EmptyState.svelte'
+    import OwnedGameCard from '$lib/components/cards/OwnedGameCard.svelte'
 
     const DISPLAY_OPTIONS = ['All', 'Never Played']
-    const SORT_OPTIONS    = ['None', 'Most Played', 'A → Z', 'Z → A', 'Never Played']
+    const SORT_OPTIONS = ['None', 'Most Played', 'A → Z', 'Z → A', 'Never Played']
 
-    let appIdList   = $derived($db?.cache?.library?.appIdList ?? null)
-    let playtime    = $derived($db?.cache?.library?.playtime  ?? {})
-    let details     = $derived($db?.cache?.library?.details   ?? {})
-    let sortKey     = $derived($db?.filters?.Sort    ?? 'None')
-    let filterMode  = $derived($db?.filters?.Display ?? 'All')
+    let appIdList = $derived($db?.cache?.library?.appIdList ?? null)
+    let playtime = $derived($db?.cache?.library?.playtime ?? {})
+    let details = $derived($db?.cache?.library?.details ?? {})
+    let sortKey = $derived($db?.filters?.Sort ?? 'None')
+    let filterMode = $derived($db?.filters?.Display ?? 'All')
+    let compactLibrary = $derived($db?.prefs?.display?.compactLibrary ?? false)
 
-    function setFilter(key, value) {
-        db.update(d => ({ ...d, filters: { ...d.filters, [key]: value } }))
-    }
+    let items = $derived(() => {
+        if (!appIdList) return []
 
-    let sorted = $derived(() => {
-        if (!appIdList) return null
-
-        let arr = appIdList.map(id => ({
-            appid:    id,
-            playtime: playtime[id] ?? 0,
-            detail:   details[id]?.data ?? null,
+        let collection = appIdList.map((appid) => ({
+            appid,
+            playtime: playtime[appid] ?? 0,
+            detail: details[appid]?.data ?? null,
         }))
 
-        if (filterMode === 'Never Played') arr = arr.filter(g => g.playtime === 0)
-
-        switch (sortKey) {
-            case 'Most Played':  arr.sort((a, b) => b.playtime - a.playtime); break
-            case 'A → Z':        arr.sort((a, b) => (a.detail?.name ?? '').localeCompare(b.detail?.name ?? '')); break
-            case 'Z → A':        arr.sort((a, b) => (b.detail?.name ?? '').localeCompare(a.detail?.name ?? '')); break
-            case 'Never Played': arr = arr.filter(g => g.playtime === 0); break
+        if (filterMode === 'Never Played') {
+            collection = collection.filter((item) => item.playtime === 0)
         }
 
-        return arr
+        switch (sortKey) {
+            case 'Most Played':
+                collection.sort((left, right) => right.playtime - left.playtime)
+                break
+            case 'A → Z':
+                collection.sort((left, right) => (left.detail?.name ?? '').localeCompare(right.detail?.name ?? ''))
+                break
+            case 'Z → A':
+                collection.sort((left, right) => (right.detail?.name ?? '').localeCompare(left.detail?.name ?? ''))
+                break
+            case 'Never Played':
+                collection = collection.filter((item) => item.playtime === 0)
+                break
+        }
+
+        return collection
     })
 
-    let total      = $derived(appIdList?.length ?? 0)
-    let shownCount = $derived(sorted()?.length ?? 0)
-    let playedCount  = $derived(appIdList ? appIdList.filter(id => (playtime[id] ?? 0) > 0).length : 0)
+    let total = $derived(appIdList?.length ?? 0)
+    let playedCount = $derived(appIdList ? appIdList.filter((appid) => (playtime[appid] ?? 0) > 0).length : 0)
     let unplayedCount = $derived(total - playedCount)
+
+    onMount(() => {
+        applyLibraryDefaults()
+    })
 </script>
 
-<div class="page">
+<div class="library-page">
+    <PageHeader
+        eyebrow="Full library view"
+        title="Browse your whole Steam collection without losing the signal."
+        description="The filter bar stays fixed above the grid, and every library tile uses the same owned-game surface as the rest of the app so the page feels consistent instead of isolated."
+    />
 
-    <!-- ── Header + controls ── -->
-    <div class="toolbar">
-        <div class="toolbar-left">
-            <h1 class="page-title">Library</h1>
-            {#if total > 0}
-                <div class="stats-chips">
-                    <span class="chip">{total.toLocaleString()} games</span>
-                    {#if playedCount > 0}
-                        <span class="chip played">{playedCount.toLocaleString()} played</span>
-                    {/if}
-                    {#if unplayedCount > 0}
-                        <span class="chip unplayed">{unplayedCount.toLocaleString()} unplayed</span>
-                    {/if}
-                </div>
-            {/if}
-        </div>
-
-        <div class="toolbar-right">
-            <label class="select-wrap">
-                <span class="select-label">Display</span>
-                <span class="select-value" aria-hidden="true">{filterMode}</span>
-                <select
-                    value={filterMode}
-                    onchange={(e) => setFilter('Display', e.target.value)}
-                >
-                    {#each DISPLAY_OPTIONS as opt}
-                        <option value={opt}>{opt}</option>
-                    {/each}
-                </select>
-                <i class="fa-solid fa-chevron-down select-arrow"></i>
-            </label>
-
-            <label class="select-wrap">
-                <span class="select-label">Sort</span>
-                <span class="select-value" aria-hidden="true">{sortKey}</span>
-                <select
-                    value={sortKey}
-                    onchange={(e) => setFilter('Sort', e.target.value)}
-                >
-                    {#each SORT_OPTIONS as opt}
-                        <option value={opt}>{opt}</option>
-                    {/each}
-                </select>
-                <i class="fa-solid fa-chevron-down select-arrow"></i>
-            </label>
-        </div>
-    </div>
-
-    <!-- ── Content ── -->
-    {#if appIdList === null}
-        <div class="empty-state">
-            <i class="fa-solid fa-circle-notch fa-spin"></i>
-            <span>Loading your library…</span>
-        </div>
-    {:else if appIdList.length === 0}
-        <div class="empty-state">
-            <i class="fa-solid fa-gamepad"></i>
-            <span>No games found — make sure your Steam ID is set in your profile</span>
-        </div>
-    {:else}
-        {#if shownCount === 0}
-            <div class="empty-state">
-                <i class="fa-solid fa-filter"></i>
-                <span>No games match the current filters</span>
+    <SurfacePanel>
+        <div class="toolbar">
+            <div class="summary-chips">
+                <span class="chip"><i class="fa-solid fa-folder-open"></i> {total.toLocaleString()} games</span>
+                <span class="chip"><i class="fa-solid fa-check"></i> {playedCount.toLocaleString()} played</span>
+                <span class="chip"><i class="fa-solid fa-hourglass-half"></i> {unplayedCount.toLocaleString()} unplayed</span>
             </div>
-        {:else}
-            <GameGrid items={sorted()} />
-        {/if}
-    {/if}
 
+            <div class="controls">
+                <label class="select-shell">
+                    <span>Display</span>
+                    <select value={filterMode} onchange={(event) => setFilter('Display', event.target.value)}>
+                        {#each DISPLAY_OPTIONS as option}
+                            <option value={option}>{option}</option>
+                        {/each}
+                    </select>
+                </label>
+
+                <label class="select-shell">
+                    <span>Sort</span>
+                    <select value={sortKey} onchange={(event) => setFilter('Sort', event.target.value)}>
+                        {#each SORT_OPTIONS as option}
+                            <option value={option}>{option}</option>
+                        {/each}
+                    </select>
+                </label>
+            </div>
+        </div>
+    </SurfacePanel>
+
+    {#if appIdList === null}
+        <EmptyState icon="circle-notch" title="Loading your Steam library." description="Once the cache has your owned list, this page will fill with shared owned-game cards instead of placeholder rows." />
+    {:else if appIdList.length === 0}
+        <EmptyState icon="gamepad" title="No Steam library detected yet." description="Add your Steam ID in Profile and let GameSage finish the first cache cycle." />
+    {:else if items().length === 0}
+        <EmptyState icon="filter" title="The current filter combo has no matches." description="Try switching display or sort options to widen the grid again." />
+    {:else}
+        <div class="grid" class:compact={compactLibrary}>
+            {#each items() as item (item.appid)}
+                <OwnedGameCard
+                    appid={item.appid}
+                    detail={item.detail}
+                    playtime={item.playtime}
+                    compact={compactLibrary}
+                    eyebrow={item.playtime === 0 ? 'Unplayed' : null}
+                    subtitle={item.detail?.short_description ?? null}
+                    accentText={item.detail?.genres?.[0]?.description ?? null}
+                />
+            {/each}
+        </div>
+    {/if}
 </div>
 
 <style>
-    .page {
-        display: flex;
-        flex-direction: column;
-        gap: 1.6rem;
+    .library-page {
+        display: grid;
+        gap: 1.2rem;
     }
 
-    /* ── Toolbar ──────────────────── */
-
-    .toolbar {
+    .toolbar,
+    .summary-chips,
+    .controls {
         display: flex;
+        flex-wrap: wrap;
+        gap: 0.9rem;
         align-items: center;
         justify-content: space-between;
-        gap: 1.2rem;
-        flex-wrap: wrap;
     }
 
-    .toolbar-left {
-        display: flex;
-        align-items: baseline;
-        gap: 1rem;
-        flex-wrap: wrap;
+    .controls {
+        justify-content: flex-end;
     }
 
-    .page-title {
-        font-size: 1.9rem;
-        font-weight: 800;
-        margin: 0;
-        letter-spacing: -0.02em;
-    }
-
-    .stats-chips {
-        display: flex;
-        align-items: center;
-        gap: 0.45rem;
-        flex-wrap: wrap;
-    }
-
-    .chip {
-        font-size: 0.75rem;
-        font-weight: 600;
-        padding: 0.22rem 0.65rem;
-        background: var(--l2);
-        border-radius: 100vh;
-        opacity: 0.7;
-    }
-
-    .chip.played   { background: var(--la1); color: var(--bright-accent); opacity: 1; }
-    .chip.unplayed { background: var(--l2);  opacity: 0.45; }
-
-    .toolbar-right {
-        display: flex;
-        align-items: center;
-        gap: 0.7rem;
-    }
-
-    /* ── Dropdowns ────────────────── */
-
-    .select-wrap {
-        position: relative;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.45rem 0.7rem 0.45rem 0.85rem;
-        background: var(--l1);
-        border-radius: 0.65rem;
-        outline: solid 1pt var(--l3);
-        cursor: pointer;
-        transition: outline-color 120ms;
-    }
-
-    .select-wrap:focus-within { outline-color: var(--accent); }
-
-    .select-label {
-        font-size: 0.72rem;
-        font-weight: 700;
+    .select-shell {
+        display: grid;
+        gap: 0.35rem;
+        min-width: 10rem;
+        padding: 0.82rem 0.95rem;
+        border-radius: var(--radius-md);
+        background: var(--panel-soft);
+        border: 1px solid var(--panel-border);
+        color: var(--text-muted);
+        font-size: 0.78rem;
         text-transform: uppercase;
-        letter-spacing: 0.07em;
-        opacity: 0.45;
-        white-space: nowrap;
-        pointer-events: none;
+        letter-spacing: 0.08em;
+        font-weight: 700;
     }
 
-    .select-value {
-        font-size: 0.85rem;
+    .select-shell select {
+        background: transparent;
+        border: 0;
+        padding: 0;
+        color: var(--text-primary);
+        font-size: 0.92rem;
+        text-transform: none;
+        letter-spacing: normal;
         font-weight: 600;
-        white-space: nowrap;
     }
 
-    .select-wrap select {
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        opacity: 0;
-        cursor: pointer;
-        font-family: inherit;
+    .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+        gap: 1.45rem 1.35rem;
     }
 
-    .select-arrow {
-        font-size: 0.6rem;
-        opacity: 0.45;
-        pointer-events: none;
-        flex-shrink: 0;
+    .grid.compact {
+        grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
     }
-
-    /* ── Empty states ─────────────── */
-
-    .empty-state {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.8rem;
-        height: 14rem;
-        background: var(--l1);
-        border-radius: 1.2rem;
-        font-size: 0.88rem;
-        opacity: 0.45;
-    }
-
-    .empty-state i { font-size: 1.4rem; }
 </style>

@@ -1,24 +1,41 @@
 import { writable } from 'svelte/store'
 import { getAuth, onAuthStateChanged } from 'firebase/auth'
-import { db } from '$lib/data'
+import { syncAuthedUser } from '$lib/data'
 import { app } from '$lib/firebase'
 
-export const auth     = getAuth(app)
-export const authReady = writable(false)
+function serializeFirebaseUser(user) {
+    if (!user) return null
+
+    return {
+        uid: user.uid,
+        email: user.email ?? '',
+        displayName: user.displayName ?? '',
+        photoURL: user.photoURL ?? '',
+        emailVerified: !!user.emailVerified,
+        providerData: (user.providerData ?? []).map((provider) => ({
+            providerId: provider.providerId,
+            uid: provider.uid,
+            displayName: provider.displayName,
+            email: provider.email,
+            photoURL: provider.photoURL,
+        })),
+        metadata: {
+            creationTime: user.metadata?.creationTime ?? null,
+            lastSignInTime: user.metadata?.lastSignInTime ?? null,
+        },
+    }
+}
+
+export const auth = app ? getAuth(app) : null
+export const authReady = writable(!auth)
 
 if (typeof window !== 'undefined') {
-    onAuthStateChanged(auth, (fireuser) => {
-        if (fireuser) {
-            db.update(data => {
-                data.user = fireuser
-                return data
-            })
-        } else {
-            db.update(data => {
-                data.user = {}
-                return data
-            })
-        }
+    if (!auth) {
         authReady.set(true)
-    })
+    } else {
+        onAuthStateChanged(auth, (fireUser) => {
+            syncAuthedUser(serializeFirebaseUser(fireUser))
+            authReady.set(true)
+        })
+    }
 }

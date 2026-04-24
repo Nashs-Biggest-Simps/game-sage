@@ -212,6 +212,7 @@ export function startCacheUpdateCycle() {
     refreshUser(cache)
     refreshLibraryList(cache)
     refreshRecentlyPlayed(cache)
+    refreshFriends()
     refreshDetailBatch(cache)
 }
 

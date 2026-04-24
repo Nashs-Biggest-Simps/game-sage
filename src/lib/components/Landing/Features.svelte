@@ -3,7 +3,7 @@
 
     const FEATURES = [
         { icon: 'square-poll-vertical', title: 'Smart Dashboard',    desc: 'See what you\'ve been playing, your stats, and friend activity at a glance.'   },
-        { icon: 'wand-magic-sparkles',  title: 'AI Suggestions',     desc: 'Get personalized play and buy recommendations powered by Claude AI.'           },
+        { icon: 'wand-magic-sparkles',  title: 'AI Suggestions',     desc: 'Get personalized play and buy recommendations powered by AI.'           },
         { icon: 'grip',                 title: 'Library Browser',    desc: 'Browse your entire Steam library with filters, playtime, and genre sorting.'    },
         { icon: 'user-group',           title: 'Friend Activity',    desc: 'See what your Steam friends are playing right now in real time.'                },
     ]

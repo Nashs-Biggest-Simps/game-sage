@@ -1,195 +1,196 @@
 <script>
     import { goto } from '$app/navigation'
     import { resolve } from '$app/paths'
-    import { db } from '$lib/data'
-    import { auth } from '$lib/auth'
     import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
+    import PageHeader from '$lib/components/layout/PageHeader.svelte'
+    import SurfacePanel from '$lib/components/layout/SurfacePanel.svelte'
+    import { auth } from '$lib/auth'
+    import { db, hasAppSession, startGuestSession } from '$lib/data'
+    import { isFirebaseConfigured } from '$lib/firebase'
 
     let loading = $state(false)
-    let error   = $state(null)
+    let error = $state(null)
 
     $effect(() => {
-        if ($db?.user?.uid) goto(resolve('/dashboard'))
+        if (hasAppSession($db)) goto(resolve('/dashboard'))
     })
 
+    function continueAsGuest() {
+        startGuestSession()
+        goto(resolve('/dashboard'))
+    }
+
     async function signInWithGoogle() {
+        if (!auth || !isFirebaseConfigured) return
+
         loading = true
-        error   = null
+        error = null
+
         try {
             await signInWithPopup(auth, new GoogleAuthProvider())
-        } catch (e) {
-            console.error('[login] signInWithPopup error:', e)
-            if (e?.code === 'auth/popup-closed-by-user' || e?.code === 'auth/cancelled-popup-request') {
+        } catch (cause) {
+            console.error('[login] signInWithPopup error:', cause)
+            if (cause?.code === 'auth/popup-closed-by-user' || cause?.code === 'auth/cancelled-popup-request') {
                 error = null
-            } else if (e?.code === 'auth/unauthorized-domain') {
-                error = 'This domain is not authorized in Firebase. Add it to the Firebase console under Auth → Settings → Authorized domains.'
             } else {
-                error = e?.message ?? 'Sign-in failed. Please try again.'
+                error = cause?.message ?? 'Google sign-in failed. Try guest mode or check Firebase configuration.'
             }
             loading = false
         }
     }
 </script>
 
-<div class="page">
-    <div class="card">
-        <div class="brand">
-            <div class="brand-icon"><i class="fa-solid fa-hat-wizard"></i></div>
-            <div class="brand-name">GameSage</div>
-            <div class="brand-tagline">Your Steam library, but better.</div>
-        </div>
+<div class="login-page">
+    <div class="login-card">
+        <SurfacePanel highlight>
+            <PageHeader
+                eyebrow="Start playing faster"
+                title="Open GameSage without waiting on auth."
+                description="Guest mode is enough to connect a Steam ID, sync your library, and use the full dashboard. Google is optional if you want a persistent account layer later."
+            />
 
-        <div class="divider"></div>
+            <div class="choice-grid">
+                <button class="choice primary" onclick={continueAsGuest}>
+                    <div class="choice-icon"><i class="fa-solid fa-door-open"></i></div>
+                    <div class="choice-copy">
+                        <strong>Continue as Guest</strong>
+                        <p>Recommended for immediate library browsing, suggestions, and local caching.</p>
+                    </div>
+                </button>
 
-        <div class="body">
-            <div class="heading">Sign in to continue</div>
-            <div class="sub">Connect with your Google account to get started. No password needed.</div>
+                <button class="choice secondary" onclick={signInWithGoogle} disabled={!isFirebaseConfigured || loading}>
+                    <div class="choice-icon"><i class="fa-brands fa-google"></i></div>
+                    <div class="choice-copy">
+                        <strong>{loading ? 'Signing in…' : 'Continue with Google'}</strong>
+                        <p>
+                            {#if isFirebaseConfigured}
+                                Optional account sign-in if you want Google-linked identity on top of the guest-first app flow.
+                            {:else}
+                                Firebase environment variables are not configured in this build, so Google sign-in is currently unavailable.
+                            {/if}
+                        </p>
+                    </div>
+                </button>
+            </div>
 
             {#if error}
-                <div class="error-msg">
+                <div class="error-row">
                     <i class="fa-solid fa-circle-xmark"></i>
-                    {error}
+                    <span>{error}</span>
                 </div>
             {/if}
 
-            <button class="btn-google" onclick={signInWithGoogle} disabled={loading}>
-                {#if loading}
-                    <i class="fa-solid fa-circle-notch fa-spin"></i>
-                    Signing in…
-                {:else}
-                    <i class="fa-brands fa-google"></i>
-                    Continue with Google
-                {/if}
-            </button>
-
-            <p class="fine-print">
-                By signing in you agree to link your Steam library for personalized recommendations. Your data is stored locally on this device.
-            </p>
-        </div>
+            <div class="login-notes">
+                <div>
+                    <strong>Guest mode</strong>
+                    <p>Stores app data locally on this device. You still get Steam sync, dashboard widgets, and cached recommendations.</p>
+                </div>
+                <div>
+                    <strong>Google mode</strong>
+                    <p>Adds a signed identity layer for profile enrichment, but it is not required to use GameSage.</p>
+                </div>
+            </div>
+        </SurfacePanel>
     </div>
 </div>
 
 <style>
-    .page {
-        height: calc(100vh - 4rem);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 2rem;
-        background: radial-gradient(ellipse at 60% 40%, hsl(212, 30%, 12%) 0%, var(--bg) 70%);
+    .login-page {
+        min-height: calc(100vh - 8rem);
+        display: grid;
+        place-items: center;
+        padding: 2.4rem var(--inline-moat);
     }
 
-    .card {
-        width: 100%;
-        max-width: 22rem;
-        background: var(--lb0);
-        border-radius: 1.4rem;
-        outline: solid 1pt var(--l3);
-        box-shadow: 0 24px 64px hsl(0, 0%, 0%, 0.4);
-        overflow: hidden;
+    .login-card {
+        width: min(100%, 58rem);
+        display: grid;
+        gap: 1.4rem;
     }
 
-    .brand {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 0.4rem;
-        padding: 2.4rem 2rem 2rem;
-        background: linear-gradient(to bottom, var(--la1), transparent);
+    .choice-grid,
+    .login-notes {
+        display: grid;
+        gap: 1rem;
     }
 
-    .brand-icon {
-        width: 3.2rem;
-        height: 3.2rem;
-        border-radius: 0.9rem;
-        background: var(--accent);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.4rem;
-        color: white;
-        margin-bottom: 0.3rem;
-        box-shadow: 0 8px 24px hsl(212, 75%, 50%, 0.35);
+    .choice-grid {
+        grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
     }
 
-    .brand-name {
-        font-size: 1.5rem;
-        font-weight: 800;
-        letter-spacing: -0.02em;
+    .choice {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 1rem;
+        align-items: start;
+        padding: 1.1rem;
+        border-radius: var(--radius-md);
+        background: var(--panel-soft);
+        border: 1px solid var(--panel-border);
+        text-align: left;
+        transition: transform 150ms ease, border-color 150ms ease, background 150ms ease;
     }
 
-    .brand-tagline {
-        font-size: 0.82rem;
-        opacity: 0.5;
+    .choice:hover:not(:disabled) {
+        transform: translateY(-2px);
+        border-color: var(--panel-border-strong);
+        background: hsl(214, 32%, 18%, 0.86);
     }
 
-    .divider {
-        height: 1pt;
-        background: var(--l2);
+    .choice:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
     }
 
-    .body {
-        padding: 1.8rem 2rem 2rem;
-        display: flex;
-        flex-direction: column;
-        gap: 0.9rem;
+    .choice.primary {
+        background: linear-gradient(180deg, hsl(213, 82%, 56%, 0.16), hsl(213, 30%, 18%, 0.6));
+        border-color: var(--panel-border-strong);
     }
 
-    .heading {
+    .choice-icon {
+        width: 2.8rem;
+        height: 2.8rem;
+        display: grid;
+        place-items: center;
+        border-radius: 0.95rem;
+        background: var(--panel-strong);
+        color: var(--accent-strong);
+        border: 1px solid var(--panel-border-strong);
+    }
+
+    .choice-copy {
+        display: grid;
+        gap: 0.45rem;
+    }
+
+    .choice-copy strong,
+    .login-notes strong {
         font-size: 1rem;
-        font-weight: 700;
+        line-height: 1.35;
     }
 
-    .sub {
-        font-size: 0.8rem;
-        opacity: 0.5;
-        line-height: 1.55;
-        margin-top: -0.3rem;
-    }
-
-    .error-msg {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.65rem 0.9rem;
-        background: hsl(0, 45%, 16%);
-        border-radius: 0.6rem;
-        outline: solid 1pt hsl(0, 45%, 32%);
-        font-size: 0.8rem;
-        color: hsl(0, 70%, 68%);
-    }
-
-    .btn-google {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.65rem;
-        padding: 0.85rem 1.4rem;
-        background: white;
-        border-radius: 0.7rem;
-        font-size: 0.9rem;
-        font-weight: 600;
-        color: hsl(0, 0%, 15%);
-        cursor: pointer;
-        transition: background 150ms, transform 100ms, box-shadow 150ms;
-        box-shadow: 0 2px 8px hsl(0, 0%, 0%, 0.2);
-    }
-
-    .btn-google:hover:not(:disabled) {
-        background: hsl(0, 0%, 95%);
-        transform: translateY(-1px);
-        box-shadow: 0 4px 16px hsl(0, 0%, 0%, 0.25);
-    }
-
-    .btn-google:disabled { opacity: 0.6; cursor: not-allowed; }
-
-    .btn-google i { font-size: 0.9rem; }
-
-    .fine-print {
-        font-size: 0.7rem;
-        opacity: 0.3;
-        line-height: 1.55;
-        text-align: center;
+    .choice-copy p,
+    .login-notes p,
+    .error-row {
         margin: 0;
+        color: var(--text-muted);
+        line-height: 1.6;
+        font-size: 0.84rem;
+    }
+
+    .error-row {
+        display: flex;
+        align-items: center;
+        gap: 0.7rem;
+        padding: 0.9rem 1rem;
+        border-radius: var(--radius-sm);
+        background: hsl(0, 62%, 18%, 0.64);
+        border: 1px solid hsl(0, 62%, 36%, 0.68);
+        color: hsl(0, 88%, 84%);
+    }
+
+    .login-notes {
+        grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+        padding-top: 0.2rem;
     }
 </style>

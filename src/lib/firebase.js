@@ -1,18 +1,23 @@
-// Import the functions you need from the SDKs you need
-import { initializeApp, getApps, getApp } from "firebase/app";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+import { getApp, getApps, initializeApp } from 'firebase/app'
+import { env } from '$env/dynamic/public'
 
-// Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyCYWOZgyKWSdokPrFhiZmzmf73YuwKg43k",
-  authDomain: "gamesage-lsu.firebaseapp.com",
-  databaseURL: "https://gamesage-lsu-default-rtdb.firebaseio.com",
-  projectId: "gamesage-lsu",
-  storageBucket: "gamesage-lsu.firebasestorage.app",
-  messagingSenderId: "626081120815",
-  appId: "1:626081120815:web:30bb3f0731e8f5e3757cda"
-};
+    apiKey: env.PUBLIC_FIREBASE_API_KEY,
+    authDomain: env.PUBLIC_FIREBASE_AUTH_DOMAIN,
+    databaseURL: env.PUBLIC_FIREBASE_DATABASE_URL,
+    projectId: env.PUBLIC_FIREBASE_PROJECT_ID,
+    storageBucket: env.PUBLIC_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: env.PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+    appId: env.PUBLIC_FIREBASE_APP_ID,
+}
 
-// Initialize Firebase — guard against duplicate-app errors during hot reload
-export const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+export const isFirebaseConfigured = [
+    firebaseConfig.apiKey,
+    firebaseConfig.authDomain,
+    firebaseConfig.projectId,
+    firebaseConfig.appId,
+].every(Boolean)
+
+export const app = isFirebaseConfigured
+    ? (getApps().length ? getApp() : initializeApp(firebaseConfig))
+    : null

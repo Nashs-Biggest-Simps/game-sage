@@ -1,368 +1,293 @@
 <script>
-    import { onMount }  from 'svelte'
-    import { db }       from '$lib/data'
-    import { steamAPI } from '$lib/steam'
+    import { onMount } from 'svelte'
+    import { db } from '$lib/data'
     import { Algorithm } from '$lib/algorithm'
-    import SuggestRow   from '$lib/components/Dashboard/SuggestRow.svelte'
-    import SuggestCard  from '$lib/components/Dashboard/SuggestCard.svelte'
-    import BuyCard      from '$lib/components/Dashboard/BuyCard.svelte'
+    import { refreshFriends } from '$lib/cache'
+    import { steamAPI } from '$lib/steam'
+    import { makeStoreThumbnail } from '$lib/steam-media'
+    import PageHeader from '$lib/components/layout/PageHeader.svelte'
+    import SurfacePanel from '$lib/components/layout/SurfacePanel.svelte'
+    import RecommendationRail from '$lib/components/Dashboard/RecommendationRail.svelte'
+    import EmptyState from '$lib/components/layout/EmptyState.svelte'
 
-    const algo = new Algorithm()
+    const algorithm = new Algorithm()
 
-    // ── Row state ────────────────────────────────────────────────────────────────
-    let hotItems      = $state([])
-    let hotLoading    = $state(true)
-    let playItems     = $state([])
-    let playLoading   = $state(true)
-    let buyItems      = $state([])
-    let buyLoading    = $state(true)
-    let friendItems   = $state([])
-    let friendLoading = $state(true)
+    let playItems = $state([])
+    let buyItems = $state([])
+    let hotItems = $state([])
+    let playLoading = $state(true)
+    let buyLoading = $state(true)
+    let hotLoading = $state(true)
 
-    let hasSteamID      = $derived(!!$db?.steamID)
+    let hasSteamID = $derived(!!$db?.steamID)
     let preferredGenres = $derived($db?.prefs?.genres?.preferred ?? [])
-    let excludedGenres  = $derived($db?.prefs?.genres?.excluded  ?? [])
+    let excludedGenres = $derived($db?.prefs?.genres?.excluded ?? [])
+    let refreshHours = $derived($db?.prefs?.suggestions?.refreshHours ?? 24)
 
-    let mounted = $state(false)
-    let prefDebounce = null
+    let worthBuying = $derived(buyItems.filter((item) => item.sourceType !== 'friend'))
+    let friendDriven = $derived(buyItems.filter((item) => item.sourceType === 'friend'))
 
-    // Re-fetch play & buy suggestions whenever genre prefs change after mount
-    $effect(() => {
-        const _p = preferredGenres.length
-        const _e = excludedGenres.length
-        if (!mounted || !hasSteamID) return
-        clearTimeout(prefDebounce)
-        prefDebounce = setTimeout(() => {
-            algo.invalidate('all')
-            playLoading = true
-            buyLoading  = true
-            algo.getPlaySuggestions().then(s => { playItems = s; playLoading = false })
-            algo.getBuySuggestions().then(s  => { buyItems  = s; buyLoading  = false })
-        }, 600)
-    })
-
-    // ── Active section jump ───────────────────────────────────────────────────────
-    const SECTIONS = [
-        { id: 'hot',     label: 'Hot Right Now',    icon: 'fire'               },
-        { id: 'play',    label: 'For You',           icon: 'gamepad'            },
-        { id: 'buy',     label: 'Consider Buying',   icon: 'cart-shopping'      },
-        { id: 'friends', label: 'Friends Playing',   icon: 'user-group'         },
-    ]
-
-    function scrollTo(id) {
-        document.getElementById(`section-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }
-
-    // ── Data fetching ────────────────────────────────────────────────────────────
-    async function loadHot() {
+    async function loadHotItems() {
         hotLoading = true
+
         try {
-            const data = await new Promise(res => steamAPI.getFeaturedGames(res))
-            const raw  = data?.top_sellers?.items ?? data?.specials?.items ?? []
-            hotItems   = raw.slice(0, 12).map(g => ({
-                game:   { steam_appid: g.id, name: g.name },
-                reason: g.discount_percent > 0 ? `${g.discount_percent}% off right now` : 'Top seller on Steam',
+            const payload = await steamAPI.getFeaturedGames()
+            const trending = payload?.top_sellers?.items ?? payload?.specials?.items ?? []
+            hotItems = trending.slice(0, 8).map((item) => ({
+                appid: Number(item.id),
+                name: item.name,
+                reason: item.discount_percent > 0 ? `${item.discount_percent}% off and climbing on Steam.` : 'Trending across Steam right now.',
+                price: null,
+                thumbnail: makeStoreThumbnail(item.id),
+                sourceLabel: 'Hot right now',
+                storeData: null,
             }))
-        } catch { hotItems = [] }
-        hotLoading = false
+        } catch (error) {
+            console.warn('[suggest] Could not load featured Steam games:', error)
+            hotItems = []
+        } finally {
+            hotLoading = false
+        }
     }
 
-    async function loadFriends() {
-        if (!$db?.steamID) { friendLoading = false; return }
-        friendLoading = true
-        try {
-            steamAPI.getFriendList(res => {
-                const friends = res?.friendslist?.friends?.slice(0, 50) ?? []
-                if (!friends.length) { friendLoading = false; return }
-                const ids = friends.map(f => f.steamid)
-                steamAPI.getPlayerSummaries(ids, res2 => {
-                    const players = res2?.response?.players ?? []
-                    const inGame  = players
-                        .filter(p => p.gameid && p.gameextrainfo)
-                        .map(p => ({
-                            game:   { steam_appid: parseInt(p.gameid), name: p.gameextrainfo },
-                            reason: `${p.personaname} is playing this right now`,
-                            _avatar: p.avatarmedium,
-                            _friend: p.personaname,
-                        }))
-                    friendItems   = inGame
-                    friendLoading = false
-                })
-            })
-        } catch { friendLoading = false }
+    async function loadSuggestions() {
+        playLoading = true
+        buyLoading = true
+
+        playItems = await algorithm.getPlaySuggestions()
+        buyItems = await algorithm.getBuySuggestions()
+
+        playLoading = false
+        buyLoading = false
+    }
+
+    async function refreshPlay() {
+        playLoading = true
+        algorithm.invalidate('play')
+        playItems = await algorithm.getPlaySuggestions()
+        playLoading = false
+    }
+
+    async function refreshBuy() {
+        buyLoading = true
+        algorithm.invalidate('buy')
+        buyItems = await algorithm.getBuySuggestions()
+        buyLoading = false
+    }
+
+    function feedback(item, liked) {
+        algorithm.recordInteraction({ name: item.name }, liked)
     }
 
     onMount(() => {
-        loadHot()
-        if (hasSteamID) {
-            algo.getPlaySuggestions().then(s => { playItems  = s;  playLoading  = false })
-            algo.getBuySuggestions().then(s  => { buyItems   = s;  buyLoading   = false })
-            loadFriends()
-        } else {
-            playLoading  = false
-            buyLoading   = false
-            friendLoading = false
+        refreshFriends()
+        loadHotItems()
+        if (hasSteamID) loadSuggestions()
+        else {
+            playLoading = false
+            buyLoading = false
         }
-        mounted = true
     })
 </script>
 
-<div class="page">
+<div class="suggest-page">
+    <div class="main-column">
+        <PageHeader
+            eyebrow="Reliable recommendations"
+            title="A suggestion center that still works when the AI layer is quiet."
+            description="GameSage now ranks owned backlog picks and store candidates heuristically first, then uses AI only to sharpen the copy. That means the page keeps loading useful cards instead of collapsing into empty states every refresh."
+        />
 
-    <!-- ── Sidebar ──────────────────────────────────────────────── -->
-    <aside class="sidebar">
-        <div class="sidebar-heading">Sections</div>
-        <nav class="sidebar-nav">
-            {#each SECTIONS as s}
-                <button class="sidebar-item" onclick={() => scrollTo(s.id)}>
-                    <i class="fa-solid fa-{s.icon}"></i>
-                    {s.label}
-                </button>
-            {/each}
-        </nav>
-
-        {#if preferredGenres.length > 0 || excludedGenres.length > 0}
-        <div class="prefs-indicator">
-            <div class="prefs-heading">
-                <i class="fa-solid fa-sliders"></i>
-                Active Filters
-            </div>
-            {#if preferredGenres.length > 0}
-                <div class="prefs-row prefer">
-                    <i class="fa-solid fa-heart"></i>
-                    {preferredGenres.slice(0, 3).join(', ')}{preferredGenres.length > 3 ? ` +${preferredGenres.length - 3}` : ''}
-                </div>
-            {/if}
-            {#if excludedGenres.length > 0}
-                <div class="prefs-row exclude">
-                    <i class="fa-solid fa-ban"></i>
-                    {excludedGenres.slice(0, 3).join(', ')}{excludedGenres.length > 3 ? ` +${excludedGenres.length - 3}` : ''}
-                </div>
-            {/if}
-            <a href="/profile" class="prefs-edit-link">
-                Edit in Preferences →
-            </a>
-        </div>
-        {/if}
-    </aside>
-
-    <!-- ── Main content ─────────────────────────────────────────── -->
-    <main class="main">
-
-        <!-- Hot Right Now -->
-        <section id="section-hot">
-            <SuggestRow
-                title="Hot Right Now"
-                type="play"
-                items={hotItems}
-                loading={hotLoading}
-                emptyIcon="fire"
-                emptyText="Could not load trending games."
-            />
-        </section>
-
-        <!-- For You: AI play suggestions -->
-        <section id="section-play">
-            {#if hasSteamID}
-                <SuggestRow
-                    title="Suggested for You"
-                    type="play"
+        {#if hasSteamID}
+            <SurfacePanel>
+                <RecommendationRail
+                    title="Play next"
+                    subtitle="Owned backlog picks ranked from your real library signals."
+                    badge="Library"
                     items={playItems}
                     loading={playLoading}
-                    emptyIcon="gamepad"
-                    emptyText="Play suggestions appear once your library finishes loading."
+                    onRefresh={refreshPlay}
+                    emptyTitle="Owned recommendations need more synced library detail."
+                    emptyDescription="Once your detail cache finishes hydrating, GameSage can rank underplayed games against your top genres and recent habits."
                 />
-            {:else}
-                <div class="no-steam-row">
-                    <div class="no-steam-icon"><i class="fa-solid fa-gamepad"></i></div>
-                    <div>
-                        <div class="no-steam-title">Suggested for You</div>
-                        <div class="no-steam-desc">Add your Steam ID in your profile to get personalized play recommendations.</div>
-                    </div>
-                </div>
-            {/if}
-        </section>
+            </SurfacePanel>
 
-        <!-- Consider Buying: AI buy suggestions -->
-        <section id="section-buy">
-            {#if hasSteamID}
-                <SuggestRow
-                    title="Consider Buying"
-                    type="buy"
-                    items={buyItems}
+            <SurfacePanel>
+                <RecommendationRail
+                    title="Worth buying"
+                    subtitle="Store candidates that match your current taste profile."
+                    badge="Store"
+                    kind="buy"
+                    items={worthBuying}
                     loading={buyLoading}
-                    emptyIcon="cart-shopping"
-                    emptyText="Buy suggestions appear once your library finishes loading."
+                    onRefresh={refreshBuy}
+                    onFeedback={feedback}
+                    emptyTitle="No store-side matches are ready yet."
+                    emptyDescription="The deterministic buy pass combines Steam featured items with your own genre profile before AI writes the one-line reason."
                 />
-            {:else}
-                <div class="no-steam-row">
-                    <div class="no-steam-icon"><i class="fa-solid fa-cart-shopping"></i></div>
-                    <div>
-                        <div class="no-steam-title">Consider Buying</div>
-                        <div class="no-steam-desc">Add your Steam ID to get personalized game purchase recommendations.</div>
+            </SurfacePanel>
+
+            <SurfacePanel>
+                <RecommendationRail
+                    title="Because your friends are playing"
+                    subtitle="Friend-driven store picks stay visible as their own section instead of being buried in a generic feed."
+                    badge="Social"
+                    kind="buy"
+                    items={friendDriven}
+                    loading={buyLoading}
+                    onRefresh={refreshBuy}
+                    onFeedback={feedback}
+                    emptyTitle="None of your active friend signals are strong enough yet."
+                    emptyDescription="When friends are in games you do not own, they show up here as separate buy candidates."
+                />
+            </SurfacePanel>
+        {:else}
+            <EmptyState icon="link" title="Suggestions unlock once you add a Steam ID." description="Guest mode still works across the app, but the recommendation engine needs a synced Steam library before it can rank backlog or store candidates." />
+        {/if}
+
+        <SurfacePanel>
+            <RecommendationRail
+                title="Hot right now"
+                subtitle="Steam-wide heat that stays visible even if your personal recommendation cache is cold."
+                badge="Trending"
+                kind="buy"
+                items={hotItems}
+                loading={hotLoading}
+                onRefresh={loadHotItems}
+                emptyTitle="Steam featured data is temporarily unavailable."
+                emptyDescription="This row comes directly from Steam’s featured categories and acts as a stable fallback surface."
+            />
+        </SurfacePanel>
+    </div>
+
+    <aside class="side-column">
+        <SurfacePanel>
+            <div class="prefs-card">
+                <div class="card-title">Active tuning</div>
+                <div class="tuning-row">
+                    <span>Cache cadence</span>
+                    <strong>{refreshHours}h</strong>
+                </div>
+                <div class="tag-block">
+                    <small>Preferred genres</small>
+                    <div class="chips">
+                        {#if preferredGenres.length > 0}
+                            {#each preferredGenres as genre}
+                                <span class="chip">{genre}</span>
+                            {/each}
+                        {:else}
+                            <span class="chip">No preferred genres</span>
+                        {/if}
                     </div>
                 </div>
-            {/if}
-        </section>
-
-        <!-- Friends Playing -->
-        <section id="section-friends">
-            {#if hasSteamID}
-                <SuggestRow
-                    title="Friends Playing Right Now"
-                    type="play"
-                    items={friendItems}
-                    loading={friendLoading}
-                    emptyIcon="user-group"
-                    emptyText="None of your friends are in a game right now."
-                />
-            {:else}
-                <div class="no-steam-row">
-                    <div class="no-steam-icon"><i class="fa-solid fa-user-group"></i></div>
-                    <div>
-                        <div class="no-steam-title">Friends Playing Right Now</div>
-                        <div class="no-steam-desc">Add your Steam ID to see what your friends are playing.</div>
+                <div class="tag-block">
+                    <small>Excluded genres</small>
+                    <div class="chips">
+                        {#if excludedGenres.length > 0}
+                            {#each excludedGenres as genre}
+                                <span class="chip">{genre}</span>
+                            {/each}
+                        {:else}
+                            <span class="chip">No excluded genres</span>
+                        {/if}
                     </div>
                 </div>
-            {/if}
-        </section>
+            </div>
+        </SurfacePanel>
 
-    </main>
+        <SurfacePanel>
+            <div class="prefs-card">
+                <div class="card-title">Why this page is different now</div>
+                <ul class="note-list">
+                    <li>Owned and store candidates are ranked before AI is asked to explain them.</li>
+                    <li>Each section has a scoped refresh action instead of a single fragile page-wide reload.</li>
+                    <li>Trending and friend-driven surfaces stay visible even if one recommendation stream is empty.</li>
+                </ul>
+            </div>
+        </SurfacePanel>
+    </aside>
 </div>
 
 <style>
-    .page {
+    .suggest-page {
         display: grid;
-        grid-template-columns: 13rem minmax(0, 1fr);
-        gap: 2.4rem;
+        grid-template-columns: minmax(0, 1.55fr) minmax(18rem, 0.9fr);
+        gap: 1.2rem;
         align-items: start;
     }
 
-    /* ── Sidebar ──────────────────────── */
-
-    .sidebar {
-        position: sticky;
-        top: 2.4rem;
-        display: flex;
-        flex-direction: column;
-        gap: 0.8rem;
+    .main-column,
+    .side-column,
+    .prefs-card,
+    .tag-block {
+        display: grid;
     }
 
-    .sidebar-heading {
-        font-size: 0.7rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        opacity: 0.4;
-    }
-
-    .sidebar-nav {
-        display: flex;
-        flex-direction: column;
-        gap: 0.1rem;
-    }
-
-    .sidebar-item {
-        display: flex;
-        align-items: center;
-        gap: 0.6rem;
-        padding: 0.5rem 0.65rem;
-        border-radius: 0.55rem;
-        font-size: 0.84rem;
-        font-weight: 500;
-        cursor: pointer;
-        color: inherit;
-        opacity: 0.6;
-        transition: background 120ms, opacity 120ms;
-    }
-
-    .sidebar-item:hover { background: var(--l1); opacity: 1; }
-    .sidebar-item i { width: 0.9rem; text-align: center; font-size: 0.75rem; flex-shrink: 0; }
-
-    /* ── Prefs indicator ─────────── */
-
-    .prefs-indicator {
-        margin-top: 0.8rem;
-        padding: 0.85rem;
-        background: var(--la1);
-        border-radius: 0.75rem;
-        outline: solid 1pt var(--la3);
-        display: flex;
-        flex-direction: column;
-        gap: 0.45rem;
-    }
-
-    .prefs-heading {
-        display: flex;
-        align-items: center;
-        gap: 0.35rem;
-        font-size: 0.65rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        color: var(--bright-accent);
-        opacity: 0.85;
-    }
-
-    .prefs-row {
-        display: flex;
-        align-items: center;
-        gap: 0.35rem;
-        font-size: 0.72rem;
-        font-weight: 500;
-        line-height: 1.4;
-    }
-
-    .prefs-row.prefer { color: var(--bright-accent); }
-    .prefs-row.exclude { color: hsl(0, 70%, 65%); }
-    .prefs-row i { font-size: 0.6rem; flex-shrink: 0; }
-
-    .prefs-edit-link {
-        font-size: 0.68rem;
-        color: var(--bright-accent);
-        opacity: 0.6;
-        margin-top: 0.1rem;
-        text-decoration: none;
-        transition: opacity 120ms;
-    }
-
-    .prefs-edit-link:hover { opacity: 1; }
-
-    /* ── Main ─────────────────────────── */
-
-    .main {
-        display: flex;
-        flex-direction: column;
-        gap: 2.8rem;
-    }
-
-    section { scroll-margin-top: 2.4rem; }
-
-    /* ── No Steam ID placeholder rows ─── */
-
-    .no-steam-row {
-        display: flex;
-        align-items: center;
+    .main-column,
+    .side-column {
         gap: 1.2rem;
-        padding: 1.4rem 1.6rem;
-        background: var(--l1);
-        border-radius: 1rem;
-        outline: solid 1pt var(--l2);
-        opacity: 0.55;
     }
 
-    .no-steam-icon {
-        width: 2.8rem;
-        height: 2.8rem;
-        border-radius: 0.7rem;
-        background: var(--l2);
+    .side-column {
+        position: sticky;
+        top: 5.8rem;
+    }
+
+    .prefs-card {
+        gap: 1rem;
+    }
+
+    .card-title {
+        font-size: 0.96rem;
+        font-weight: 700;
+    }
+
+    .tuning-row {
         display: flex;
         align-items: center;
-        justify-content: center;
-        font-size: 1rem;
-        flex-shrink: 0;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.9rem 1rem;
+        border-radius: var(--radius-md);
+        background: var(--panel-soft);
+        border: 1px solid var(--panel-border);
+        color: var(--text-muted);
     }
 
-    .no-steam-title { font-size: 0.92rem; font-weight: 700; margin-bottom: 0.25rem; }
-    .no-steam-desc  { font-size: 0.78rem; opacity: 0.7; line-height: 1.5; }
+    .tag-block {
+        gap: 0.55rem;
+    }
+
+    .tag-block small {
+        color: var(--text-dim);
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-weight: 700;
+    }
+
+    .chips {
+        display: flex;
+        gap: 0.55rem;
+        flex-wrap: wrap;
+    }
+
+    .note-list {
+        margin: 0;
+        padding-left: 1rem;
+        color: var(--text-muted);
+        line-height: 1.7;
+        display: grid;
+        gap: 0.55rem;
+    }
+
+    @media (max-width: 1080px) {
+        .suggest-page {
+            grid-template-columns: 1fr;
+        }
+
+        .side-column {
+            position: static;
+        }
+    }
 </style>
