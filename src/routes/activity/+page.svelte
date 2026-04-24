@@ -4,7 +4,8 @@
     import { refreshFriends }    from '$lib/cache'
     import { resolve }           from '$app/paths'
     import { goto }              from '$app/navigation'
-  import RecentlyPlayed from '$lib/components/mod/RecentlyPlayed.svelte';
+    import RecentlyPlayed from '$lib/components/mod/RecentlyPlayed.svelte';
+    import TopGamesPlayed from '$lib/components/mod/TopGamesPlayed.svelte';
 
     // ── Personal data ─────────────────────────────────────────────────────────
 
@@ -125,41 +126,9 @@
             <RecentlyPlayed style="grid" />
         </section>
 
-        <!-- Top Games All Time -->
         {#if topGames().length > 0}
         <section class="panel">
-            <div class="panel-title">
-                <i class="fa-solid fa-trophy"></i>
-                Top Games All Time
-            </div>
-            <div class="top-list">
-                {#each topGames() as g, i (g.appid)}
-                    {@const img = makeImgState(g.appid, g.detail)}
-                    <div
-                        class="top-row"
-                        role="button"
-                        tabindex="0"
-                        onclick={() => goto(resolve(`/view?id=${g.appid}`))}
-                        onkeydown={(e) => e.key === 'Enter' && goto(resolve(`/view?id=${g.appid}`))}
-                    >
-                        <div class="rank">{i + 1}</div>
-                        <div class="top-art">
-                            {#if img.src && !img.failed}
-                                <img src={img.src} alt={g.detail.name} loading="lazy" onerror={() => img.next()} />
-                            {:else}
-                                <div class="top-art-fallback"></div>
-                            {/if}
-                        </div>
-                        <div class="top-info">
-                            <div class="top-name">{g.detail.name}</div>
-                            <div class="top-bar-wrap">
-                                <div class="top-bar" style="width: {g.pct}%"></div>
-                            </div>
-                        </div>
-                        <div class="top-hours">{g.hours.toLocaleString()}h</div>
-                    </div>
-                {/each}
-            </div>
+            <TopGamesPlayed />
         </section>
         {/if}
 
