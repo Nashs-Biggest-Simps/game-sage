@@ -76,8 +76,8 @@
 <div class="page">
 
     <!-- ── Search bar ── -->
+    <div class="page-title">Search</div>
     <div class="search-hero">
-        <h1 class="page-title">Search</h1>
         <div class="search-bar">
             <i class="fa-solid fa-magnifying-glass search-icon"></i>
             <input
@@ -196,11 +196,20 @@
                     onclick={() => goto(resolve(`/view?id=${item.id}`))}
                 >
                     <div class="card-art">
-                        {#if item.logo}
-                            <img src={item.logo} alt={item.name} loading="lazy" />
-                        {:else}
-                            <div class="art-fallback"></div>
-                        {/if}
+                        <img
+                            src="https://cdn.akamai.steamstatic.com/steam/apps/{item.id}/header.jpg"
+                            alt={item.name}
+                            loading="lazy"
+                            onerror={(e) => {
+                                const el = e.currentTarget
+                                if (item.tiny_image && el.src !== item.tiny_image) {
+                                    el.src = item.tiny_image
+                                    el.dataset.fallback = '1'
+                                } else {
+                                    el.style.display = 'none'
+                                }
+                            }}
+                        />
                         <div class="art-badge store-price">
                             {#if disc}
                                 <span class="disc-pct">-{disc}%</span>
@@ -222,25 +231,10 @@
 </div>
 
 <style>
-    .page {
-        display: flex;
-        flex-direction: column;
-        gap: 1.6rem;
-    }
-
-    /* ── Search hero ──────────────── */
-
     .search-hero {
         display: flex;
         flex-direction: column;
         gap: 1rem;
-    }
-
-    .page-title {
-        font-size: 1.9rem;
-        font-weight: 800;
-        margin: 0;
-        letter-spacing: -0.02em;
     }
 
     .search-bar {
@@ -463,8 +457,14 @@
         width: 100%;
         height: 100%;
         object-fit: cover;
+        object-position: center;
         display: block;
         transition: transform 200ms;
+    }
+
+    :global(.card-art img[data-fallback]) {
+        object-fit: contain;
+        background: var(--l2);
     }
 
     .card:hover .card-art img { transform: scale(1.05); }
