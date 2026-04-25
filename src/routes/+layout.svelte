@@ -36,8 +36,6 @@
 </svelte:head>
 
 <div class="app">
-	<div class="background"></div>
-
 	{#if isAuthed}
 		<div class="top-navbar">
 			<TopNavbar />
@@ -51,19 +49,12 @@
 		</div>
 	{/if}
 
-	<div class="content {!isAuthed ? 'full' : ''}">
+	<div class="content">
 		{@render children()}
 	</div>
 </div>
 
 <style>
-	.background {
-		position: fixed;
-		inset: 0;
-		z-index: -100;
-		background: linear-gradient(to bottom, transparent, var(--l05));
-		background: var(--bg);
-	}
 
 	.top-navbar {
 		padding-inline: var(--inline-moat);
