@@ -26,27 +26,35 @@
 
 <!--  -->
 
-<div class="top-list">
-    {#each topGames() as game, i}
-        <div class="top-row" role="button" tabindex="0" onclick={() => goto(resolve(`/view?id=${game.appid}`))} onkeydown={(e) => e.key === 'Enter' && goto(resolve(`/view?id=${game.appid}`))}>
-            <div class="rank">{i + 1}</div>
-            <div class="top-art">
-                {#if game?.detail?.thumbnail}
-                    <img src={game.detail.thumbnail} alt={game.detail.name} loading="lazy" />
-                {:else}
-                    <div class="top-art-fallback"></div>
-                {/if}
-            </div>
-            <div class="top-info">
-                <div class="top-name">{game.detail.name}</div>
-                <div class="top-bar-wrap">
-                    <div class="top-bar" style="width: {game.pct}%"></div>
+
+{#if topGames().length > 0}
+<section class="panel">
+    <div class="row-header">
+        <div class="row-title">Top Games Played</div>
+    </div>
+    <div class="top-list">
+        {#each topGames() as game, i}
+            <div class="top-row" role="button" tabindex="0" onclick={() => goto(resolve(`/view?id=${game.appid}`))} onkeydown={(e) => e.key === 'Enter' && goto(resolve(`/view?id=${game.appid}`))}>
+                <div class="rank">{i + 1}</div>
+                <div class="top-art">
+                    {#if game?.detail?.thumbnail}
+                        <img src={game.detail.thumbnail} alt={game.detail.name} loading="lazy" />
+                    {:else}
+                        <div class="top-art-fallback"></div>
+                    {/if}
                 </div>
+                <div class="top-info">
+                    <div class="top-name">{game.detail.name}</div>
+                    <div class="top-bar-wrap">
+                        <div class="top-bar" style="width: {game.pct}%"></div>
+                    </div>
+                </div>
+                <div class="top-hours">{game.hours.toLocaleString()}h</div>
             </div>
-            <div class="top-hours">{game.hours.toLocaleString()}h</div>
-        </div>
-    {/each}
-</div>
+        {/each}
+    </div>
+</section>
+{/if}
 
 <!--  -->
 

@@ -6,11 +6,11 @@
     let inGame  = $derived(friends.filter(f => f.gameid))
     let online  = $derived(friends.filter(f => !f.gameid && f.personastate > 0))
     let offline = $derived(friends.filter(f => !f.gameid && f.personastate === 0))
-
 </script>
 
 <!--  -->
 
+{#if friends.length > 0}
 <div class="stat-bar">
     <div class="stat-item">
         <div class="stat-num">{friends.length}</div>
@@ -32,6 +32,7 @@
         <div class="stat-lbl">Offline</div>
     </div>
 </div>
+{/if}
 
 <!--  -->
 

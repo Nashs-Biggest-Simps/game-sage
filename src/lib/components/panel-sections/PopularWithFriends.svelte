@@ -2,7 +2,6 @@
 <script>
     import { db } from "$lib/data"
 
-
     let friendsLoading = $derived($db?.cache?.friends == null)
     let friends = $derived($db?.cache?.friends?.data ?? [])
     let inGame  = $derived(friends.filter(f => f.gameid))
@@ -16,42 +15,47 @@
         }
         return Object.values(map).sort((a, b) => b.friends.length - a.friends.length)
     })
-
 </script>
 
 <!--  -->
 
-<div class="pop-list">
-    {#if popularGames().length > 0}
-        {#each popularGames() as game (game.gameid)}
-            <div class="pop-row">
-                <div class="pop-art"
-                    style="background-image: url('https://cdn.akamai.steamstatic.com/steam/apps/{game.gameid}/capsule_231x87.jpg')"
-                ></div>
-                <div class="pop-info">
-                    <div class="pop-name">{game.name}</div>
-                    <div class="pop-count">
-                        {game.friends.length} friend{game.friends.length !== 1 ? 's' : ''} playing
+<div class="panel">
+    <div class="panel-title">
+        <i class="fa-solid fa-fire"></i>
+        Popular with Friends
+    </div>
+    <div class="pop-list">
+        {#if popularGames().length > 0}
+            {#each popularGames() as game (game.gameid)}
+                <div class="pop-row">
+                    <div class="pop-art"
+                        style="background-image: url('https://cdn.akamai.steamstatic.com/steam/apps/{game.gameid}/capsule_231x87.jpg')"
+                    ></div>
+                    <div class="pop-info">
+                        <div class="pop-name">{game.name}</div>
+                        <div class="pop-count">
+                            {game.friends.length} friend{game.friends.length !== 1 ? 's' : ''} playing
+                        </div>
+                    </div>
+                    <div class="pop-avatars">
+                        {#each game.friends.slice(0, 3) as f (f.steamid)}
+                            <img class="pop-av" src={f.avatarmedium} alt={f.personaname} title={f.personaname} loading="lazy" />
+                        {/each}
+                        {#if game.friends.length > 3}
+                            <div class="pop-av-more">+{game.friends.length - 3}</div>
+                        {/if}
                     </div>
                 </div>
-                <div class="pop-avatars">
-                    {#each game.friends.slice(0, 3) as f (f.steamid)}
-                        <img class="pop-av" src={f.avatarmedium} alt={f.personaname} title={f.personaname} loading="lazy" />
-                    {/each}
-                    {#if game.friends.length > 3}
-                        <div class="pop-av-more">+{game.friends.length - 3}</div>
-                    {/if}
-                </div>
+            {/each}
+        {:else if friendsLoading}
+            {#each Array(3) as _}<div class="friend-skeleton"></div>{/each}
+        {:else}
+            <div class="empty-row">
+                <i class="fa-solid fa-moon"></i>
+                <span>No friends in a game right now</span>
             </div>
-        {/each}
-    {:else if friendsLoading}
-        {#each Array(3) as _}<div class="friend-skeleton"></div>{/each}
-    {:else}
-        <div class="empty-row">
-            <i class="fa-solid fa-moon"></i>
-            <span>No friends in a game right now</span>
-        </div>
-    {/if}
+        {/if}
+    </div>
 </div>
 
 <!--  -->
