@@ -650,15 +650,6 @@
 
     .back-btn:hover { background: var(--l2); outline-color: var(--l4); }
 
-    .topbar-name {
-        font-size: 1.5rem;
-        font-weight: 800;
-        letter-spacing: -0.02em;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
     .topbar-sk {
         height: 1.5rem;
         width: 14rem;

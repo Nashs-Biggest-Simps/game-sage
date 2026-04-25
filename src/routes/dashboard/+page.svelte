@@ -14,8 +14,8 @@
     // Bottom News Section
     import NewsDisplay          from '$lib/components/games/NewsDisplay.svelte';
     // Right Side Modules
-    import QuickStats           from '$lib/components/mod/QuickStats.svelte'
-    import ActivityFeed         from '$lib/components/mod/ActivityFeed.svelte'
+    import QuickStats           from '$lib/components/panel-sections/QuickStats.svelte'
+    import ActivityFeed         from '$lib/components/panel-sections/ActivityFeed.svelte'
 
     let mostRecentGame = $derived($db?.cache?.recentlyPlayed?.data[0] ?? null)
     let libraryCount   = $derived(($db?.cache?.library?.appIdList ?? []).length)
@@ -116,12 +116,6 @@
 	.profile-btn:hover {
 		background: var(--l1);
 		outline-color: var(--l3);
-	}
-
-	.profile-btn.active {
-		background: var(--la1);
-		outline-color: var(--la3);
-		color: var(--bright-accent);
 	}
 
 	.profile-img {

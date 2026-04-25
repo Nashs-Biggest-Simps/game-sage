@@ -65,47 +65,4 @@
 		align-items: center;
 		gap: 0.15rem;
 	}
-
-	.profile-btn {
-		display: flex;
-		align-items: center;
-		gap: 0.55rem;
-		padding: 0.35rem 0.7rem 0.35rem 0.35rem;
-		margin-left: 0.5rem;
-		border-radius: 100vh;
-		cursor: pointer;
-		font-size: 0.85rem;
-		font-weight: 600;
-		transition: background 150ms;
-		outline: solid 1pt transparent;
-	}
-
-	.profile-btn:hover {
-		background: var(--l1);
-		outline-color: var(--l3);
-	}
-
-	.profile-btn.active {
-		background: var(--la1);
-		outline-color: var(--la3);
-		color: var(--bright-accent);
-	}
-
-	.profile-img {
-		width: 1.7rem;
-		height: 1.7rem;
-		border-radius: 50%;
-		object-fit: cover;
-	}
-
-	.profile-icon {
-		width: 1.7rem;
-		height: 1.7rem;
-		border-radius: 50%;
-		background: var(--l3);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		font-size: 0.75rem;
-	}
 </style>
