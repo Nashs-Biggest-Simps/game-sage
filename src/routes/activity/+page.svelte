@@ -6,10 +6,10 @@
     import { goto }              from '$app/navigation'
     import RecentlyPlayed from '$lib/components/mod/RecentlyPlayed.svelte';
     import TopGamesPlayed from '$lib/components/mod/TopGamesPlayed.svelte';
-  import SmallActiveFriends from '$lib/components/mod/SmallActiveFriends.svelte';
-  import PopularWithFriends from '$lib/components/mod/PopularWithFriends.svelte';
-  import FriendActivity from '$lib/components/Home/FriendActivity.svelte';
-  import FriendsList from '$lib/components/mod/FriendsList.svelte';
+    import SmallActiveFriends from '$lib/components/mod/SmallActiveFriends.svelte';
+    import PopularWithFriends from '$lib/components/mod/PopularWithFriends.svelte';
+    import FriendActivity from '$lib/components/Home/FriendActivity.svelte';
+    import FriendsList from '$lib/components/mod/FriendsList.svelte';
 
     // ── Personal data ─────────────────────────────────────────────────────────
 
@@ -106,7 +106,7 @@
 
 <div class="page">
     <div class="page-header">
-        <h1 class="page-title">Activity</h1>
+        <div class="page-title">Activity</div>
         <div class="stat-pills">
             {#if recentGames.length > 0}
                 <div class="pill"><i class="fa-solid fa-gamepad"></i>{recentGames.length} game{recentGames.length !== 1 ? 's' : ''} this week</div>
@@ -119,19 +119,19 @@
     
     <div class="page-content">
         <div class="left">
-            <section class="panel">
-                <div class="row-header">
-                    <div class="row-title">Recently Played</div>
-                </div>
-                <RecentlyPlayed style="grid" />
-            </section>
-    
             {#if topGames().length > 0}
             <section class="panel">
                 <div class="row-header">
                     <div class="row-title">Top Games Played</div>
                 </div>
                 <TopGamesPlayed />
+            </section>
+
+            <section class="row-section">
+                <div class="row-header">
+                    <div class="row-title">Recently Played</div>
+                </div>
+                <RecentlyPlayed />
             </section>
             {/if}
         </div>
@@ -178,12 +178,6 @@
         display: grid;
         gap: 1.2rem;
     }
-    .page-header {
-        display: flex;
-        align-items: center;
-        gap: 1.2rem;
-        flex-wrap: wrap;
-    }
 
     .page-content{
         display: grid;
@@ -195,17 +189,11 @@
     .page-content .left  { display: flex; flex-direction: column; gap: 1.6rem; }
     .page-content .right { display: flex; flex-direction: column; gap: 1.6rem; }
 
-    @media (orientation: portrait) {
+    /* @media (orientation: portrait) {
         .page-content{
             grid-template-columns: minmax(0, 1fr);
         }
-    }
-
-    .page-title {
-        all: unset;
-        font-size: 2rem;
-        font-weight: 800;
-    }
+    } */
 
     .panel-title-row {
         display: flex;

@@ -8,11 +8,26 @@
 
     let { style = "row" } = $props()
     let recentGames  = $derived($db?.cache?.recentlyPlayed?.data ?? [])
+    
+    let isPortrait = $state(false);
+
+    function handleResize() {
+        const matches = window.matchMedia('(orientation: portrait)').matches
+        isPortrait = window.matchMedia('(orientation: portrait)').matches;
+    }
+
+    onMount(handleResize)
 </script>
 
 <!--  -->
 
-<GameRow games={recentGames} />
+<svelte:window on:resize={handleResize} />
+
+{#if style == "row"}
+    <GameRow games={recentGames} />
+{:else if style == "grid"}
+    <GameGrid items={recentGames} />
+{/if}
 
 <!--  -->
 

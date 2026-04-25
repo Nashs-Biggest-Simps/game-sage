@@ -178,7 +178,7 @@
             <i class="fa-solid fa-arrow-left"></i>
         </button>
         {#if game}
-            <span class="topbar-name">{game.name}</span>
+            <span class="page-title">{game.name}</span>
         {:else if loadingGame}
             <div class="topbar-sk"></div>
         {/if}

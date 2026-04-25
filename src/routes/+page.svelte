@@ -22,8 +22,6 @@
             Open GameSage
         </a>
     </div>
-    
-
 </div>
 
 <style>

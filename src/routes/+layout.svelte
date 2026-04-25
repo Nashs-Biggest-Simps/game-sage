@@ -62,6 +62,7 @@
 		inset: 0;
 		z-index: -100;
 		background: linear-gradient(to bottom, transparent, var(--l05));
+		background: var(--bg);
 	}
 
 	.top-navbar {

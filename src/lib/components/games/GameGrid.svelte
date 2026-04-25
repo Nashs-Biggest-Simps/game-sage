@@ -1,12 +1,12 @@
 <script>
-    import GameGridItem from '$lib/components/games/GameGridItem.svelte'
+    import GameItem from './GameItem.svelte';
 
     let { items = [] } = $props()
 </script>
 
 <div class="grid">
-    {#each items as item (item.appid)}
-        <GameGridItem appid={item.appid} playtime={item.playtime} />
+    {#each items as item}
+        <GameItem game={item} />
     {/each}
 </div>
 

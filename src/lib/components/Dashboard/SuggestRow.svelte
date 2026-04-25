@@ -10,6 +10,9 @@
         libraryCount = null,   // play only: hide/message if library < 10
         onRefresh   = null,    // optional callback to force-refresh suggestions
         onFeedback  = null,    // buy only: (game, liked) => void
+        emptyIcon   = null,
+        emptyText   = null,
+        ai          = true,
     } = $props()
 
     const SKELETON_COUNT = 5
@@ -22,10 +25,12 @@
     <header class="row-header">
         <h2 class="row-title">{title}</h2>
 
-        <span class="ai-badge">
-            <i class="fa-solid fa-wand-magic-sparkles"></i>
-            AI
-        </span>
+        {#if ai}
+            <span class="ai-badge">
+                <i class="fa-solid fa-wand-magic-sparkles"></i>
+                AI
+            </span>
+        {/if}
 
         {#if onRefresh}
             <button
@@ -59,11 +64,11 @@
         </div>
     {:else if items.length === 0}
         <div class="empty-state">
-            <i class="fa-solid fa-{type === 'buy' ? 'magnifying-glass' : 'gamepad'}"></i>
+            <i class="fa-solid fa-{emptyIcon ?? (type === 'buy' ? 'magnifying-glass' : 'gamepad')}"></i>
             <span>
-                {type === 'buy'
+                {emptyText ?? (type === 'buy'
                     ? 'Buy suggestions will appear once your library data loads.'
-                    : 'Play suggestions will appear once your library data loads.'}
+                    : 'Play suggestions will appear once your library data loads.')}
             </span>
         </div>
     {:else}

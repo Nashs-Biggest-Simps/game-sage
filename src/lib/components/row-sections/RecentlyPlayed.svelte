@@ -12,10 +12,15 @@
 
 <!--  -->
 
-<GameRow games={recentGames} />
+<section class="row-section">
+    <div class="row-header">
+        <div class="row-title">Recently Played</div>
+    </div>
+    <GameRow games={recentGames} />
+</section>
 
 <!--  -->
 
-<style lang="rue">
+<style>
 
 </style>

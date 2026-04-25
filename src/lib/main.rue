@@ -107,6 +107,24 @@ input{
     line-height: 1.5;
 }
 
+.page{
+    display: grid;
+    gap: 1.2rem;
+}
+
+.page-header {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 1.2rem;
+    flex-wrap: wrap;
+}
+
+.page-title{
+    font-size: 2rem;
+    font-weight: 800;
+}
+
 .panel {
     background: var(--lb0);
     border-radius: 1.2rem;
@@ -152,13 +170,16 @@ input{
 }
 
 .stat-pills { 
-    display: flex; 
-    gap: 0.5rem; 
-    flex-wrap: wrap; 
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    justify-content: flex-start;
 }
 
 .pill {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     gap: 0.4rem;
     padding: 0.3rem 0.75rem;
@@ -168,6 +189,7 @@ input{
     font-size: 0.8rem;
     font-weight: 600;
     opacity: 0.75;
+    white-space: nowrap;
 }
 
 .pill.accent {

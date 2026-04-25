@@ -19,18 +19,18 @@
         if (!appIdList) return null
 
         let arr = appIdList.map(id => ({
-            appid:    id,
-            playtime: playtime[id] ?? 0,
-            detail:   details[id]?.data ?? null,
+            ...(details[id]?.data ?? {}),
+            appid:            id,
+            playtime_forever: playtime[id] ?? 0,
         }))
 
-        if (filterMode === 'Never Played') arr = arr.filter(g => g.playtime === 0)
+        if (filterMode === 'Never Played') arr = arr.filter(g => g.playtime_forever === 0)
 
         switch (sortKey) {
-            case 'Most Played':  arr.sort((a, b) => b.playtime - a.playtime); break
-            case 'A → Z':        arr.sort((a, b) => (a.detail?.name ?? '').localeCompare(b.detail?.name ?? '')); break
-            case 'Z → A':        arr.sort((a, b) => (b.detail?.name ?? '').localeCompare(a.detail?.name ?? '')); break
-            case 'Never Played': arr = arr.filter(g => g.playtime === 0); break
+            case 'Most Played':  arr.sort((a, b) => b.playtime_forever - a.playtime_forever); break
+            case 'A → Z':        arr.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '')); break
+            case 'Z → A':        arr.sort((a, b) => (b.name ?? '').localeCompare(a.name ?? '')); break
+            case 'Never Played': arr = arr.filter(g => g.playtime_forever === 0); break
         }
 
         return arr
@@ -45,7 +45,7 @@
 <div class="page">
 
     <!-- ── Header + controls ── -->
-    <div class="toolbar">
+    <div class="page-header">
         <div class="toolbar-left">
             <h1 class="page-title">Library</h1>
             {#if total > 0}
@@ -114,34 +114,11 @@
 </div>
 
 <style>
-    .page {
-        display: flex;
-        flex-direction: column;
-        gap: 1.6rem;
-    }
-
-    /* ── Toolbar ──────────────────── */
-
-    .toolbar {
+    .toolbar-left {
+        height: 2rem;
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        gap: 1.2rem;
-        flex-wrap: wrap;
-    }
-
-    .toolbar-left {
-        display: flex;
-        align-items: baseline;
-        gap: 1rem;
-        flex-wrap: wrap;
-    }
-
-    .page-title {
-        font-size: 1.9rem;
-        font-weight: 800;
-        margin: 0;
-        letter-spacing: -0.02em;
+        gap: 2rem;
     }
 
     .stats-chips {

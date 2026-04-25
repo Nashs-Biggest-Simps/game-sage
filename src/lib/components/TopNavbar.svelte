@@ -31,21 +31,10 @@
 	<div class="nav-links">
 		<TopNavbarItem route="dashboard" icon="square-poll-vertical" text="Dashboard" />
 		<TopNavbarItem route="library"   icon="grip"                 text="Library"   />
-		<TopNavbarItem route="suggest"   icon="wand-magic-sparkles"  text="Suggested" />
 		<TopNavbarItem route="activity"  icon="star"                 text="Activity"  />
 		<TopNavbarItem route="search"    icon="magnifying-glass"     text="Search"    />
+		<TopNavbarItem route="profile"   icon="user"     		 	 text="Profile"    />
 	</div>
-
-	<a href={resolve("/profile")} class="profile-btn {path === '/profile' ? 'active' : ''}">
-		{#if pfp}
-			<img src={pfp} alt="" class="profile-img" />
-		{:else}
-			<div class="profile-icon"><i class="fa-solid fa-user"></i></div>
-		{/if}
-		{#if name}
-			<span>{name}</span>
-		{/if}
-	</a>
 </nav>
 
 <style>
