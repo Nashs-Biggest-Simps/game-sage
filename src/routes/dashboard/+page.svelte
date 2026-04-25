@@ -56,8 +56,23 @@
 
     <div class="main-grid">
         <div class="left-col">
-            <RecentlyPlayed />
-            <NewsDisplay game={mostRecentGame ?? null} />
+            <!-- Recently Played Scroll -->
+            <section class="row-section">
+                <div class="row-header">
+                    <div class="row-title">Recently Played</div>
+                </div>
+                <RecentlyPlayed />
+            </section>
+            <!-- News for Recently Played Game -->
+            {#if mostRecentGame}
+            <section class="row-section">
+                <div class="row-header">
+                    <span class="row-title">What's New</span>
+                    <span class="news-game-label">for {mostRecentGame.name}</span>
+                </div>
+                <NewsDisplay game={mostRecentGame} />
+            </section>
+            {/if}
         </div>
 
         <aside class="right-col">
@@ -95,5 +110,11 @@
         gap: 1.4rem;
         position: sticky;
         top: 2.4rem;
+    }
+
+    .news-game-label {
+        font-size: 0.72rem;
+        font-weight: 500;
+        opacity: 0.4;
     }
 </style>

@@ -8,7 +8,7 @@
 
 import { writable, readable } from 'svelte/store'
 
-const app_title = "gamesage_0.0.11"
+const app_title = "gamesage_0.4"
 const storage_ref = `ldb-${app_title}`
 
 let default_filters = {

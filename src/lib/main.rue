@@ -57,9 +57,15 @@ body{
     color: var(--contrast);
 }
 
-a,button,input{
+a,button{
     all: unset;
     display: block;
+    cursor: pointer;
+}
+input{
+    all: unset;
+    display: block;
+    cursor: cursor;
 }
 
 .horizontal-scroll{
@@ -143,6 +149,12 @@ a,button,input{
     align-items: center;
     gap: 0.6rem;
     flex-wrap: wrap;
+}
+
+.stat-pills { 
+    display: flex; 
+    gap: 0.5rem; 
+    flex-wrap: wrap; 
 }
 
 .pill {

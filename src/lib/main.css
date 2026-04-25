@@ -2,3 +2,25 @@
     font-family: Figtree;
     src: url("$lib/Figtree/Figtree-VariableFont_wght.ttf");
 }
+
+.empty-row {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 1rem 0.4rem;
+    font-size: 0.82rem;
+    opacity: 0.4;
+}
+
+.friend-skeleton {
+    height: 2.8rem;
+    border-radius: 0.6rem;
+    background: linear-gradient(90deg, var(--l1) 0%, var(--l2) 50%, var(--l1) 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.6s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}

@@ -17,9 +17,10 @@ const TTL = {
     friends:        60 * 1000,                 // 60 seconds
 }
 
-// Number of game-detail requests to fire per update cycle.
-// Low enough to not hammer the API, high enough to fill the cache over a few sessions.
+// Normal batch size per cycle — keeps Steam Store API load low across sessions.
 const DETAIL_BATCH_SIZE = 4
+// Larger burst used on first-ever load (empty detail cache) to populate the dashboard fast.
+const INITIAL_BATCH_SIZE = 12
 
 // ─── Thumbnail resolver ──────────────────────────────────────────────────────
 // Tries thumbnail URL candidates in order via HEAD request and returns the
@@ -119,9 +120,9 @@ function refreshLibraryList(cache) {
             )
             c.library.fetchedAt = Date.now()
         })
-        // Kick off detail loading as soon as the list is available
-        const freshCache = snap().cache
-        refreshDetailBatch(freshCache)
+        // Kick off detail loading — give recently-played a moment to resolve
+        // so the priority sort can put those games at the front of the queue.
+        setTimeout(() => refreshDetailBatch(snap().cache), 800)
     })
 }
 
@@ -159,38 +160,60 @@ export function refreshFriends() {
 }
 
 // Fetch details for the next batch of games that are missing or stale.
-// This is designed to be called repeatedly across sessions — each call
-// fills in a few more entries until the full library is cached.
+// On first-ever load (empty detail cache) uses a larger burst and chains one
+// follow-up batch so the dashboard gets useful data within a single session.
+// Subsequent sessions use the normal batch size to stay gentle on the API.
 function refreshDetailBatch(cache) {
-    const appIdList = cache.library?.appIdList || []
-    const details   = cache.library?.details   || {}
+    const appIdList  = cache.library?.appIdList || []
+    const details    = cache.library?.details   || {}
+    const blacklist  = new Set(cache.library?.blacklist || [])
+    const recentIds  = new Set((cache.recentlyPlayed?.data || []).map(g => g.appid))
+    const playtime   = cache.library?.playtime  || {}
 
-    const blacklist = new Set(cache.library?.blacklist || [])
-    const pending = appIdList.filter(id =>
-        !blacklist.has(id) &&
-        (!details[id]?.data || isStale(details[id].fetchedAt, TTL.gameDetails))
-    )
+    const isFirstLoad = Object.keys(details).length === 0
+    const batchSize   = isFirstLoad ? INITIAL_BATCH_SIZE : DETAIL_BATCH_SIZE
+
+    const pending = appIdList
+        .filter(id =>
+            !blacklist.has(id) &&
+            (!details[id]?.data || isStale(details[id].fetchedAt, TTL.gameDetails))
+        )
+        .sort((a, b) => {
+            // Recently played games first so the dashboard populates immediately
+            const ra = recentIds.has(Number(a)) || recentIds.has(a) ? 1 : 0
+            const rb = recentIds.has(Number(b)) || recentIds.has(b) ? 1 : 0
+            if (ra !== rb) return rb - ra
+            // Then by playtime descending
+            return (playtime[b] ?? 0) - (playtime[a] ?? 0)
+        })
 
     if (pending.length === 0) return
 
-    const batch = pending.slice(0, DETAIL_BATCH_SIZE)
-    console.log(
-        `[Cache] Fetching details: ${batch.length} now, ${pending.length - batch.length} remaining`
-    )
+    const batch     = pending.slice(0, batchSize)
+    const remaining = pending.length - batch.length
+    console.log(`[Cache] Fetching details: ${batch.length} now, ${remaining} remaining`)
 
+    let completed = 0
     batch.forEach(appid => {
         steamAPI.getGameDetails(appid, async res => {
             if (res?.[appid]?.success === false) {
                 patchCache(c => {
                     if (!c.library.blacklist.includes(appid)) c.library.blacklist.push(appid)
                 })
-                return
+            } else {
+                const slim = await slimGame(res?.[appid]?.data)
+                if (slim) {
+                    patchCache(c => {
+                        c.library.details[appid] = { data: slim, fetchedAt: Date.now() }
+                    })
+                }
             }
-            const slim = await slimGame(res?.[appid]?.data)
-            if (!slim) return
-            patchCache(c => {
-                c.library.details[appid] = { data: slim, fetchedAt: Date.now() }
-            })
+            completed++
+            // After the initial burst finishes, chain one more normal batch so
+            // the library keeps filling without requiring another session.
+            if (completed === batch.length && isFirstLoad && remaining > 0) {
+                setTimeout(() => refreshDetailBatch(snap().cache), 1500)
+            }
         })
     })
 }

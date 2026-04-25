@@ -23,38 +23,22 @@
 <!--  -->
 
 {#if news.length > 0}
-<section class="row-section">
-    <header class="row-header">
-        <h2 class="row-title">
-            What's New
-            {#if game}
-                <span class="news-game-label">for {game.name}</span>
-            {/if}
-        </h2>
-    </header>
-    <div class="news-list">
-        {#each news as item (item.gid)}
-            <a href={item.url} target="_blank" rel="noopener noreferrer" class="news-item">
-                <div class="news-top">
-                    <span class="news-source">{item.feedlabel}</span>
-                    <span class="news-date">{newsDate(item.date)}</span>
-                </div>
-                <div class="news-title">{item.title}</div>
-            </a>
-        {/each}
-    </div>
-</section>
+<div class="news-list">
+    {#each news as item (item.gid)}
+        <a href={item.url} target="_blank" rel="noopener noreferrer" class="news-item">
+            <div class="news-top">
+                <span class="news-source">{item.feedlabel}</span>
+                <span class="news-date">{newsDate(item.date)}</span>
+            </div>
+            <div class="news-title">{item.title}</div>
+        </a>
+    {/each}
+</div>
 {/if}
 
 <!--  -->
 
 <style>
-    .news-game-label {
-        font-size: 0.72rem;
-        font-weight: 500;
-        opacity: 0.4;
-    }
-
     .news-list {
         display: flex;
         flex-direction: column;

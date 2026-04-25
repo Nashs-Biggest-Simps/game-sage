@@ -23,16 +23,11 @@
 
 <svelte:window on:resize={handleResize} />
 
-<section class="row-section">
-    <header class="row-header">
-        <h2 class="row-title">Recently Played</h2>
-    </header>
-    {#if style == "row" || isPortrait}
-        <GameRow games={recentGames} />
-    {:else if style == "grid"}
-        <GameGrid items={recentGames} />
-    {/if}
-</section>
+{#if style == "row" || isPortrait}
+    <GameRow games={recentGames} />
+{:else if style == "grid"}
+    <GameGrid items={recentGames} />
+{/if}
 
 <!--  -->
 
