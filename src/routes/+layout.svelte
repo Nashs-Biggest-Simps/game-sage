@@ -2,6 +2,7 @@
 	import "$lib/main.css"
 	import "$lib/main.rue"
 	import TopNavbar from '$lib/components/TopNavbar.svelte'
+	import LeftNavbar from '$lib/components/LeftNavbar.svelte'
 	import { onMount } from 'svelte'
 	import { startCacheUpdateCycle } from '$lib/cache'
 	import { authReady } from '$lib/auth'
@@ -36,30 +37,34 @@
 </svelte:head>
 
 <div class="app">
-	{#if isAuthed}
-		<div class="top-navbar">
-			<TopNavbar />
-		</div>
-	{/if}
+	<div class="left">
+		{#if isAuthed}
+			<LeftNavbar />
+		{/if}
+	</div>
 
-	{#if showSteamBanner}
-		<div class="steam-banner">
-			<i class="fa-solid fa-triangle-exclamation"></i>
-			<span>No Steam ID linked — <a href={resolve('/profile')}>add it in your profile</a> to unlock your library and suggestions.</span>
+	<div class="right">
+		{#if showSteamBanner}
+			<div class="steam-banner">
+				<i class="fa-solid fa-triangle-exclamation"></i>
+				<span>No Steam ID linked — <a href={resolve('/profile')}>add it in your profile</a> to unlock your library and suggestions.</span>
+			</div>
+		{/if}
+	
+		<div class="content">
+			{@render children()}
 		</div>
-	{/if}
-
-	<div class="content">
-		{@render children()}
 	</div>
 </div>
 
 <style>
+	.app{
+		display: grid;
+		grid-template-columns: 20rem auto;
+	}
 
-	.top-navbar {
-		padding-inline: var(--inline-moat);
-		background: var(--l05);
-		border-bottom: 1pt solid var(--l2);
+	.left{
+		border-right: solid 1pt var(--l2);
 	}
 
 	.steam-banner {
@@ -83,11 +88,6 @@
 	}
 
 	.content {
-		padding-block: 2.4rem;
-		padding-inline: var(--inline-moat);
-	}
-
-	.content.full {
-		padding: 0;
+		padding: 1.6rem;
 	}
 </style>
