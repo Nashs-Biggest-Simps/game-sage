@@ -128,9 +128,11 @@
         flex-shrink: 0;
         border-radius: 0.9rem;
         overflow: hidden;
-        background: var(--l1);
-        outline: solid 1pt var(--l3);
+        background: hsl(212, 24%, 13%, 0.62);
+        outline: solid 1pt hsl(212, 36%, 35%, 0.56);
         cursor: pointer;
+        backdrop-filter: blur(22px) saturate(1.22);
+        -webkit-backdrop-filter: blur(22px) saturate(1.22);
         transition: transform 150ms, outline-color 150ms, box-shadow 150ms;
     }
 

@@ -881,14 +881,18 @@
     /* ── Panels ──────────────────────────── */
 
     .panel {
-        background: linear-gradient(180deg, var(--lb05) 0%, var(--lb0) 100%);
+        background: linear-gradient(180deg, hsl(212, 26%, 15%, 0.62) 0%, hsl(212, 24%, 12%, 0.54) 100%);
         border-radius: 1.1rem;
-        outline: solid 1pt var(--l3);
+        outline: solid 1pt hsl(212, 38%, 36%, 0.52);
         padding: 1.3rem;
         display: flex;
         flex-direction: column;
         gap: 0.9rem;
-        box-shadow: 0 12px 30px hsl(0, 0%, 0%, 0.12);
+        backdrop-filter: blur(26px) saturate(1.24);
+        -webkit-backdrop-filter: blur(26px) saturate(1.24);
+        box-shadow:
+            0 16px 42px hsl(0, 0%, 0%, 0.18),
+            inset 0 1px 0 hsl(0, 0%, 100%, 0.075);
     }
 
     .panel-label {

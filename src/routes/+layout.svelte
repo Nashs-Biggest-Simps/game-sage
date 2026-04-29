@@ -55,10 +55,62 @@
 </div>
 
 <style>
+	.app {
+		position: relative;
+		isolation: isolate;
+		min-height: 100vh;
+		background:
+			radial-gradient(circle at 10% 6rem, hsl(188, 84%, 48%, 0.2), transparent 25rem),
+			radial-gradient(circle at 88% 10rem, hsl(146, 68%, 44%, 0.13), transparent 24rem),
+			radial-gradient(circle at 56% 32rem, hsl(218, 80%, 58%, 0.13), transparent 36rem),
+			radial-gradient(circle at 18% 58rem, hsl(38, 90%, 52%, 0.08), transparent 30rem),
+			radial-gradient(circle at 92% 76rem, hsl(265, 58%, 54%, 0.08), transparent 34rem),
+			linear-gradient(145deg, hsl(212, 31%, 7%) 0%, var(--bg) 38%, hsl(214, 28%, 6%) 100%);
+	}
+
+	.app::before {
+		content: '';
+		position: absolute;
+		inset: 0;
+		z-index: 0;
+			pointer-events: none;
+			background:
+				radial-gradient(ellipse at 72% 18rem, hsl(212, 88%, 63%, 0.14), transparent 24rem),
+				radial-gradient(ellipse at 28% 38rem, hsl(180, 70%, 46%, 0.08), transparent 22rem),
+				linear-gradient(115deg, transparent 0%, hsl(0, 0%, 100%, 0.025) 42%, transparent 64%);
+			mask-image: linear-gradient(to bottom, black 0%, black 78%, transparent 100%);
+			-webkit-mask-image: linear-gradient(to bottom, black 0%, black 78%, transparent 100%);
+			opacity: 0.9;
+	}
+
+	.app::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		z-index: 0;
+		pointer-events: none;
+		background:
+			radial-gradient(ellipse at 50% 0%, transparent 0%, hsl(0, 0%, 0%, 0.16) 70%),
+			linear-gradient(to bottom, transparent 0%, hsl(212, 30%, 6%, 0.18) 55%, hsl(212, 30%, 6%, 0.42) 100%);
+	}
+
+	.app > * {
+		position: relative;
+		z-index: 1;
+	}
+
 	.top-navbar {
+		position: sticky;
+		top: 0;
+		z-index: 50;
 		padding-inline: var(--inline-moat);
-		background: var(--l05);
-		border-bottom: 1pt solid var(--l2);
+		background: hsl(212, 26%, 10%, 0.46);
+		border-bottom: 1pt solid hsl(212, 38%, 36%, 0.5);
+		backdrop-filter: blur(28px) saturate(1.34);
+		-webkit-backdrop-filter: blur(28px) saturate(1.34);
+		box-shadow:
+			0 12px 36px hsl(0, 0%, 0%, 0.22),
+			inset 0 1px 0 hsl(0, 0%, 100%, 0.06);
 	}
 
 	.steam-banner {

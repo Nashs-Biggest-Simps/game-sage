@@ -17,13 +17,15 @@
 </script>
 
 <div class="wrapper">
-    <div class="scroll-track horizontal-scroll" onscroll={(e) => handleScroll(e)}>
+    <div
+        class="scroll-track horizontal-scroll"
+        style="--left-fade-width: {leftFadeOpacity * 4}rem"
+        onscroll={(e) => handleScroll(e)}
+    >
         {#each games as game, i (`${game?.appid ?? game?.steam_appid}-${i}`)}
             <GameItem {game} width="14" />
         {/each}
     </div>
-    <div class="left fade" style="opacity: {leftFadeOpacity}"></div>
-    <div class="right fade"></div>
 </div>
 
 <style>
@@ -32,29 +34,27 @@
     }
 
     .scroll-track {
+        --left-fade-width: 0rem;
+        --right-fade-width: 4rem;
         gap: 0.8rem;
         padding-top: 4pt;
         padding-bottom: 1px;
         padding-left: 1px;
         padding-right: 12rem;
         align-items: stretch;
-    }
-
-    .fade {
-        position: absolute;
-        top: 0;
-        height: 100%;
-        width: 4rem;
-        pointer-events: none;
-    }
-
-    .left.fade{
-        left: 0;
-        background: linear-gradient(to right, var(--bg), transparent);
-        opacity: 0;
-    }
-    .right.fade{
-        right: 0;
-        background: linear-gradient(to left, var(--bg), transparent);
+        -webkit-mask-image: linear-gradient(
+            to right,
+            transparent 0,
+            black var(--left-fade-width),
+            black calc(100% - var(--right-fade-width)),
+            transparent 100%
+        );
+        mask-image: linear-gradient(
+            to right,
+            transparent 0,
+            black var(--left-fade-width),
+            black calc(100% - var(--right-fade-width)),
+            transparent 100%
+        );
     }
 </style>

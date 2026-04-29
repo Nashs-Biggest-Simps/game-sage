@@ -769,13 +769,18 @@
     .main-content { display: flex; flex-direction: column; gap: 1.4rem; }
 
     .panel {
-        background: var(--lb0);
+        background: hsl(212, 24%, 12%, 0.58);
         border-radius: 1.2rem;
-        outline: solid 1pt var(--l3);
+        outline: solid 1pt hsl(212, 38%, 36%, 0.52);
         padding: 2rem;
         display: flex;
         flex-direction: column;
         gap: 1.4rem;
+        backdrop-filter: blur(26px) saturate(1.24);
+        -webkit-backdrop-filter: blur(26px) saturate(1.24);
+        box-shadow:
+            0 18px 52px hsl(0, 0%, 0%, 0.24),
+            inset 0 1px 0 hsl(0, 0%, 100%, 0.05);
     }
 
     .panel-heading    { font-size: 1.4rem; font-weight: 700; margin: 0; }

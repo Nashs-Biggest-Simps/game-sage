@@ -48,9 +48,11 @@
     .news-list {
         display: flex;
         flex-direction: column;
-        background: var(--lb0);
+        background: hsl(212, 24%, 12%, 0.58);
         border-radius: 1rem;
-        outline: solid 1pt var(--l3);
+        outline: solid 1pt hsl(212, 38%, 36%, 0.52);
+        backdrop-filter: blur(24px) saturate(1.22);
+        -webkit-backdrop-filter: blur(24px) saturate(1.22);
         overflow: hidden;
     }
 

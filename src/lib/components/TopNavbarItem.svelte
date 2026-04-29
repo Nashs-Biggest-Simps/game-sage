@@ -38,20 +38,21 @@
 		font-size: 0.85rem;
 		font-weight: 500;
 		cursor: pointer;
-		transition: background 120ms, color 120ms;
-		opacity: 0.65;
+			transition: background 120ms, color 120ms, opacity 120ms;
+			opacity: 0.72;
 	}
 
 	.navitem i { font-size: 0.8rem; }
 
-	.navitem:hover {
-		background: var(--l1);
-		opacity: 1;
-	}
+		.navitem:hover {
+			background: hsl(212, 36%, 22%, 0.38);
+			color: hsl(0, 0%, 100%, 0.92);
+			opacity: 0.92;
+		}
 
-	.navitem.active {
-		color: var(--bright-accent);
-		opacity: 1;
-		background: var(--la1);
-	}
+		.navitem.active {
+			color: hsl(212, 82%, 76%);
+			opacity: 0.96;
+			background: hsl(212, 40%, 23%, 0.44);
+		}
 </style>

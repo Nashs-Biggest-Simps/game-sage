@@ -39,11 +39,13 @@
         max-width: 42rem;
         display: flex;
         align-items: center;
-        background: var(--lb0);
+        background: hsl(212, 24%, 12%, 0.58);
         border-radius: 1.2rem;
-        outline: solid 1pt var(--l3);
+        outline: solid 1pt hsl(212, 38%, 36%, 0.52);
         padding: 2rem;
         flex-wrap: wrap;
+        backdrop-filter: blur(24px) saturate(1.22);
+        -webkit-backdrop-filter: blur(24px) saturate(1.22);
     }
 
     .how-step {

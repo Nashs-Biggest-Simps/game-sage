@@ -82,10 +82,12 @@
     .card {
         width: 100%;
         max-width: 22rem;
-        background: var(--lb0);
+        background: hsl(212, 24%, 12%, 0.62);
         border-radius: 1.4rem;
-        outline: solid 1pt var(--l3);
+        outline: solid 1pt hsl(212, 38%, 36%, 0.52);
         box-shadow: 0 24px 64px hsl(0, 0%, 0%, 0.4);
+        backdrop-filter: blur(26px) saturate(1.24);
+        -webkit-backdrop-filter: blur(26px) saturate(1.24);
         overflow: hidden;
     }
 
