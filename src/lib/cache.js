@@ -373,7 +373,7 @@ export function getCachedLibrary() {
  *   Game Name:Xh
  *   ...
  *   UNPLAYED_OWNED:
- *   appid|Game Name|Genre1,Genre2
+ *   appid|Game Name|Genre1,Genre2|score:86|type:game
  *   ...
  *   <instruction line>
  */
@@ -396,13 +396,15 @@ export function buildCompactProfile(brain = null) {
             return `${d.name}[${genres}]:${Math.round(mins / 60)}h`
         })
 
-    // All unplayed owned games that have cached details (playtime === 0)
+    // All unplayed owned games that have cached details (playtime === 0).
+    // Extra quality/type hints help the AI rank without widening the payload much.
     const unplayedLines = Object.entries(playtime)
         .filter(([id, mins]) => mins === 0 && details[id]?.data && !blacklist.has(id))
         .map(([id]) => {
             const d      = details[id].data
             const genres = (d.genres || []).map(g => g.description).join(',')
-            return `${id}|${d.name}|${genres}`
+            const score  = d.metacritic?.score ?? d.metacritic_score ?? ''
+            return `${id}|${d.name}|${genres}|score:${score || 'na'}|type:${d.type ?? 'game'}`
         })
 
     // Up to 5 recently active games
@@ -418,7 +420,7 @@ export function buildCompactProfile(brain = null) {
 
     if (brain) lines.push('USER_FEEDBACK:', brain, '')
 
-    lines.push('Suggest top 12 from UNPLAYED_OWNED matching play style. JSON only: {"s":[{"id":appid,"r":"one sentence reason"},...]}')
+    lines.push('Pick 8-12 owned games from UNPLAYED_OWNED that best match this user. Prioritize actual games over DLC/demos and include varied genres. JSON only: {"s":[{"id":appid,"r":"one sentence reason"},...]}')
 
     return {
         text:          lines.join('\n'),
@@ -454,11 +456,11 @@ export function buildBuyProfile(brain = null) {
         .slice(0, 5)
         .map(g => `${g.name}:${Math.round((g.playtime_2weeks || 0) / 60)}h`)
 
-    // All owned game names so AI avoids re-suggesting them
+    // All owned game names so AI avoids re-suggesting them.
     const ownedNames = Object.entries(playtime)
         .filter(([id]) => details[id]?.data && !blacklist.has(id))
         .map(([id]) => details[id].data.name)
-        .slice(0, 60)
+        .slice(0, 120)
 
     // Games friends are actively playing that the user doesn't own
     const friendGames = [...new Set(
@@ -477,7 +479,7 @@ export function buildBuyProfile(brain = null) {
     if (friendGames.length) lines.push('FRIENDS_PLAYING:', ...friendGames, '')
     if (brain)              lines.push('USER_FEEDBACK:', brain, '')
 
-    lines.push('Suggest 8 Steam games not in ALREADY_OWNED that match this taste. Consider FRIENDS_PLAYING if present. JSON only: {"b":[{"n":"exact title","r":"one sentence reason"},...]}')
+    lines.push('Suggest 8-12 Steam base games not in ALREADY_OWNED that match this taste. Consider FRIENDS_PLAYING if present, avoid DLC/editions/bundles, and use exact Steam titles. JSON only: {"b":[{"n":"exact title","r":"one sentence reason"},...]}')
 
     return {
         text:        lines.join('\n'),

@@ -3,25 +3,25 @@ import { RueterModel } from 'rueter-ai'
 import { GROK_API_KEY } from '$env/static/private'
 
 const PLAY_PROMPT =
-    'You are a precision game recommendation engine for Steam. ' +
-    'Given a user\'s play history, select games from their UNPLAYED_OWNED list that best match their taste. ' +
-    'Only pick from UNPLAYED_OWNED using the listed appid. ' +
-    'Factor in genre affinity, playtime investment, and recent activity. ' +
-    'Ensure variety across genres — do not cluster all picks in one genre. ' +
+    'You are a precise Steam library curation engine. ' +
+    'Your task is to choose owned games the user should play next from UNPLAYED_OWNED only. ' +
+    'Only pick listed appids. Never invent titles, never pick DLC/demos when the list indicates them, and never pick from PLAYED unless also listed in UNPLAYED_OWNED. ' +
+    'Rank by fit using genre affinity, high-playtime patterns, recent activity, quality signals, and variety. ' +
+    'Prefer strong matches over novelty, but avoid clustering every pick in one franchise or genre. ' +
     'If USER_FEEDBACK is present, prioritize liked patterns and avoid disliked ones. ' +
     'Return ONLY valid JSON with no markdown, code fences, or explanation. ' +
-    'Format exactly: {"s":[{"id":<appid>,"r":"<one-sentence reason>"},...]} — up to 12 results, confidence order.'
+    'Format exactly: {"s":[{"id":<appid>,"r":"<one-sentence reason>"},...]} — return 12 results when possible, never fewer than 8 unless the input list has fewer than 8 viable games.'
 
 const BUY_PROMPT =
-    'You are a game discovery expert for Steam. ' +
-    'Given a user\'s play history, suggest games they do not own but would enjoy. ' +
-    'Only suggest real, currently purchasable Steam games — use their exact Steam store titles. ' +
-    'Do not suggest anything from ALREADY_OWNED, or sequels/DLC of games in PLAYED. ' +
-    'Mix well-known titles with hidden gems. ' +
+    'You are a precise Steam store discovery engine. ' +
+    'Suggest games the user does not own and would likely buy or wishlist. ' +
+    'Only suggest real, currently purchasable base games on Steam using exact Steam store titles. ' +
+    'Do not suggest anything from ALREADY_OWNED. Avoid DLC, soundtracks, demos, bundles, editions, duplicate franchises, and direct sequels when the user already owns the closest prerequisite unless it is clearly the best modern entry point. ' +
+    'Rank by taste fit using playtime patterns, genre affinity, recent activity, quality/reputation, and freshness. Mix reliable high-confidence picks with a few tasteful discoveries. ' +
     'If FRIENDS_PLAYING is present, those are games friends are actively playing that the user does not own — prioritize recommending them if they match the user\'s taste. ' +
     'If USER_FEEDBACK is present, match liked patterns and avoid disliked ones. ' +
     'Return ONLY valid JSON with no markdown, code fences, or explanation. ' +
-    'Format exactly: {"b":[{"n":"<exact Steam title>","r":"<one-sentence reason>"},...]} — up to 8 results, confidence order.'
+    'Format exactly: {"b":[{"n":"<exact Steam title>","r":"<one-sentence reason>"},...]} — return 12 results when possible, never fewer than 8.'
 
 function buildSystemPrompt(type, prefs) {
     let prompt = type === 'play' ? PLAY_PROMPT : BUY_PROMPT
@@ -53,8 +53,8 @@ export async function POST({ request }) {
 
     const model = new RueterModel('grok', GROK_API_KEY, 1)
     model.setSystemPrompt(buildSystemPrompt(type, prefs))
-    model.setMaxTokens(type === 'play' ? 512 : 384)
-    model.setTemperature(0.7)
+    model.setMaxTokens(type === 'play' ? 900 : 900)
+    model.setTemperature(type === 'play' ? 0.45 : 0.55)
 
     let raw
     try {

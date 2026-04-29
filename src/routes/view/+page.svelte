@@ -193,20 +193,13 @@
 
 <div class="view-page" style={heroLoaded ? `--view-accent-image: url("${heroSrc}")` : ''}>
 
-    <!-- Top bar -->
-    <div class="topbar">
-        <button class="back-btn" onclick={() => history.back()} aria-label="Go back">
-            <i class="fa-solid fa-arrow-left"></i>
-        </button>
-        {#if game}
-            <span class="page-title">{game.name}</span>
-        {:else if loadingGame}
-            <div class="topbar-sk"></div>
-        {/if}
-    </div>
-
     {#if loadingGame && !game}
-        <div class="sk-hero"></div>
+        <div class="sk-hero">
+            <button class="back-btn hero-back" onclick={() => history.back()} aria-label="Go back">
+                <i class="fa-solid fa-arrow-left"></i>
+                <span>Back</span>
+            </button>
+        </div>
         <div class="content-grid">
             <div class="main-col sk-col">
                 <div class="sk-panel"></div>
@@ -224,6 +217,10 @@
         <!-- Hero -->
         <div class="hero" style={heroLoaded ? `background-image: url('${heroSrc}')` : ''}>
             <div class="hero-gradient"></div>
+            <button class="back-btn hero-back" onclick={() => history.back()} aria-label="Go back">
+                <i class="fa-solid fa-arrow-left"></i>
+                <span>Back</span>
+            </button>
             <div class="hero-content">
                 {#if genres.length > 0}
                     <div class="hero-chips">
@@ -627,6 +624,7 @@
         flex-direction: column;
         gap: 1.4rem;
         isolation: isolate;
+        margin-top: -0.8rem;
     }
 
     .view-page::before {
@@ -730,38 +728,42 @@
         border-radius: 100vh;
     }
 
-    /* ── Topbar ──────────────────────────── */
-
-    .topbar {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-    }
+    /* ── Page Controls ───────────────────── */
 
     .back-btn {
-        width: 2.2rem;
-        height: 2.2rem;
-        border-radius: 50%;
-        background: var(--l1);
-        outline: solid 1pt var(--l3);
+        min-width: 2.45rem;
+        height: 2.45rem;
+        padding-inline: 0.82rem;
+        border-radius: 100vh;
+        background: hsl(212, 22%, 10%, 0.44);
+        outline: solid 1pt hsl(0, 0%, 100%, 0.15);
+        color: hsl(0, 0%, 100%, 0.88);
         display: flex;
         align-items: center;
         justify-content: center;
+        gap: 0.45rem;
         font-size: 0.85rem;
+        font-weight: 700;
         cursor: pointer;
         flex-shrink: 0;
-        transition: background 120ms, outline-color 120ms;
+        backdrop-filter: blur(18px) saturate(1.2);
+        -webkit-backdrop-filter: blur(18px) saturate(1.2);
+        box-shadow: 0 12px 30px hsl(0, 0%, 0%, 0.24);
+        transition: background 120ms, color 120ms, outline-color 120ms, transform 120ms;
     }
 
-    .back-btn:hover { background: var(--l2); outline-color: var(--l4); }
+    .back-btn:hover {
+        background: hsl(212, 28%, 18%, 0.62);
+        outline-color: hsl(0, 0%, 100%, 0.28);
+        color: white;
+        transform: translateY(-1px);
+    }
 
-    .topbar-sk {
-        height: 1.5rem;
-        width: 14rem;
-        border-radius: 0.4rem;
-        background: linear-gradient(90deg, var(--l2) 0%, var(--l3) 50%, var(--l2) 100%);
-        background-size: 200% 100%;
-        animation: shimmer 1.6s ease-in-out infinite;
+    .hero-back {
+        position: absolute;
+        top: 1.2rem;
+        left: 1.2rem;
+        z-index: 3;
     }
 
     /* ── Hero ────────────────────────────── */

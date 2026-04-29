@@ -42,7 +42,7 @@
 <svelte:window on:keydown={handleKeydown} />
 
 {#if game}
-<div class="hero" style="background-image: url('{heroUrl}')" role="button" tabindex="0" onclick={launch} onkeydown={(e) => onKeyDown(e)}>
+<div class="hero" style="background-image: url('{heroUrl}')" role="button" tabindex="0" onclick={(e) => { e.stopPropagation(); goto(resolve(`/view?id=${game.appid}`)) }} onkeydown={(e) => onKeyDown(e)}>
     <div class="gradient"></div>
     <div class="content">
         <!-- Continue Playing Text -->

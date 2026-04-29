@@ -108,8 +108,6 @@
         display: flex;
         flex-direction: column;
         gap: 1.4rem;
-        position: sticky;
-        top: 2.4rem;
     }
 
     .profile-btn {

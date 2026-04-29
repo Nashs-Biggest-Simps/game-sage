@@ -80,7 +80,7 @@
                 <i class="fa-solid fa-circle-notch fa-spin"></i>
             </div>
         {:else if thumbnail}
-            <img src={thumbnail} alt={displayName} loading="lazy" onerror={() => imgIndex++} />
+            <img src={thumbnail} alt={displayName} decoding="async" onerror={() => imgIndex++} />
         {:else}
             <div class="art-fallback"></div>
         {/if}

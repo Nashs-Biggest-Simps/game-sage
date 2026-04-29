@@ -1,30 +1,97 @@
 <script>
     import GameRow from '$lib/components/games/GameRow.svelte'
     import { db } from '$lib/data'
+    import { Algorithm } from '$lib/algorithm'
+    import { onMount } from 'svelte'
 
-    let items = $derived($db?.cache?.suggestions?.play?.items ?? [])
-    let games = $derived(items.map(({ game, reason }) => ({
+    const MIN_ROW_ITEMS = 8
+
+    let loadingPlay = $state(false)
+    let loadingBuy  = $state(false)
+
+    let playItems = $derived($db?.cache?.suggestions?.play?.items ?? [])
+    let buyItems  = $derived($db?.cache?.suggestions?.buy?.items ?? [])
+
+    let libraryGames = $derived(playItems.map(({ game, reason }) => ({
         appid:            game.steam_appid,
         name:             game.name,
         thumbnail:        game.thumbnail ?? null,
         playtime_forever: 0,
         reason,
     })))
+
+    let buyGames = $derived(buyItems.map(({ appid, name, thumbnail, reason }) => ({
+        appid,
+        name,
+        thumbnail,
+        playtime_forever: 0,
+        reason,
+    })))
+
+    onMount(() => {
+        const algorithm = new Algorithm()
+
+        if (playItems.length < MIN_ROW_ITEMS) {
+            loadingPlay = true
+            algorithm.getPlaySuggestions().finally(() => { loadingPlay = false })
+        }
+
+        if (buyItems.length < MIN_ROW_ITEMS) {
+            loadingBuy = true
+            algorithm.getBuySuggestions().finally(() => { loadingBuy = false })
+        }
+    })
 </script>
 
-{#if games.length > 0}
+{#if libraryGames.length > 0}
 <section class="row-section">
     <div class="row-header">
         <div class="row-title">
             <i class="fa-solid fa-wand-magic-sparkles"></i>
-            Picked For You
+            Picked From Your Library
         </div>
         <span class="ai-badge">
             <i class="fa-solid fa-robot"></i>
-            Claude AI
+            GameSage AI
         </span>
     </div>
-    <GameRow {games} />
+    <GameRow games={libraryGames} />
+</section>
+{:else if loadingPlay}
+<section class="row-section ai-loading">
+    <div class="row-header">
+        <div class="row-title">
+            <i class="fa-solid fa-wand-magic-sparkles"></i>
+            Picked From Your Library
+        </div>
+        <span class="ai-badge"><i class="fa-solid fa-circle-notch fa-spin"></i> Thinking</span>
+    </div>
+</section>
+{/if}
+
+{#if buyGames.length > 0}
+<section class="row-section">
+    <div class="row-header">
+        <div class="row-title">
+            <i class="fa-solid fa-store"></i>
+            Picked For You
+        </div>
+        <span class="ai-badge buy">
+            <i class="fa-solid fa-robot"></i>
+            GameSage AI
+        </span>
+    </div>
+    <GameRow games={buyGames} />
+</section>
+{:else if loadingBuy}
+<section class="row-section ai-loading">
+    <div class="row-header">
+        <div class="row-title">
+            <i class="fa-solid fa-store"></i>
+            Picked For You
+        </div>
+        <span class="ai-badge buy"><i class="fa-solid fa-circle-notch fa-spin"></i> Thinking</span>
+    </div>
 </section>
 {/if}
 
@@ -42,4 +109,14 @@
         outline: solid 1pt var(--la3);
     }
     .ai-badge i { font-size: 0.6rem; }
+
+    .ai-badge.buy {
+        background: hsl(146, 48%, 20%, 0.44);
+        color: hsl(146, 72%, 70%);
+        outline-color: hsl(146, 48%, 40%, 0.5);
+    }
+
+    .ai-loading {
+        min-height: 2.2rem;
+    }
 </style>
