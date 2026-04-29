@@ -87,7 +87,7 @@
             {/if}
             <span class="pill accent">
                 <i class="fa-solid fa-circle live-dot"></i>
-                live
+                LIVE
             </span>
         </div>
     </div>
@@ -129,7 +129,9 @@
                 <div class="j-side">
                     {#if game.hours > 0}
                         <div class="j-hours">
-                            <div class="j-hours-value">{game.hours.toLocaleString()}h</div>
+                            <div class="j-hours-value">
+                                {game.hours.toLocaleString()}<span class="j-hours-unit">h</span>
+                            </div>
                             <div class="j-hours-label">PLAYED</div>
                         </div>
                     {/if}
@@ -141,6 +143,7 @@
                         onclick={(event) => launchGame(event, game.gameid)}
                     >
                         <i class="fa-solid fa-play"></i>
+                        <span>Play</span>
                     </button>
                 </div>
             </div>
@@ -168,9 +171,9 @@
 
     .join-row {
         display: grid;
-        grid-template-columns: 5.5rem minmax(0, 1fr) auto;
+        grid-template-columns: auto minmax(0, 1fr) auto;
         gap: 0.85rem;
-        align-items: center;
+        align-items: stretch;
         padding: 0.6rem 0.85rem 0.6rem 0.5rem;
         border-radius: 0.7rem;
         cursor: pointer;
@@ -180,7 +183,7 @@
     .join-row:hover { background: var(--l1); }
 
     .j-art {
-        width: 5.5rem;
+        height: 100%;
         aspect-ratio: 616 / 353;
         border-radius: 0.45rem;
         background: var(--l2) center / cover no-repeat;
@@ -191,6 +194,7 @@
         display: flex;
         flex-direction: column;
         gap: 0.32rem;
+        justify-content: center;
         min-width: 0;
     }
 
@@ -260,8 +264,9 @@
         display: flex;
         flex-direction: column;
         align-items: flex-end;
-        gap: 0.5rem;
-        min-width: 4.25rem;
+        justify-content: center;
+        gap: 0.35rem;
+        min-width: 4rem;
         flex-shrink: 0;
     }
 
@@ -269,29 +274,39 @@
         display: flex;
         flex-direction: column;
         align-items: flex-end;
-        gap: 0.22rem;
+        gap: 0.35rem;
     }
 
     .j-hours-value {
-        font-size: 1rem;
+        font-size: 1.35rem;
         font-weight: 800;
+        letter-spacing: 0.01em;
         line-height: 1;
         color: var(--bright-accent);
         font-variant-numeric: tabular-nums;
         white-space: nowrap;
     }
 
+    .j-hours-unit {
+        font-size: 1.1rem;
+        font-weight: 700;
+        opacity: 0.7;
+        letter-spacing: 0;
+    }
+
     .j-hours-label {
         font-size: 0.58rem;
         font-weight: 700;
-        line-height: 1;
+        text-transform: uppercase;
         letter-spacing: 0.06em;
         opacity: 0.35;
     }
 
     .j-launch {
-        width: 1.85rem;
+        width: auto;
+        min-width: 4rem;
         height: 1.85rem;
+        padding: 0 0.7rem;
         border-radius: 0.45rem;
         background: var(--l1);
         color: inherit;
@@ -299,7 +314,9 @@
         display: flex;
         align-items: center;
         justify-content: center;
+        gap: 0.35rem;
         font-size: 0.62rem;
+        font-weight: 700;
         cursor: pointer;
         transition: background 120ms, color 120ms, opacity 120ms;
         outline: solid 1pt var(--l3);
@@ -318,6 +335,7 @@
 
         .j-art {
             width: 100%;
+            height: auto;
         }
 
         .j-side {

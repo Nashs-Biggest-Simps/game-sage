@@ -51,15 +51,16 @@ export function topGenreMatch(game, weights, preferred = []) {
 // Algorithm: Score each unplayed game by how closely it matches the genres
 // the user has actually spent time in. Steps:
 //   1. Build a genre weight map from all played games (hours per genre).
-//   2. Filter to unplayed, non-DLC, non-excluded games.
+//   2. Filter to non-DLC, non-excluded games.
 //   3. Score each by summing the genre weights of all its genres, plus a
 //      proportional boost for any genres the user has explicitly preferred.
 //      The preferred boost scales with the user's heaviest genre so it stays
 //      meaningful regardless of total playtime.
 //   4. Add a Metacritic quality bump (when present) to break ties toward
-//      critically respected titles.
-//   5. Sort by score, then cap any single primary genre at 3 entries so the
-//      result stays genre-diverse rather than 10 FPS games in a row.
+//      critically respected titles. Unplayed games are preferred, then the row
+//      backfills with low-playtime games when the unplayed pool is small.
+//   5. Sort by score, then cap any single primary genre at the row limit so
+//      smaller or genre-heavy libraries can still fill the dashboard row.
 export function buildLocalLibrarySuggestions(games, preferred, excluded) {
     const weights      = buildGenreWeights(games)
     const maxWeight    = Math.max(...weights.values(), 1)
@@ -68,11 +69,10 @@ export function buildLocalLibrarySuggestions(games, preferred, excluded) {
 
     return games
         .filter(({ game, playtime }) => {
-            if (playtime > 0) return false
             if (game.type === 'dlc' || game.type === 'demo') return false
             return !hasExcludedGenre(game, excluded)
         })
-        .map(({ game }) => {
+        .map(({ game, playtime }) => {
             const match  = topGenreMatch(game, weights, preferred)
             const genres = genreNames(game)
             const primaryGenre = genres[0] ?? 'Other'
@@ -82,18 +82,23 @@ export function buildLocalLibrarySuggestions(games, preferred, excluded) {
                 return sum + (weights.get(g) ?? 0) + boost
             }, 0)
             const qualityScore = (game.metacritic_score ?? 0) * (maxWeight / 100)
+            const playtimeHours = playtime / 60
+            const unplayedBoost = playtime === 0 ? maxWeight * 2 : 0
+            const lowPlaytimeBoost = playtime > 0 ? Math.max(0, maxWeight - Math.log(playtimeHours + 1) * 20) : 0
 
             return {
                 game,
-                score: genreScore + qualityScore,
+                score: genreScore + qualityScore + unplayedBoost + lowPlaytimeBoost,
                 primaryGenre,
-                reason: match ? `Matches your ${match} playtime` : 'Unplayed in your library',
+                reason: playtime === 0
+                    ? (match ? `Matches your ${match} playtime` : 'Unplayed in your library')
+                    : (match ? `Low-playtime ${match} pick from your library` : 'Worth another look from your library'),
             }
         })
         .sort((a, b) => b.score - a.score || a.game.name.localeCompare(b.game.name))
         .filter(item => {
             genreCap[item.primaryGenre] = (genreCap[item.primaryGenre] ?? 0) + 1
-            return genreCap[item.primaryGenre] <= 3
+            return genreCap[item.primaryGenre] <= LOCAL_ROW_LIMIT
         })
         .slice(0, LOCAL_ROW_LIMIT)
 }

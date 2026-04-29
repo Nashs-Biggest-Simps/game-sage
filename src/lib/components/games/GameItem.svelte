@@ -2,7 +2,7 @@
     import { goto }           from '$app/navigation'
     import { resolve }        from '$app/paths'
     import { db }             from '$lib/data'
-    import { fetchGameDetail } from '$lib/cache'
+    import { fetchGameDetail, resolveThumbnail } from '$lib/cache'
 
     let { game, width } = $props()
 
@@ -11,17 +11,21 @@
     let hours = $derived(Math.round((game?.playtime_forever ?? 0) / 60))
     let recentHours = $derived(Math.round((game?.playtime_2weeks ?? 0) / 60))
 
-    let imgFailed  = $state(false)
+    let imgIndex   = $state(0)
     let fetching   = $state(false)
 
     let cachedDetail = $derived($db?.cache?.library?.details?.[appid]?.data ?? null)
     let hasDetails   = $derived(!!(game?.name || cachedDetail?.name))
 
-    let thumbnail = $derived(
-        game?.thumbnail
-        ?? cachedDetail?.thumbnail
-        ?? null
+    let imageCandidates = $derived(
+        [...new Set([
+            game?.thumbnail,
+            cachedDetail?.thumbnail,
+            appid ? resolveThumbnail(appid) : null,
+        ].filter(Boolean))]
     )
+
+    let thumbnail = $derived(imageCandidates[imgIndex] ?? null)
 
     let genres = $derived(
         (game?.genres ?? cachedDetail?.genres ?? [])
@@ -31,10 +35,15 @@
 
     let displayName = $derived(game?.name ?? cachedDetail?.name ?? null)
 
-    $effect(() => { appid; imgFailed = false })
+    $effect(() => {
+        appid
+        game?.thumbnail
+        cachedDetail?.thumbnail
+        imgIndex = 0
+    })
 
     async function handleHover() {
-        if (hasDetails || fetching) return
+        if ((cachedDetail || fetching) || !appid) return
         fetching = true
         await fetchGameDetail(appid)
         fetching = false
@@ -70,8 +79,8 @@
             <div class="art-fallback loading">
                 <i class="fa-solid fa-circle-notch fa-spin"></i>
             </div>
-        {:else if thumbnail && !imgFailed}
-            <img src={thumbnail} alt={displayName} loading="lazy" onerror={() => imgFailed = true} />
+        {:else if thumbnail}
+            <img src={thumbnail} alt={displayName} loading="lazy" onerror={() => imgIndex++} />
         {:else}
             <div class="art-fallback"></div>
         {/if}

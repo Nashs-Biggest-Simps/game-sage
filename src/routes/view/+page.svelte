@@ -72,15 +72,22 @@
     // Achievements
     let totalAch  = $derived(achievements?.achievements?.length ?? 0)
     let earnedAch = $derived(achievements?.achievements?.filter(a => a.achieved)?.length ?? 0)
-    let achPct    = $derived(totalAch > 0 ? Math.round((earnedAch / totalAch) * 100) : 0)
+	    let achPct    = $derived(totalAch > 0 ? Math.round((earnedAch / totalAch) * 100) : 0)
 
-    let rarestAch = $derived(() => {
-        if (!achievements?.achievements?.length) return []
-        const pctMap = {}
-        ;(globalPcts?.achievementpercentages?.achievements ?? []).forEach(a => { pctMap[a.name] = a.percent })
-        return achievements.achievements
-            .filter(a => a.achieved)
-            .map(a => ({ ...a, globalPct: pctMap[a.apiname] ?? null }))
+	    function normalizePct(value) {
+	        const pct = Number(value)
+	        return Number.isFinite(pct) ? pct : null
+	    }
+
+	    let rarestAch = $derived(() => {
+	        if (!achievements?.achievements?.length) return []
+	        const pctMap = {}
+	        ;(globalPcts?.achievementpercentages?.achievements ?? []).forEach(a => {
+	            pctMap[a.name] = normalizePct(a.percent)
+	        })
+	        return achievements.achievements
+	            .filter(a => a.achieved)
+	            .map(a => ({ ...a, globalPct: pctMap[a.apiname] ?? null }))
             .sort((a, b) => (a.globalPct ?? 100) - (b.globalPct ?? 100))
             .slice(0, 6)
     })
