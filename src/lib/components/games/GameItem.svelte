@@ -1,7 +1,8 @@
 <script>
-    import { goto } from '$app/navigation'
-    import { resolve } from '$app/paths'
-    import { db } from '$lib/data'
+    import { goto }           from '$app/navigation'
+    import { resolve }        from '$app/paths'
+    import { db }             from '$lib/data'
+    import { fetchGameDetail } from '$lib/cache'
 
     let { game, width } = $props()
 
@@ -10,22 +11,37 @@
     let hours = $derived(Math.round((game?.playtime_forever ?? 0) / 60))
     let recentHours = $derived(Math.round((game?.playtime_2weeks ?? 0) / 60))
 
-    let imgFailed = $state(false)
+    let imgFailed  = $state(false)
+    let fetching   = $state(false)
+
+    let cachedDetail = $derived($db?.cache?.library?.details?.[appid]?.data ?? null)
+    let hasDetails   = $derived(!!(game?.name || cachedDetail?.name))
+
     let thumbnail = $derived(
         game?.thumbnail
-        ?? $db?.cache?.library?.details?.[appid]?.data?.thumbnail
+        ?? cachedDetail?.thumbnail
         ?? null
     )
 
     let genres = $derived(
-        (game?.genres ?? $db?.cache?.library?.details?.[appid]?.data?.genres ?? [])
+        (game?.genres ?? cachedDetail?.genres ?? [])
             .slice(0, 3)
             .map(g => g.description)
     )
 
+    let displayName = $derived(game?.name ?? cachedDetail?.name ?? null)
+
     $effect(() => { appid; imgFailed = false })
 
+    async function handleHover() {
+        if (hasDetails || fetching) return
+        fetching = true
+        await fetchGameDetail(appid)
+        fetching = false
+    }
+
     function navigate() {
+        if (!hasDetails) return
         goto(resolve(`/view?id=${appid}`))
     }
 
@@ -41,15 +57,21 @@
 
 <div
     class="card"
+    class:unloaded={!hasDetails}
     role="button"
     tabindex="0"
     onclick={navigate}
     onkeydown={(e) => e.key === 'Enter' && navigate()}
+    onmouseenter={handleHover}
     style="width: {width ? width + "rem" : "auto"};"
 >
     <div class="art-wrap">
-        {#if thumbnail && !imgFailed}
-            <img src={thumbnail} alt={game?.name} loading="lazy" onerror={() => imgFailed = true} />
+        {#if fetching}
+            <div class="art-fallback loading">
+                <i class="fa-solid fa-circle-notch fa-spin"></i>
+            </div>
+        {:else if thumbnail && !imgFailed}
+            <img src={thumbnail} alt={displayName} loading="lazy" onerror={() => imgFailed = true} />
         {:else}
             <div class="art-fallback"></div>
         {/if}
@@ -78,7 +100,7 @@
     </div>
 
     <div class="info">
-        <div class="name">{game?.name}</div>
+        <div class="name">{displayName ?? '—'}</div>
 
         {#if genres.length > 0}
             <div class="tags">
@@ -127,6 +149,27 @@
         width: 100%;
         aspect-ratio: 616 / 353;
         background: var(--l2);
+    }
+
+    .art-fallback.loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--bright-accent);
+        font-size: 1.2rem;
+        opacity: 0.5;
+    }
+
+    .card.unloaded {
+        opacity: 0.45;
+        cursor: default;
+    }
+
+    .card.unloaded:hover {
+        transform: none;
+        outline-color: var(--l3);
+        box-shadow: none;
+        opacity: 0.7;
     }
 
     .card:hover img { transform: scale(1.04); }

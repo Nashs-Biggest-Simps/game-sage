@@ -23,34 +23,22 @@ const DETAIL_BATCH_SIZE = 4
 const INITIAL_BATCH_SIZE = 12
 
 // ─── Thumbnail resolver ──────────────────────────────────────────────────────
-// Tries thumbnail URL candidates in order via HEAD request and returns the
-// first one that exists. Exported so other modules (algorithm.js) can use it
-// for games that aren't in the library detail cache (e.g. buy suggestions).
+// Returns the standard Steam capsule URL for a given appid. The browser
+// <img> tag handles 404s gracefully — no HEAD probing needed (and HEAD
+// requests to CDN are blocked by CORS anyway).
 
-export async function resolveThumbnail(appid) {
-    const candidates = [
-        `https://cdn.akamai.steamstatic.com/steam/apps/${appid}/capsule_616x353.jpg`,
-        `https://cdn.akamai.steamstatic.com/steam/apps/${appid}/header.jpg`,
-    ]
-    for (const url of candidates) {
-        try {
-            const r = await fetch(url, { method: 'HEAD' })
-            if (r.ok) return url
-        } catch {}
-    }
-    return null
+export function resolveThumbnail(appid) {
+    return `https://cdn.akamai.steamstatic.com/steam/apps/${appid}/capsule_616x353.jpg`
 }
 
 // ─── Game detail slimmer ─────────────────────────────────────────────────────
 // Steam's appdetails endpoint returns ~10-50KB per game (screenshots, HTML
 // descriptions, system requirements, etc.). We only store the fields we
 // actually read so the detail cache stays well under localStorage quota.
-// thumbnail is resolved here while we already have the appid in scope.
 
-async function slimGame(d) {
+function slimGame(d) {
     if (!d || !d.name || !d.steam_appid) return null
-    // Use API-provided header_image as final fallback if both HEAD checks fail
-    const thumbnail = (await resolveThumbnail(d.steam_appid)) ?? d.header_image ?? null
+    const thumbnail = d.header_image ?? resolveThumbnail(d.steam_appid)
     return {
         steam_appid:       d.steam_appid,
         name:              d.name,
@@ -202,7 +190,7 @@ function refreshDetailBatch(cache) {
                     if (!c.library.blacklist.includes(key)) c.library.blacklist.push(key)
                 })
             } else {
-                const slim = await slimGame(res?.[appid]?.data)
+                const slim = slimGame(res?.[appid]?.data)
                 if (slim) {
                     patchCache(c => {
                         c.library.details[appid] = { data: slim, fetchedAt: Date.now() }
@@ -275,7 +263,7 @@ export function fetchGameDetail(appid) {
                 resolve(null)
                 return
             }
-            const slim = await slimGame(res?.[appid]?.data)
+            const slim = slimGame(res?.[appid]?.data)
             if (slim) {
                 patchCache(c => {
                     c.library.details[appid] = { data: slim, fetchedAt: Date.now() }

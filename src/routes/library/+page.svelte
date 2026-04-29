@@ -8,6 +8,7 @@
     let appIdList   = $derived($db?.cache?.library?.appIdList ?? null)
     let playtime    = $derived($db?.cache?.library?.playtime  ?? {})
     let details     = $derived($db?.cache?.library?.details   ?? {})
+    let blacklist   = $derived(new Set(($db?.cache?.library?.blacklist ?? []).map(String)))
     let sortKey     = $derived($db?.filters?.Sort    ?? 'None')
     let filterMode  = $derived($db?.filters?.Display ?? 'All')
 
@@ -18,11 +19,13 @@
     let sorted = $derived(() => {
         if (!appIdList) return null
 
-        let arr = appIdList.map(id => ({
-            ...(details[id]?.data ?? {}),
-            appid:            id,
-            playtime_forever: playtime[id] ?? 0,
-        }))
+        let arr = appIdList
+            .filter(id => !blacklist.has(String(id)))
+            .map(id => ({
+                ...(details[id]?.data ?? {}),
+                appid:            id,
+                playtime_forever: playtime[id] ?? 0,
+            }))
 
         if (filterMode === 'Never Played') arr = arr.filter(g => g.playtime_forever === 0)
 
@@ -36,9 +39,10 @@
         return arr
     })
 
-    let total      = $derived(appIdList?.length ?? 0)
-    let shownCount = $derived(sorted()?.length ?? 0)
-    let playedCount  = $derived(appIdList ? appIdList.filter(id => (playtime[id] ?? 0) > 0).length : 0)
+    let visibleIds    = $derived(appIdList?.filter(id => !blacklist.has(String(id))) ?? [])
+    let total         = $derived(visibleIds.length)
+    let shownCount    = $derived(sorted()?.length ?? 0)
+    let playedCount   = $derived(visibleIds.filter(id => (playtime[id] ?? 0) > 0).length)
     let unplayedCount = $derived(total - playedCount)
 </script>
 

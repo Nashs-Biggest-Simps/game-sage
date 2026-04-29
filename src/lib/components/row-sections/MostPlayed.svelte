@@ -4,9 +4,10 @@
     import { buildMostPlayedGames } from '$lib/suggestions'
     import { db } from "$lib/data"
 
-    let libraryDetails  = $derived($db?.cache?.library?.details ?? {})
+    let libraryDetails  = $derived($db?.cache?.library?.details  ?? {})
     let libraryPlaytime = $derived($db?.cache?.library?.playtime ?? {})
-    let mostPlayed = $derived(buildMostPlayedGames(libraryDetails, libraryPlaytime))
+    let blacklist       = $derived(new Set(($db?.cache?.library?.blacklist ?? []).map(String)))
+    let mostPlayed      = $derived(buildMostPlayedGames(libraryDetails, libraryPlaytime, 12, blacklist))
 </script>
 
 <!--  -->
