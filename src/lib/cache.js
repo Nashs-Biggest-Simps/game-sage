@@ -51,9 +51,29 @@ function slimGame(d) {
         developers:        (d.developers    ?? []).slice(0, 3),
         publishers:        (d.publishers    ?? []).slice(0, 2),
         release_date:      d.release_date   ?? null,
+        platforms:         d.platforms      ?? null,
         metacritic_score:  d.metacritic?.score ?? null,
+        metacritic:        d.metacritic ? {
+            score: d.metacritic.score ?? null,
+            url:   d.metacritic.url   ?? null,
+        } : null,
+        recommendations:   d.recommendations ? {
+            total: d.recommendations.total ?? null,
+        } : null,
+        screenshots:       (d.screenshots ?? []).slice(0, 12).map(s => ({
+            id:             s.id,
+            path_thumbnail: s.path_thumbnail,
+            path_full:      s.path_full,
+        })),
+        movies:            (d.movies ?? []).slice(0, 3).map(m => ({
+            id:        m.id,
+            name:      m.name,
+            thumbnail: m.thumbnail,
+            mp4:       m.mp4,
+        })),
         price_overview:    d.price_overview ? {
             final_formatted:  d.price_overview.final_formatted,
+            initial_formatted: d.price_overview.initial_formatted,
             discount_percent: d.price_overview.discount_percent,
         } : null,
     }

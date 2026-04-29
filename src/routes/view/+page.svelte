@@ -8,7 +8,7 @@
 
     let cachedGame  = $derived($db?.cache?.library?.details?.[appid]?.data ?? null)
     let fetchedGame = $state(null)
-    let game        = $derived(cachedGame ?? fetchedGame)
+    let game        = $derived(fetchedGame ?? cachedGame)
     let loadingGame = $state(true)
 
     let hltb         = $state(null)
@@ -32,6 +32,10 @@
     let genres         = $derived(game?.genres?.map(g => g.description) ?? [])
     let categories     = $derived(game?.categories?.slice(0, 6)?.map(c => c.description) ?? [])
     let friendsInGame  = $derived(friends.filter(f => f.gameid && String(f.gameid) === String(appid)))
+    let criticScore    = $derived(game?.metacritic?.score ?? game?.metacritic_score ?? null)
+    let criticUrl      = $derived(game?.metacritic?.url ?? null)
+    let reviewTotal    = $derived(game?.recommendations?.total ?? null)
+    let mediaCount     = $derived(screenshots.length + movies.length)
 
     // Hero image with JS preload fallback chain
     let heroIdx    = $state(0)
@@ -96,7 +100,9 @@
         const id = page.url.searchParams.get('id')
         if (!id) return
 
-        if (!cachedGame) {
+        const needsRichDetail = !cachedGame?.screenshots && !cachedGame?.movies && !cachedGame?.platforms
+
+        if (!cachedGame || needsRichDetail) {
             steamAPI.getGameDetails(id, ret => {
                 fetchedGame = ret?.[id]?.data ?? null
                 loadingGame = false
@@ -128,6 +134,8 @@
         const m = Math.round((val % 1) * 60)
         return m > 0 ? `${h}h ${m}m` : `${h}h`
     }
+
+    let hltbPrimary = $derived(hltbFmt(hltb?.mainStory ?? hltb?.mainStoryWithExtras ?? hltb?.completionist))
 
     function newsDate(unix) {
         return new Date(unix * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -177,7 +185,7 @@
     </div>
 {/if}
 
-<div class="view-page">
+<div class="view-page" style={heroLoaded ? `--view-accent-image: url("${heroSrc}")` : ''}>
 
     <!-- Top bar -->
     <div class="topbar">
@@ -226,6 +234,45 @@
                     {#if game.release_date?.date}
                         <span class="dot-sep">·</span>
                         <span>{game.release_date.date}</span>
+                    {/if}
+                </div>
+
+                <div class="hero-stats">
+                    {#if isOwned}
+                        <div class="hero-stat">
+                            <span class="hero-stat-value">{myHours > 0 ? `${myHours.toLocaleString()}h` : '0h'}</span>
+                            <span class="hero-stat-label">Your Time</span>
+                        </div>
+                    {/if}
+                    {#if totalAch > 0}
+                        <div class="hero-stat">
+                            <span class="hero-stat-value">{achPct}%</span>
+                            <span class="hero-stat-label">{earnedAch}/{totalAch} Achievements</span>
+                        </div>
+                    {/if}
+                    {#if criticScore}
+                        <div class="hero-stat">
+                            <span class="hero-stat-value">{criticScore}</span>
+                            <span class="hero-stat-label">Metacritic</span>
+                        </div>
+                    {/if}
+                    {#if hltbPrimary}
+                        <div class="hero-stat">
+                            <span class="hero-stat-value">{hltbPrimary}</span>
+                            <span class="hero-stat-label">Main Story</span>
+                        </div>
+                    {/if}
+                    {#if friendsInGame.length > 0}
+                        <div class="hero-stat live">
+                            <span class="hero-stat-value">{friendsInGame.length}</span>
+                            <span class="hero-stat-label">Friends Live</span>
+                        </div>
+                    {/if}
+                    {#if mediaCount > 0}
+                        <div class="hero-stat">
+                            <span class="hero-stat-value">{mediaCount}</span>
+                            <span class="hero-stat-label">Media Items</span>
+                        </div>
                     {/if}
                 </div>
             </div>
@@ -456,21 +503,25 @@
                 {/if}
 
                 <!-- Metacritic score (if available) -->
-                {#if game.metacritic?.score}
+                {#if criticScore}
                     <div class="panel">
                         <div class="panel-label"><i class="fa-solid fa-star-half-stroke"></i>Metacritic</div>
                         <div class="meta-score-row">
-                            <div class="meta-score {game.metacritic.score >= 75 ? 'great' : game.metacritic.score >= 50 ? 'mixed' : 'poor'}">
-                                {game.metacritic.score}
+                            <div class="meta-score {criticScore >= 75 ? 'great' : criticScore >= 50 ? 'mixed' : 'poor'}">
+                                {criticScore}
                             </div>
-                            <a
-                                href={game.metacritic.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                class="meta-link"
-                            >
-                                Read reviews →
-                            </a>
+                            {#if criticUrl}
+                                <a
+                                    href={criticUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    class="meta-link"
+                                >
+                                    Read reviews →
+                                </a>
+                            {:else}
+                                <div class="meta-link muted">Critic score</div>
+                            {/if}
                         </div>
                     </div>
                 {/if}
@@ -511,10 +562,22 @@
                                 <span class="detail-val">{totalAch} total</span>
                             </div>
                         {/if}
-                        {#if game.recommendations?.total}
+                        {#if reviewTotal}
                             <div class="detail-row">
                                 <span class="detail-key">Reviews</span>
-                                <span class="detail-val">{game.recommendations.total.toLocaleString()} reviews</span>
+                                <span class="detail-val">{reviewTotal.toLocaleString()} reviews</span>
+                            </div>
+                        {/if}
+                        {#if screenshots.length > 0}
+                            <div class="detail-row">
+                                <span class="detail-key">Screenshots</span>
+                                <span class="detail-val">{screenshots.length} cached</span>
+                            </div>
+                        {/if}
+                        {#if movies.length > 0}
+                            <div class="detail-row">
+                                <span class="detail-key">Trailers</span>
+                                <span class="detail-val">{movies.length} available</span>
                             </div>
                         {/if}
                     </div>
@@ -549,9 +612,34 @@
 
 <style>
     .view-page {
+        position: relative;
         display: flex;
         flex-direction: column;
         gap: 1.4rem;
+        isolation: isolate;
+    }
+
+    .view-page::before {
+        content: '';
+        position: absolute;
+        z-index: 0;
+        top: -2.4rem;
+        left: 50%;
+        width: 100vw;
+        height: 38rem;
+        transform: translateX(-50%);
+        pointer-events: none;
+        background:
+            linear-gradient(to bottom, hsl(212,22%,8%,0.1) 0%, var(--bg) 92%),
+            linear-gradient(to right, var(--bg) 0%, hsl(212,22%,8%,0.18) 22%, hsl(212,22%,8%,0.18) 78%, var(--bg) 100%),
+            var(--view-accent-image, none) center top / cover no-repeat;
+        opacity: 0.34;
+        filter: saturate(1.08) blur(1px);
+    }
+
+    .view-page > * {
+        position: relative;
+        z-index: 1;
     }
 
     /* ── Modal ───────────────────────────── */
@@ -670,7 +758,7 @@
 
     .hero {
         position: relative;
-        height: 22rem;
+        height: clamp(27rem, 42vw, 34rem);
         border-radius: 1.2rem;
         overflow: hidden;
         background: var(--l1);
@@ -694,7 +782,7 @@
         flex-direction: column;
         justify-content: flex-end;
         padding: 2rem 2.4rem;
-        gap: 0.5rem;
+        gap: 0.65rem;
     }
 
     .hero-chips { display: flex; gap: 0.4rem; flex-wrap: wrap; }
@@ -715,7 +803,7 @@
         font-size: 2.8rem;
         font-weight: 800;
         line-height: 1.05;
-        letter-spacing: -0.02em;
+        letter-spacing: 0;
         text-shadow: 0 2px 12px hsl(0,0%,0%,0.6);
         max-width: 80%;
         margin: 0;
@@ -733,6 +821,51 @@
 
     .dot-sep { opacity: 0.5; }
 
+    .hero-stats {
+        display: flex;
+        align-items: stretch;
+        gap: 0.55rem;
+        flex-wrap: wrap;
+        max-width: min(56rem, 100%);
+        margin-top: 0.7rem;
+    }
+
+    .hero-stat {
+        min-width: 7rem;
+        padding: 0.62rem 0.78rem;
+        border-radius: 0.7rem;
+        background: hsl(212, 18%, 10%, 0.68);
+        outline: solid 1pt hsl(0, 0%, 100%, 0.12);
+        display: flex;
+        flex-direction: column;
+        gap: 0.24rem;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 12px 28px hsl(0, 0%, 0%, 0.22);
+    }
+
+    .hero-stat.live {
+        background: hsl(212, 40%, 16%, 0.74);
+        outline-color: hsl(212, 75%, 65%, 0.28);
+    }
+
+    .hero-stat-value {
+        color: white;
+        font-size: 1.05rem;
+        font-weight: 800;
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .hero-stat-label {
+        color: white;
+        font-size: 0.62rem;
+        font-weight: 700;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        opacity: 0.54;
+        white-space: nowrap;
+    }
+
     /* ── Content grid ────────────────────── */
 
     .content-grid {
@@ -748,13 +881,14 @@
     /* ── Panels ──────────────────────────── */
 
     .panel {
-        background: var(--lb0);
+        background: linear-gradient(180deg, var(--lb05) 0%, var(--lb0) 100%);
         border-radius: 1.1rem;
         outline: solid 1pt var(--l3);
         padding: 1.3rem;
         display: flex;
         flex-direction: column;
         gap: 0.9rem;
+        box-shadow: 0 12px 30px hsl(0, 0%, 0%, 0.12);
     }
 
     .panel-label {
@@ -1147,6 +1281,7 @@
     }
 
     .meta-link:hover { opacity: 1; }
+    .meta-link.muted { color: inherit; opacity: 0.42; }
 
     /* ── HLTB ────────────────────────────── */
 
@@ -1202,10 +1337,72 @@
         opacity: 0.65;
     }
 
+    @media (max-width: 900px) {
+        .content-grid {
+            grid-template-columns: minmax(0, 1fr);
+        }
+
+        .info-col {
+            position: static;
+        }
+
+        .hero {
+            height: 30rem;
+        }
+
+        .hero-content {
+            padding: 1.5rem;
+        }
+
+        .hero-title {
+            max-width: 100%;
+            font-size: 2.25rem;
+        }
+
+        .hero-stats {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            width: 100%;
+        }
+
+        .hero-stat {
+            min-width: 0;
+        }
+    }
+
+    @media (max-width: 520px) {
+        .hero {
+            height: 34rem;
+            border-radius: 0.9rem;
+        }
+
+        .hero-content {
+            padding: 1.1rem;
+        }
+
+        .hero-title {
+            font-size: 1.85rem;
+        }
+
+        .hero-stats {
+            grid-template-columns: minmax(0, 1fr);
+            gap: 0.45rem;
+        }
+
+        .hero-stat {
+            padding: 0.55rem 0.68rem;
+        }
+
+        .panel {
+            border-radius: 0.9rem;
+            padding: 1rem;
+        }
+    }
+
     /* ── Loading skeletons ───────────────── */
 
     .sk-hero {
-        height: 22rem;
+        height: clamp(27rem, 42vw, 34rem);
         border-radius: 1.2rem;
         background: linear-gradient(90deg, var(--l1) 0%, var(--l2) 50%, var(--l1) 100%);
         background-size: 200% 100%;
