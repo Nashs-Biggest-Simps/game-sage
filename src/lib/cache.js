@@ -42,6 +42,7 @@ function slimGame(d) {
     return {
         steam_appid:       d.steam_appid,
         name:              d.name,
+        type:              d.type ?? 'game',
         thumbnail,
         is_free:           d.is_free ?? false,
         short_description: d.short_description?.slice(0, 300) ?? '',
@@ -50,6 +51,7 @@ function slimGame(d) {
         developers:        (d.developers    ?? []).slice(0, 3),
         publishers:        (d.publishers    ?? []).slice(0, 2),
         release_date:      d.release_date   ?? null,
+        metacritic_score:  d.metacritic?.score ?? null,
         price_overview:    d.price_overview ? {
             final_formatted:  d.price_overview.final_formatted,
             discount_percent: d.price_overview.discount_percent,
@@ -142,7 +144,28 @@ export function refreshFriends() {
                 if (sa !== sb) return sb - sa
                 return (b.lastlogoff ?? 0) - (a.lastlogoff ?? 0)
             })
-            patchCache(c => { c.friends = { data: players, fetchedAt: Date.now() } })
+            const nowPlaying = players.filter(p => p.gameid)
+            patchCache(c => {
+                c.friends = { data: players, fetchedAt: Date.now() }
+
+                // Accumulate hourly popularity buckets for 7-day trend in PopularWithFriends.
+                // Each bucket stores the peak concurrent friend count per game in that hour.
+                if (nowPlaying.length) {
+                    if (!c.friendPopularity) c.friendPopularity = {}
+                    const hourKey = new Date().toISOString().slice(0, 13)
+                    const cutoff  = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 13)
+                    for (const k of Object.keys(c.friendPopularity)) {
+                        if (k < cutoff) delete c.friendPopularity[k]
+                    }
+                    if (!c.friendPopularity[hourKey]) c.friendPopularity[hourKey] = {}
+                    for (const p of nowPlaying) {
+                        const key   = String(p.gameid)
+                        const count = nowPlaying.filter(p2 => String(p2.gameid) === key).length
+                        const cur   = c.friendPopularity[hourKey][key] ?? { name: p.gameextrainfo, peak: 0 }
+                        c.friendPopularity[hourKey][key] = { name: cur.name || p.gameextrainfo, peak: Math.max(cur.peak, count) }
+                    }
+                }
+            })
         })
     })
 }
@@ -211,6 +234,33 @@ function refreshDetailBatch(cache) {
     })
 }
 
+// Fetches Steam's featured categories (top sellers, new releases, specials)
+// and caches a deduplicated list for the TrendingForYou row. 6h TTL.
+async function refreshTrending(cache) {
+    if (!isStale(cache?.trending?.fetchedAt, 6 * 60 * 60 * 1000)) return
+    try {
+        const res  = await fetch('/api?endpoint=https://store.steampowered.com/api/featuredcategories')
+        if (!res.ok) return
+        const data = await res.json()
+        const pull = (key, tag) => (data?.[key]?.items ?? []).map(g => ({ ...g, _tag: tag }))
+        const seen = new Set()
+        const items = [...pull('new_releases', 'new'), ...pull('top_sellers', 'top'), ...pull('specials', 'sale')]
+            .filter(g => g.id && !seen.has(g.id) && seen.add(g.id))
+            .slice(0, 30)
+            .map(g => ({
+                appid:     g.id,
+                name:      g.name,
+                thumbnail: g.large_capsule_image ?? g.header_image ?? null,
+                tag:       g._tag,
+                discounted: g.discounted ?? false,
+                finalPrice: g.final_price ?? null,
+            }))
+        patchCache(c => { c.trending = { items, fetchedAt: Date.now() } })
+    } catch {
+        // non-critical — row simply stays hidden
+    }
+}
+
 // ─── Public API ──────────────────────────────────────────────────────────────
 
 /**
@@ -239,6 +289,7 @@ export function startCacheUpdateCycle() {
     refreshLibraryList(cache)
     refreshRecentlyPlayed(cache)
     refreshDetailBatch(cache)
+    refreshTrending(cache)
 }
 
 /**

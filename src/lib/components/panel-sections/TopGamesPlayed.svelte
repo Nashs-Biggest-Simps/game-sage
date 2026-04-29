@@ -1,31 +1,25 @@
-<!-- created by Aaron Meche -->
 <script>
-    import { onMount } from 'svelte';
-    import { MediaQuery } from 'svelte/reactivity';
-    import { db } from '$lib/data'
-    import GameRow from "../games/GameRow.svelte";
-    import GameGrid from '../games/GameGrid.svelte';
+    import { db }      from '$lib/data'
+    import { goto }    from '$app/navigation'
+    import { resolve } from '$app/paths'
 
-    let playtime = $derived($db?.cache?.library?.playtime    ?? {})
-    let details  = $derived($db?.cache?.library?.details     ?? {})
+    let playtime = $derived($db?.cache?.library?.playtime ?? {})
+    let details  = $derived($db?.cache?.library?.details  ?? {})
+
     let topGames = $derived(() => {
         const entries = Object.entries(playtime)
             .filter(([id, mins]) => mins > 0 && details[id]?.data)
             .sort(([, a], [, b]) => b - a)
             .slice(0, 10)
             .map(([id, mins]) => ({
-                appid: parseInt(id),
-                hours: Math.round(mins / 60),
+                appid:  parseInt(id),
+                hours:  Math.round(mins / 60),
                 detail: details[id].data,
             }))
         const maxHours = entries[0]?.hours ?? 1
         return entries.map(g => ({ ...g, pct: Math.round((g.hours / maxHours) * 100) }))
     })
-    $effect(() => {console.log(topGames())})
 </script>
-
-<!--  -->
-
 
 {#if topGames().length > 0}
 <section class="panel">
@@ -34,7 +28,13 @@
     </div>
     <div class="top-list">
         {#each topGames() as game, i}
-            <div class="top-row" role="button" tabindex="0" onclick={() => goto(resolve(`/view?id=${game.appid}`))} onkeydown={(e) => e.key === 'Enter' && goto(resolve(`/view?id=${game.appid}`))}>
+            <div
+                class="top-row"
+                role="button"
+                tabindex="0"
+                onclick={() => goto(resolve(`/view?id=${game.appid}`))}
+                onkeydown={(e) => e.key === 'Enter' && goto(resolve(`/view?id=${game.appid}`))}
+            >
                 <div class="rank">{i + 1}</div>
                 <div class="top-art">
                     {#if game?.detail?.thumbnail}
@@ -45,60 +45,91 @@
                 </div>
                 <div class="top-info">
                     <div class="top-name">{game.detail.name}</div>
+                    {#if game.detail.genres?.length}
+                        <div class="top-genres">
+                            {#each game.detail.genres.slice(0, 2) as g}
+                                <span class="top-genre">{g.description}</span>
+                            {/each}
+                        </div>
+                    {/if}
                     <div class="top-bar-wrap">
-                        <div class="top-bar" style="width: {game.pct}%"></div>
+                        <div class="top-bar" style="width:{game.pct}%"></div>
                     </div>
                 </div>
-                <div class="top-hours">{game.hours.toLocaleString()}h</div>
+                <div class="top-stat">
+                    <div class="top-hrs">{game.hours.toLocaleString()}<span class="top-unit">h</span></div>
+                    <div class="top-eyebrow">TOTAL</div>
+                </div>
             </div>
         {/each}
     </div>
 </section>
 {/if}
 
-<!--  -->
-
 <style>
-    .top-list { display: flex; flex-direction: column; gap: 0.15rem; }
+    .top-list { display: flex; flex-direction: column; gap: 0.2rem; }
 
     .top-row {
         display: grid;
-        grid-template-columns: 1.6rem 3.2rem 1fr auto;
-        gap: 0.75rem;
+        grid-template-columns: 1.6rem 5rem 1fr auto;
+        gap: 0.85rem;
         align-items: center;
-        padding: 0.5rem 0.4rem;
-        border-radius: 0.6rem;
+        padding: 0.55rem 0.85rem 0.55rem 0.5rem;
+        border-radius: 0.7rem;
         cursor: pointer;
         transition: background 120ms;
     }
 
     .top-row:hover { background: var(--l1); }
 
-    .rank { font-size: 0.72rem; font-weight: 700; opacity: 0.35; text-align: center; }
+    .rank {
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-align: center;
+        opacity: 0.35;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .top-row:nth-child(1) .rank { color: var(--bright-accent); opacity: 0.9; }
+    .top-row:nth-child(2) .rank { opacity: 0.6; }
+    .top-row:nth-child(3) .rank { opacity: 0.45; }
 
     .top-art {
-        width: 3.2rem;
+        width: 5rem;
         aspect-ratio: 616 / 353;
-        border-radius: 0.35rem;
+        border-radius: 0.4rem;
         overflow: hidden;
         background: var(--l2);
+        flex-shrink: 0;
     }
 
     .top-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .top-art-fallback { width: 100%; height: 100%; background: var(--l3); }
 
-    .top-info { display: flex; flex-direction: column; gap: 0.35rem; min-width: 0; }
+    .top-info { display: flex; flex-direction: column; gap: 0.3rem; min-width: 0; }
 
     .top-name {
-        font-size: 0.84rem;
+        font-size: 0.9rem;
         font-weight: 600;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
     }
 
+    .top-genres { display: flex; gap: 0.3rem; flex-wrap: wrap; }
+
+    .top-genre {
+        font-size: 0.65rem;
+        font-weight: 600;
+        padding: 0.1rem 0.4rem;
+        background: var(--l2);
+        border-radius: 100vh;
+        opacity: 0.7;
+        white-space: nowrap;
+    }
+
     .top-bar-wrap {
-        height: 3px;
+        height: 5px;
         background: var(--l3);
         border-radius: 100vh;
         overflow: hidden;
@@ -106,10 +137,42 @@
 
     .top-bar {
         height: 100%;
-        background: var(--accent);
+        background: linear-gradient(to right, var(--soft-accent), var(--bright-accent));
         border-radius: 100vh;
         transition: width 600ms ease;
     }
 
-    .top-hours { font-size: 0.78rem; font-weight: 700; opacity: 0.65; white-space: nowrap; }
+    .top-stat {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 0.35rem;
+        flex-shrink: 0;
+        min-width: 3.5rem;
+    }
+
+    .top-hrs {
+        font-size: 1.35rem;
+        font-weight: 800;
+        letter-spacing: 0.01em;
+        color: var(--bright-accent);
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }
+
+    .top-unit {
+        font-size: 1.1rem;
+        font-weight: 700;
+        opacity: 0.7;
+        letter-spacing: 0;
+    }
+
+    .top-eyebrow {
+        font-size: 0.58rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        opacity: 0.35;
+    }
 </style>

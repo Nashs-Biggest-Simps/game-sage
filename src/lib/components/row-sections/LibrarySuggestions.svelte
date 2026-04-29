@@ -32,7 +32,10 @@
 
 <section class="row-section">
     <div class="row-header">
-        <div class="row-title">Suggested from your Library</div>
+        <div class="row-title">
+            <i class="fa-solid fa-book-open"></i>
+            Suggested from your Library
+        </div>
     </div>
     <GameRow games={games} />
 </section>

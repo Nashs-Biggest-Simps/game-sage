@@ -14,7 +14,10 @@
 
 <section class="row-section">
     <div class="row-header">
-        <div class="row-title">Your Most Played</div>
+        <div class="row-title">
+            <i class="fa-solid fa-trophy"></i>
+            All-Time Favorites
+        </div>
     </div>
     <GameRow games={mostPlayed} />
 </section>

@@ -48,29 +48,53 @@ export function topGenreMatch(game, weights, preferred = []) {
         .sort((a, b) => b.weight - a.weight)[0]?.genre ?? null
 }
 
+// Algorithm: Score each unplayed game by how closely it matches the genres
+// the user has actually spent time in. Steps:
+//   1. Build a genre weight map from all played games (hours per genre).
+//   2. Filter to unplayed, non-DLC, non-excluded games.
+//   3. Score each by summing the genre weights of all its genres, plus a
+//      proportional boost for any genres the user has explicitly preferred.
+//      The preferred boost scales with the user's heaviest genre so it stays
+//      meaningful regardless of total playtime.
+//   4. Add a Metacritic quality bump (when present) to break ties toward
+//      critically respected titles.
+//   5. Sort by score, then cap any single primary genre at 3 entries so the
+//      result stays genre-diverse rather than 10 FPS games in a row.
 export function buildLocalLibrarySuggestions(games, preferred, excluded) {
-    const weights = buildGenreWeights(games)
-    const preferredLower = preferred.map(g => g.toLowerCase())
+    const weights      = buildGenreWeights(games)
+    const maxWeight    = Math.max(...weights.values(), 1)
+    const preferredLow = preferred.map(g => g.toLowerCase())
+    const genreCap     = {}
 
     return games
-        .filter(({ game, playtime }) => playtime === 0 && !hasExcludedGenre(game, excluded))
+        .filter(({ game, playtime }) => {
+            if (playtime > 0) return false
+            if (game.type === 'dlc' || game.type === 'demo') return false
+            return !hasExcludedGenre(game, excluded)
+        })
         .map(({ game }) => {
-            const match = topGenreMatch(game, weights, preferred)
+            const match  = topGenreMatch(game, weights, preferred)
             const genres = genreNames(game)
-            const score = genres.reduce((sum, genre) => {
-                const preferenceBoost = preferredLower.includes(genre.toLowerCase()) ? 500 : 0
-                return sum + (weights.get(genre) ?? 0) + preferenceBoost
+            const primaryGenre = genres[0] ?? 'Other'
+
+            const genreScore = genres.reduce((sum, g) => {
+                const boost = preferredLow.includes(g.toLowerCase()) ? maxWeight * 0.5 : 0
+                return sum + (weights.get(g) ?? 0) + boost
             }, 0)
+            const qualityScore = (game.metacritic_score ?? 0) * (maxWeight / 100)
 
             return {
                 game,
-                score,
-                reason: match
-                    ? `Recommended from your library because it matches ${match}.`
-                    : 'Recommended from your unplayed library.',
+                score: genreScore + qualityScore,
+                primaryGenre,
+                reason: match ? `Matches your ${match} playtime` : 'Unplayed in your library',
             }
         })
         .sort((a, b) => b.score - a.score || a.game.name.localeCompare(b.game.name))
+        .filter(item => {
+            genreCap[item.primaryGenre] = (genreCap[item.primaryGenre] ?? 0) + 1
+            return genreCap[item.primaryGenre] <= 3
+        })
         .slice(0, LOCAL_ROW_LIMIT)
 }
 
@@ -169,6 +193,59 @@ export function buildGenreSpotlight(games, targetGenre, excluded) {
         }))
         .sort((a, b) => b.score - a.score)
         .slice(0, LOCAL_ROW_LIMIT)
+}
+
+// Aggregate all friendPopularity buckets into a ranked list of games.
+// Used by the "Trending in Your Circle" row — shows what friend groups
+// have collectively spent the most time playing over the stored window.
+export function buildFriendGroupFavorites(byHour, limit = 12) {
+    if (!byHour || !Object.keys(byHour).length) return []
+    const map = {}
+    for (const bucket of Object.values(byHour)) {
+        for (const [gameid, { name, peak }] of Object.entries(bucket)) {
+            if (!map[gameid]) map[gameid] = { gameid: parseInt(gameid), name, score: 0, peakFriends: 0 }
+            map[gameid].score      += peak
+            map[gameid].peakFriends = Math.max(map[gameid].peakFriends, peak)
+        }
+    }
+    return Object.values(map)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, limit)
+        .map(g => ({
+            appid:            g.gameid,
+            name:             g.name,
+            thumbnail:        `https://cdn.akamai.steamstatic.com/steam/apps/${g.gameid}/capsule_616x353.jpg`,
+            playtime_forever: 0,
+            reason:           g.peakFriends === 1
+                ? '1 friend has been playing this'
+                : `Up to ${g.peakFriends} friends playing at once`,
+        }))
+}
+
+// Same aggregation but filtered to games NOT in the user's library.
+// Hidden when fewer than 4 results so the row only appears with meaningful data.
+export function buildFriendNotOwned(byHour, ownedSet = new Set(), limit = 12) {
+    if (!byHour || !Object.keys(byHour).length) return []
+    const map = {}
+    for (const bucket of Object.values(byHour)) {
+        for (const [gameid, { name, peak }] of Object.entries(bucket)) {
+            if (ownedSet.has(gameid) || ownedSet.has(String(gameid)) || ownedSet.has(parseInt(gameid))) continue
+            if (!map[gameid]) map[gameid] = { gameid: parseInt(gameid), name, score: 0, peakFriends: 0 }
+            map[gameid].score      += peak
+            map[gameid].peakFriends = Math.max(map[gameid].peakFriends, peak)
+        }
+    }
+    const results = Object.values(map)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, limit)
+        .map(g => ({
+            appid:            g.gameid,
+            name:             g.name,
+            thumbnail:        `https://cdn.akamai.steamstatic.com/steam/apps/${g.gameid}/capsule_616x353.jpg`,
+            playtime_forever: 0,
+            reason:           'Your friends play this — not in your library',
+        }))
+    return results.length >= 4 ? results : []
 }
 
 export function buildNoAiSuggestions(games, librarySuggestions, preferred, excluded) {

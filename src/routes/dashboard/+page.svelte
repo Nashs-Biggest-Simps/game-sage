@@ -1,31 +1,29 @@
 <script>
-    import { onMount }          from 'svelte'
-    import { db }               from '$lib/data'
-    import { steamAPI }         from '$lib/steam'
-    import { goto }             from '$app/navigation'
-    import { resolve }          from '$app/paths'
-    // Top Hero Section
-    import ContinuePlayingHero  from '$lib/components/Dashboard/ContinuePlayingHero.svelte'
-    // Row Sections
-    import RecentlyPlayed       from '$lib/components/row-sections/RecentlyPlayed.svelte';
-    import LibrarySuggestions   from '$lib/components/row-sections/LibrarySuggestions.svelte'
-    import MostPlayed           from '$lib/components/row-sections/MostPlayed.svelte'
-    import FriendsPlaying       from '$lib/components/row-sections/FriendsPlaying.svelte';
-    // Bottom News Section
-    import NewsDisplay          from '$lib/components/games/NewsDisplay.svelte';
-    // Right Side Modules
-    import QuickStats           from '$lib/components/panel-sections/QuickStats.svelte'
-    import ActivityFeed         from '$lib/components/panel-sections/ActivityFeed.svelte'
+    import { db }                  from '$lib/data'
+    import { resolve }             from '$app/paths'
+    // Hero
+    import ContinuePlayingHero     from '$lib/components/Dashboard/ContinuePlayingHero.svelte'
+    // Row sections — ordered by user value / recency / discovery
+    import RecentlyPlayed          from '$lib/components/row-sections/RecentlyPlayed.svelte'
+    import AISuggestions           from '$lib/components/row-sections/AISuggestions.svelte'
+    import LibrarySuggestions      from '$lib/components/row-sections/LibrarySuggestions.svelte'
+    import ThisWeekRow             from '$lib/components/row-sections/ThisWeekRow.svelte'
+    import MostPlayed              from '$lib/components/row-sections/MostPlayed.svelte'
+    import FriendGroupFavorites    from '$lib/components/row-sections/FriendGroupFavorites.svelte'
+    import FriendNotOwned          from '$lib/components/row-sections/FriendNotOwned.svelte'
+    import TrendingForYou          from '$lib/components/row-sections/TrendingForYou.svelte'
+    import NewsDisplay             from '$lib/components/games/NewsDisplay.svelte'
+    // Right panel modules
+    import QuickStats              from '$lib/components/panel-sections/QuickStats.svelte'
+    import FriendInsights          from '$lib/components/panel-sections/FriendInsights.svelte'
+    import FriendsList             from '$lib/components/panel-sections/FriendsList.svelte'
+    import GenreSpotlightPanel     from '$lib/components/panel-sections/GenreSpotlightPanel.svelte'
+    import RecentSessions          from '$lib/components/panel-sections/RecentSessions.svelte'
+    import PopularWithFriends      from '$lib/components/panel-sections/PopularWithFriends.svelte'
 
     let mostRecentGame = $derived($db?.cache?.recentlyPlayed?.data[0] ?? null)
-    let libraryCount   = $derived(($db?.cache?.library?.appIdList ?? []).length)
-    let name           = $state(null)
-	let pfp            = $state(null)
-
-	$effect(() => {
-		name = $db?.cache?.user?.data?.personaname ?? $db?.user?.displayName ?? null
-		pfp = $db?.cache?.user?.data?.avatarfull ?? $db?.user?.photoURL ?? null
-	})
+    let name           = $derived($db?.cache?.user?.data?.personaname ?? $db?.user?.displayName ?? null)
+    let pfp            = $derived($db?.cache?.user?.data?.avatarfull  ?? $db?.user?.photoURL    ?? null)
 </script>
 
 <div class="page">
@@ -42,35 +40,50 @@
             {/if}
         </a>
     </div>
+
     <div class="dashboard">
         <ContinuePlayingHero />
 
         <div class="main-grid">
             <div class="left-col">
-                <!-- Recently Played Scroll -->
+                <!-- 1. Jump Back In -->
                 <RecentlyPlayed />
+                <!-- 2. AI Picks (when available) -->
+                <AISuggestions />
+                <!-- 3. Suggested from Library (genre-weighted algorithm) -->
                 <LibrarySuggestions />
+                <!-- 4. On Rotation This Week -->
+                <ThisWeekRow />
+                <!-- 5. All-Time Favorites -->
                 <MostPlayed />
-                <FriendsPlaying />
+                <!-- 6. Trending in Your Circle -->
+                <FriendGroupFavorites />
+                <!-- 7. Your Friends Play This (not owned) -->
+                <FriendNotOwned />
+                <!-- 8. New & Trending For You -->
+                <TrendingForYou />
+                <!-- News for most recently played game -->
                 <NewsDisplay game={mostRecentGame ?? null} />
-
             </div>
-    
+
             <aside class="right-col">
                 <QuickStats />
-                <ActivityFeed />
+                <FriendInsights />
+                <FriendsList />
+                <GenreSpotlightPanel />
+                <RecentSessions />
+                <PopularWithFriends />
             </aside>
         </div>
-    
     </div>
 </div>
 
 <style>
-    .page{
+    .page {
         display: grid;
         gap: 1.2rem;
     }
-    
+
     .dashboard {
         display: flex;
         flex-direction: column;
@@ -80,7 +93,7 @@
     .main-grid {
         width: 100%;
         display: grid;
-        grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
         gap: 2.4rem;
         align-items: start;
     }
@@ -100,39 +113,39 @@
     }
 
     .profile-btn {
-		display: flex;
-		align-items: center;
-		gap: 0.55rem;
-		padding: 0.35rem 0.7rem 0.35rem 0.35rem;
-		margin-left: 0.5rem;
-		border-radius: 100vh;
-		cursor: pointer;
-		font-size: 0.85rem;
-		font-weight: 600;
-		transition: background 150ms;
-		outline: solid 1pt transparent;
-	}
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+        padding: 0.35rem 0.7rem 0.35rem 0.35rem;
+        margin-left: 0.5rem;
+        border-radius: 100vh;
+        cursor: pointer;
+        font-size: 0.85rem;
+        font-weight: 600;
+        transition: background 150ms;
+        outline: solid 1pt transparent;
+    }
 
-	.profile-btn:hover {
-		background: var(--l1);
-		outline-color: var(--l3);
-	}
+    .profile-btn:hover {
+        background: var(--l1);
+        outline-color: var(--l3);
+    }
 
-	.profile-img {
-		width: 1.7rem;
-		height: 1.7rem;
-		border-radius: 50%;
-		object-fit: cover;
-	}
+    .profile-img {
+        width: 1.7rem;
+        height: 1.7rem;
+        border-radius: 50%;
+        object-fit: cover;
+    }
 
-	.profile-icon {
-		width: 1.7rem;
-		height: 1.7rem;
-		border-radius: 50%;
-		background: var(--l3);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		font-size: 0.75rem;
-	}
+    .profile-icon {
+        width: 1.7rem;
+        height: 1.7rem;
+        border-radius: 50%;
+        background: var(--l3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+    }
 </style>
