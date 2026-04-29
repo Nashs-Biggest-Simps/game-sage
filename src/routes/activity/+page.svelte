@@ -15,7 +15,6 @@
     import FriendInsights        from '$lib/components/panel-sections/FriendInsights.svelte'
     import FriendActivityRecency from '$lib/components/panel-sections/FriendActivityRecency.svelte'
     import LibraryProfile        from '$lib/components/panel-sections/LibraryProfile.svelte'
-    import PopularWithFriends    from '$lib/components/panel-sections/PopularWithFriends.svelte'
     import FriendsList           from '$lib/components/panel-sections/FriendsList.svelte'
 
     let recentGames = $derived($db?.cache?.recentlyPlayed?.data ?? [])
@@ -65,7 +64,6 @@
             <FriendInsights />
             <FriendActivityRecency />
             <LibraryProfile />
-            <PopularWithFriends />
             <FriendsList />
         </div>
     </div>

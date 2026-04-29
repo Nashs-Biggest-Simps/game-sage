@@ -55,7 +55,6 @@
 </div>
 
 <style>
-
 	.top-navbar {
 		padding-inline: var(--inline-moat);
 		background: var(--l05);
@@ -85,9 +84,5 @@
 	.content {
 		padding-block: 2.4rem;
 		padding-inline: var(--inline-moat);
-	}
-
-	.content.full {
-		padding: 0;
 	}
 </style>

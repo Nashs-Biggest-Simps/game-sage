@@ -10,21 +10,64 @@
 
     let inGame = $derived(friends.filter(f => f.gameid))
 
+    function openGameDetails(gameid) {
+        goto(resolve(`/view?id=${gameid}`))
+    }
+
+    function handleRowKeydown(event, gameid) {
+        if (event.key !== 'Enter' && event.key !== ' ') return
+        event.preventDefault()
+        openGameDetails(gameid)
+    }
+
+    function launchGame(event, gameid) {
+        event.stopPropagation()
+        window.location.href = `steam://run/${gameid}`
+    }
+
+    function formatFriendPreview(friends) {
+        const names = friends.map(friend => friend.personaname).filter(Boolean)
+
+        if (names.length === 0) return 'Friends are in-game now'
+        if (names.length === 1) return names[0]
+        if (names.length === 2) return `${names[0]} and ${names[1]}`
+        return `${names[0]}, ${names[1]} +${names.length - 2} more`
+    }
+
     let ownedGroups = $derived(() => {
         const map = {}
-        for (const f of inGame) {
-            const key = String(f.gameid)
+
+        for (const friend of inGame) {
+            const key = String(friend.gameid)
             if (!owned.has(key)) continue
-            if (!map[key]) map[key] = {
-                gameid:  f.gameid,
-                name:    details[key]?.data?.name ?? f.gameextrainfo ?? 'Unknown',
-                friends: [],
-                genres:  (details[key]?.data?.genres ?? []).slice(0, 2).map(g => g.description),
-                hours:   Math.round((playtime[key] ?? 0) / 60),
+
+            if (!map[key]) {
+                map[key] = {
+                    gameid: friend.gameid,
+                    name: details[key]?.data?.name ?? friend.gameextrainfo ?? 'Unknown',
+                    friends: [],
+                    hours: Math.round((playtime[key] ?? 0) / 60),
+                }
             }
-            map[key].friends.push(f)
+
+            map[key].friends.push(friend)
         }
-        return Object.values(map).sort((a, b) => b.friends.length - a.friends.length)
+
+        return Object.values(map)
+            .map((group) => {
+                const liveCount = group.friends.length
+
+                return {
+                    ...group,
+                    friendPreview: formatFriendPreview(group.friends),
+                    liveCount,
+                    liveLabel: `${liveCount} friend${liveCount !== 1 ? 's' : ''} playing now`,
+                }
+            })
+            .sort((a, b) => {
+                if (b.liveCount !== a.liveCount) return b.liveCount - a.liveCount
+                return b.hours - a.hours
+            })
     })
 
     let show = $derived(ownedGroups().length > 0)
@@ -37,54 +80,65 @@
             <i class="fa-solid fa-users"></i>
             Play With Friends
         </div>
-        <span class="pill accent">
-            <i class="fa-solid fa-circle live-dot"></i>
-            live
-        </span>
+
+        <div class="join-pills">
+            {#if ownedGroups().length > 1}
+                <span class="pill shadow">{ownedGroups().length} shared games</span>
+            {/if}
+            <span class="pill accent">
+                <i class="fa-solid fa-circle live-dot"></i>
+                live
+            </span>
+        </div>
     </div>
 
     <div class="join-list">
-        {#each ownedGroups() as g (g.gameid)}
+        {#each ownedGroups() as game (game.gameid)}
             <div
                 class="join-row"
-                role="button"
+                role="link"
                 tabindex="0"
-                onclick={() => goto(resolve(`/view?id=${g.gameid}`))}
-                onkeydown={(e) => e.key === 'Enter' && goto(resolve(`/view?id=${g.gameid}`))}
+                aria-label={`Open ${game.name}`}
+                onclick={() => openGameDetails(game.gameid)}
+                onkeydown={(event) => handleRowKeydown(event, game.gameid)}
             >
-                <div class="j-art" style="background-image:url('https://cdn.akamai.steamstatic.com/steam/apps/{g.gameid}/capsule_616x353.jpg')"></div>
+                <div
+                    class="j-art"
+                    style="background-image:url('https://cdn.akamai.steamstatic.com/steam/apps/{game.gameid}/capsule_616x353.jpg')"
+                ></div>
 
                 <div class="j-info">
-                    <div class="j-name">{g.name}</div>
-                    {#if g.genres.length}
-                        <div class="j-tags">
-                            {#each g.genres as genre}
-                                <span class="tag">{genre}</span>
-                            {/each}
+                    <div class="j-name">{game.name}</div>
+                    <div class="j-summary">{game.friendPreview}</div>
+
+                    <div class="j-meta">
+                        <div class="j-friends">
+                            <div class="j-avs">
+                                {#each game.friends.slice(0, 5) as friend (friend.steamid)}
+                                    <img class="j-av" src={friend.avatarmedium} alt={friend.personaname} title={friend.personaname} loading="lazy" />
+                                {/each}
+                                {#if game.liveCount > 5}
+                                    <div class="j-av-more">+{game.liveCount - 5}</div>
+                                {/if}
+                            </div>
+                            <span class="j-count">{game.liveLabel}</span>
                         </div>
-                    {/if}
-                    <div class="j-friends">
-                        <div class="j-avs">
-                            {#each g.friends.slice(0, 5) as f (f.steamid)}
-                                <img class="j-av" src={f.avatarmedium} alt={f.personaname} title={f.personaname} loading="lazy" />
-                            {/each}
-                            {#if g.friends.length > 5}
-                                <div class="j-av-more">+{g.friends.length - 5}</div>
-                            {/if}
-                        </div>
-                        <span class="j-count">{g.friends.length} friend{g.friends.length !== 1 ? 's' : ''} in-game</span>
                     </div>
                 </div>
 
                 <div class="j-side">
-                    {#if g.hours > 0}
-                        <div class="j-hours">{g.hours}h</div>
-                        <div class="j-hours-lbl">your time</div>
+                    {#if game.hours > 0}
+                        <div class="j-hours">
+                            <div class="j-hours-value">{game.hours.toLocaleString()}h</div>
+                            <div class="j-hours-label">PLAYED</div>
+                        </div>
                     {/if}
+
                     <button
                         class="j-launch"
-                        title="Launch {g.name}"
-                        onclick={(e) => { e.stopPropagation(); window.location.href = `steam://run/${g.gameid}` }}
+                        title="Launch {game.name}"
+                        aria-label="Launch {game.name}"
+                        onclick={(event) => launchGame(event, game.gameid)}
                     >
                         <i class="fa-solid fa-play"></i>
                     </button>
@@ -98,11 +152,23 @@
 <style>
     .live-dot { font-size: 0.4rem; }
 
-    .join-list { display: flex; flex-direction: column; gap: 0.15rem; }
+    .join-pills {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        flex-wrap: wrap;
+        margin-left: auto;
+    }
+
+    .join-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+    }
 
     .join-row {
         display: grid;
-        grid-template-columns: 5.5rem 1fr auto;
+        grid-template-columns: 5.5rem minmax(0, 1fr) auto;
         gap: 0.85rem;
         align-items: center;
         padding: 0.6rem 0.85rem 0.6rem 0.5rem;
@@ -136,9 +202,26 @@
         text-overflow: ellipsis;
     }
 
-    .j-tags { display: flex; gap: 0.3rem; flex-wrap: wrap; }
+    .j-summary {
+        font-size: 0.72rem;
+        opacity: 0.5;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
 
-    .j-friends { display: flex; align-items: center; gap: 0.5rem; }
+    .j-meta {
+        display: flex;
+        align-items: center;
+        min-width: 0;
+    }
+
+    .j-friends {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-width: 0;
+    }
 
     .j-avs { display: flex; align-items: center; flex-direction: row-reverse; }
 
@@ -167,34 +250,89 @@
         margin-left: -0.4rem;
     }
 
-    .j-count { font-size: 0.74rem; opacity: 0.55; white-space: nowrap; }
+    .j-count {
+        font-size: 0.74rem;
+        opacity: 0.55;
+        white-space: nowrap;
+    }
 
     .j-side {
         display: flex;
         flex-direction: column;
         align-items: flex-end;
-        gap: 0.15rem;
+        gap: 0.5rem;
+        min-width: 4.25rem;
         flex-shrink: 0;
     }
 
-    .j-hours { font-size: 0.92rem; font-weight: 800; color: var(--bright-accent); line-height: 1; }
-    .j-hours-lbl { font-size: 0.65rem; opacity: 0.4; white-space: nowrap; }
+    .j-hours {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 0.22rem;
+    }
+
+    .j-hours-value {
+        font-size: 1rem;
+        font-weight: 800;
+        line-height: 1;
+        color: var(--bright-accent);
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }
+
+    .j-hours-label {
+        font-size: 0.58rem;
+        font-weight: 700;
+        line-height: 1;
+        letter-spacing: 0.06em;
+        opacity: 0.35;
+    }
 
     .j-launch {
-        margin-top: 0.35rem;
-        width: 2rem;
-        height: 2rem;
-        border-radius: 0.5rem;
-        background: var(--la2);
-        color: var(--bright-accent);
+        width: 1.85rem;
+        height: 1.85rem;
+        border-radius: 0.45rem;
+        background: var(--l1);
+        color: inherit;
+        opacity: 0.5;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 0.65rem;
+        font-size: 0.62rem;
         cursor: pointer;
-        transition: background 120ms, transform 120ms;
-        outline: solid 1pt var(--la3);
+        transition: background 120ms, color 120ms, opacity 120ms;
+        outline: solid 1pt var(--l3);
     }
 
-    .j-launch:hover { background: var(--accent); color: white; transform: scale(1.08); }
+    .j-launch:hover {
+        background: var(--la2);
+        color: var(--bright-accent);
+        opacity: 1;
+    }
+
+    @media (max-width: 640px) {
+        .join-row {
+            grid-template-columns: 1fr;
+        }
+
+        .j-art {
+            width: 100%;
+        }
+
+        .j-side {
+            flex-direction: row;
+            align-items: center;
+            justify-content: flex-end;
+            min-width: 0;
+        }
+
+        .j-side:has(.j-hours) {
+            justify-content: space-between;
+        }
+
+        .j-hours {
+            align-items: flex-start;
+        }
+    }
 </style>
