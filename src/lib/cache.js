@@ -48,7 +48,7 @@ export async function resolveThumbnail(appid) {
 // thumbnail is resolved here while we already have the appid in scope.
 
 async function slimGame(d) {
-    if (!d) return null
+    if (!d || !d.name || !d.steam_appid) return null
     // Use API-provided header_image as final fallback if both HEAD checks fail
     const thumbnail = (await resolveThumbnail(d.steam_appid)) ?? d.header_image ?? null
     return {
@@ -196,15 +196,20 @@ function refreshDetailBatch(cache) {
     let completed = 0
     batch.forEach(appid => {
         steamAPI.getGameDetails(appid, async res => {
+            const key = String(appid)
             if (res?.[appid]?.success === false) {
                 patchCache(c => {
-                    if (!c.library.blacklist.includes(appid)) c.library.blacklist.push(appid)
+                    if (!c.library.blacklist.includes(key)) c.library.blacklist.push(key)
                 })
             } else {
                 const slim = await slimGame(res?.[appid]?.data)
                 if (slim) {
                     patchCache(c => {
                         c.library.details[appid] = { data: slim, fetchedAt: Date.now() }
+                    })
+                } else {
+                    patchCache(c => {
+                        if (!c.library.blacklist.includes(key)) c.library.blacklist.push(key)
                     })
                 }
             }
@@ -226,6 +231,16 @@ function refreshDetailBatch(cache) {
  */
 export function startCacheUpdateCycle() {
     patchCache(() => {})
+
+    // Purge any cached entries that are missing required fields — they'll be
+    // re-fetched (and blacklisted if they fail again) in the next detail batch.
+    patchCache(c => {
+        const details = c.library.details
+        for (const id of Object.keys(details)) {
+            const d = details[id]?.data
+            if (d && (!d.name || !d.steam_appid)) delete details[id]
+        }
+    })
 
     const data = snap()
     if (!data.steamID) return   // nothing to fetch without a Steam ID
@@ -250,11 +265,12 @@ export function getGameDetail(appid) {
  * Returns a Promise that resolves with the game data (or null on failure).
  */
 export function fetchGameDetail(appid) {
+    const key = String(appid)
     return new Promise((resolve) => {
         steamAPI.getGameDetails(appid, async res => {
             if (res?.[appid]?.success === false) {
                 patchCache(c => {
-                    if (!c.library.blacklist.includes(appid)) c.library.blacklist.push(appid)
+                    if (!c.library.blacklist.includes(key)) c.library.blacklist.push(key)
                 })
                 resolve(null)
                 return
@@ -263,6 +279,10 @@ export function fetchGameDetail(appid) {
             if (slim) {
                 patchCache(c => {
                     c.library.details[appid] = { data: slim, fetchedAt: Date.now() }
+                })
+            } else {
+                patchCache(c => {
+                    if (!c.library.blacklist.includes(key)) c.library.blacklist.push(key)
                 })
             }
             resolve(slim ?? null)
@@ -276,7 +296,7 @@ export function fetchGameDetail(appid) {
 export function getCachedLibrary() {
     const library   = snap().cache?.library ?? {}
     const details   = library.details  ?? {}
-    const blacklist = new Set(library.blacklist ?? [])
+    const blacklist = new Set((library.blacklist ?? []).map(String))
     return Object.entries(details)
         .filter(([id, entry]) => entry?.data && !blacklist.has(id))
         .map(([, entry]) => entry.data)
@@ -299,15 +319,16 @@ export function getCachedLibrary() {
  *   <instruction line>
  */
 export function buildCompactProfile(brain = null) {
-    const data     = snap()
-    const cache    = data.cache ?? {}
-    const details  = cache.library?.details  ?? {}
-    const playtime = cache.library?.playtime ?? {}
-    const recent   = cache.recentlyPlayed?.data ?? []
+    const data      = snap()
+    const cache     = data.cache ?? {}
+    const details   = cache.library?.details  ?? {}
+    const playtime  = cache.library?.playtime ?? {}
+    const recent    = cache.recentlyPlayed?.data ?? []
+    const blacklist = new Set((cache.library?.blacklist ?? []).map(String))
 
     // Top 20 most-played games that have cached details
     const playedLines = Object.entries(playtime)
-        .filter(([id, mins]) => mins > 0 && details[id]?.data)
+        .filter(([id, mins]) => mins > 0 && details[id]?.data && !blacklist.has(id))
         .sort(([, a], [, b]) => b - a)
         .slice(0, 20)
         .map(([id, mins]) => {
@@ -318,7 +339,7 @@ export function buildCompactProfile(brain = null) {
 
     // All unplayed owned games that have cached details (playtime === 0)
     const unplayedLines = Object.entries(playtime)
-        .filter(([id, mins]) => mins === 0 && details[id]?.data)
+        .filter(([id, mins]) => mins === 0 && details[id]?.data && !blacklist.has(id))
         .map(([id]) => {
             const d      = details[id].data
             const genres = (d.genres || []).map(g => g.description).join(',')
@@ -353,14 +374,15 @@ export function buildCompactProfile(brain = null) {
  * the AI knows what to exclude.
  */
 export function buildBuyProfile(brain = null) {
-    const data     = snap()
-    const cache    = data.cache ?? {}
-    const details  = cache.library?.details  ?? {}
-    const playtime = cache.library?.playtime ?? {}
-    const recent   = cache.recentlyPlayed?.data ?? []
+    const data      = snap()
+    const cache     = data.cache ?? {}
+    const details   = cache.library?.details  ?? {}
+    const playtime  = cache.library?.playtime ?? {}
+    const recent    = cache.recentlyPlayed?.data ?? []
+    const blacklist = new Set((cache.library?.blacklist ?? []).map(String))
 
     const playedLines = Object.entries(playtime)
-        .filter(([id, mins]) => mins > 0 && details[id]?.data)
+        .filter(([id, mins]) => mins > 0 && details[id]?.data && !blacklist.has(id))
         .sort(([, a], [, b]) => b - a)
         .slice(0, 25)
         .map(([id, mins]) => {
@@ -375,7 +397,7 @@ export function buildBuyProfile(brain = null) {
 
     // All owned game names so AI avoids re-suggesting them
     const ownedNames = Object.entries(playtime)
-        .filter(([id]) => details[id]?.data)
+        .filter(([id]) => details[id]?.data && !blacklist.has(id))
         .map(([id]) => details[id].data.name)
         .slice(0, 60)
 
