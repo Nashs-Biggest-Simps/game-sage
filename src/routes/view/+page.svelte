@@ -60,11 +60,17 @@
 
     // Screenshot modal
     let modalIdx = $state(null)
-    let modalSrc = $derived(modalIdx !== null ? (screenshots[modalIdx]?.path_full ?? null) : null)
-    function openModal(idx) { modalIdx = idx }
-    function closeModal()   { modalIdx = null }
-    function modalPrev()    { if (modalIdx > 0) modalIdx-- }
-    function modalNext()    { if (modalIdx < screenshots.length - 1) modalIdx++ }
+	    let modalSrc = $derived(modalIdx !== null ? (screenshots[modalIdx]?.path_full ?? null) : null)
+	    let screenshotLeftFade = $state(0)
+	    function openModal(idx) { modalIdx = idx }
+	    function closeModal()   { modalIdx = null }
+	    function modalPrev()    { if (modalIdx > 0) modalIdx-- }
+	    function modalNext()    { if (modalIdx < screenshots.length - 1) modalIdx++ }
+
+	    function handleScreenshotScroll(e) {
+	        const pivotPoint = 100
+	        screenshotLeftFade = Math.min(e.target.scrollLeft / pivotPoint, 1)
+	    }
 
     function handleKeydown(e) {
         if (modalIdx === null) return
@@ -319,7 +325,11 @@
                 {#if screenshots.length > 0}
                     <section class="panel">
                         <div class="panel-label"><i class="fa-solid fa-images"></i>Screenshots</div>
-                        <div class="screenshots-scroll horizontal-scroll">
+	                        <div
+	                            class="screenshots-scroll horizontal-scroll"
+	                            style="--left-fade-width: {screenshotLeftFade * 4}rem"
+	                            onscroll={(e) => handleScreenshotScroll(e)}
+	                        >
                             {#each screenshots as s, i (s.id)}
                                 <button
                                     class="ss-btn"
@@ -934,13 +944,29 @@
 
     /* ── Screenshots ─────────────────────── */
 
-    .screenshots-scroll {
-        gap: 0.6rem;
-        padding-top: 4pt;
-        padding-bottom: 0.5rem;
-        padding-left: 1px;
-        padding-right: 1px;
-    }
+	    .screenshots-scroll {
+	        --left-fade-width: 0rem;
+	        --right-fade-width: 4rem;
+	        gap: 0.6rem;
+	        padding-top: 4pt;
+	        padding-bottom: 0.5rem;
+	        padding-left: 1px;
+	        padding-right: 4rem;
+	        -webkit-mask-image: linear-gradient(
+	            to right,
+	            transparent 0,
+	            black var(--left-fade-width),
+	            black calc(100% - var(--right-fade-width)),
+	            transparent 100%
+	        );
+	        mask-image: linear-gradient(
+	            to right,
+	            transparent 0,
+	            black var(--left-fade-width),
+	            black calc(100% - var(--right-fade-width)),
+	            transparent 100%
+	        );
+	    }
 
     .ss-btn {
         flex-shrink: 0;
