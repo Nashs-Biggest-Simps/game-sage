@@ -1,8 +1,10 @@
 <script>
+    import { onDestroy } from 'svelte'
+    import { db } from '$lib/data'
     import GameCard from "$lib/components/game-cards/GameCard.svelte";
 
-    const INITIAL_SCROLL_COUNT = 24
-    const INITIAL_GRID_COUNT = 120
+    const INITIAL_SCROLL_COUNT = 10
+    const INITIAL_GRID_COUNT = 48
     const BATCH_SIZE = 24
 
     let { games = [], mode = 'scroll', loading = false, skeletonCount = 5, ghostCount = 0 } = $props()
@@ -10,11 +12,14 @@
     let leftFadeOpacity = $state(0)
     let visibleCount = $state(INITIAL_SCROLL_COUNT)
     let lastRailKey = $state('')
+    let scrollFrame = 0
 
     let railKey = $derived(`${mode}:${loading}:${games.length}:${games[0]?.appid ?? games[0]?.steam_appid ?? ''}:${games.at(-1)?.appid ?? games.at(-1)?.steam_appid ?? ''}`)
     let visibleGames = $derived(games.slice(0, visibleCount))
     let placeholderCount = $derived(loading ? Math.max(skeletonCount - visibleGames.length, 0) : ghostCount)
     let placeholderItems = $derived(Array.from({ length: placeholderCount }))
+    let ownedSet = $derived(new Set(($db?.cache?.library?.appIdList ?? []).map(id => String(id))))
+    let details = $derived($db?.cache?.library?.details ?? {})
 
     $effect(() => {
         if (railKey !== lastRailKey) {
@@ -25,27 +30,34 @@
     })
 
     function handleScroll(e) {
-        const scrollLeft = e.target.scrollLeft
-        const distanceFromEnd = e.target.scrollWidth - e.target.clientWidth - scrollLeft
-        const pivotPoint = 100
-        if (scrollLeft >= pivotPoint) {
-            leftFadeOpacity = 1
-        }
-        else {
-            leftFadeOpacity = (scrollLeft / pivotPoint)
-        }
+        const target = e.currentTarget
+        if (scrollFrame) return
 
-        if (distanceFromEnd < 700 && visibleCount < games.length) {
-            visibleCount = Math.min(games.length, visibleCount + BATCH_SIZE)
-        }
+        scrollFrame = requestAnimationFrame(() => {
+            scrollFrame = 0
+
+            const scrollLeft = target.scrollLeft
+            const distanceFromEnd = target.scrollWidth - target.clientWidth - scrollLeft
+            const pivotPoint = 100
+            leftFadeOpacity = scrollLeft >= pivotPoint ? 1 : scrollLeft / pivotPoint
+
+            if (distanceFromEnd < 700 && visibleCount < games.length) {
+                visibleCount = Math.min(games.length, visibleCount + BATCH_SIZE)
+            }
+        })
     }
+
+    onDestroy(() => {
+        if (scrollFrame) cancelAnimationFrame(scrollFrame)
+    })
 </script>
 
 <div class="wrapper">
     {#if mode === 'grid'}
         <div class="grid-track">
             {#each visibleGames as game, i (`${game?.appid ?? game?.steam_appid}-${i}`)}
-                <GameCard {game} />
+                {@const appid = game?.appid ?? game?.steam_appid}
+                <GameCard {game} owned={ownedSet.has(String(appid))} cachedDetail={details?.[appid]?.data ?? null} />
             {/each}
 
             {#each placeholderItems as _, i (`grid-placeholder-${i}`)}
@@ -75,7 +87,8 @@
             onscroll={(e) => handleScroll(e)}
         >
             {#each visibleGames as game, i (`${game?.appid ?? game?.steam_appid}-${i}`)}
-                <GameCard {game} width="14" />
+                {@const appid = game?.appid ?? game?.steam_appid}
+                <GameCard {game} width="14" owned={ownedSet.has(String(appid))} cachedDetail={details?.[appid]?.data ?? null} />
             {/each}
 
             {#each placeholderItems as _, i (`scroll-placeholder-${i}`)}

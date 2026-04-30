@@ -18,8 +18,8 @@
 <GameRecommendationSection
 	games={mostPlayed}
 	icon="fa-solid fa-trophy"
-	title="Most Played All-Time"
-	subtitle="your highest lifetime playtime"
+	title="Most Played In Your Library"
+	subtitle="owned games with your highest lifetime playtime"
 	skeletonCount={MIN_ROW_ITEMS}
 	{ghostCount}
 />

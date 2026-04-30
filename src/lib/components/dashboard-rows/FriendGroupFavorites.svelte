@@ -32,7 +32,7 @@
 	<GameRecommendationSection
 		{games}
 		icon="fa-solid fa-fire-flame-curved"
-		title="Friend Circle Momentum"
+		title="Trending In Your Friend Circle"
 		subtitle={Object.keys(byHour).length ? 'computed from recurring friend activity' : 'building friend trend history'}
 		{loading}
 		skeletonCount={MIN_ROW_ITEMS}

@@ -4,6 +4,21 @@ const MIN_FRIEND_NOT_OWNED_RESULTS = 4
 const FRIEND_TREND_RECENT_HOURS = 48
 const FRIEND_TREND_MIN_TRACKED_HOURS = 2
 const FRIEND_NOT_OWNED_MIN_TRACKED_HOURS = 3
+const MATURE_KEYWORDS = [
+	'adult',
+	'hentai',
+	'nudity',
+	'sexual content',
+	'erotic',
+	'nsfw',
+	'porn',
+	'xxx',
+]
+const MATURE_WORD_PATTERNS = [
+	/\bsex\b/i,
+	/\b18\+\b/i,
+	/\bmature\b/i,
+]
 
 // ─── Shared Helpers ──────────────────────────────────────────────────────────
 
@@ -47,6 +62,54 @@ function hasOwnedPlaytimeEntry(playtime, appid) {
 		Object.prototype.hasOwnProperty.call(playtime, appKey(appid)) ||
 		Object.prototype.hasOwnProperty.call(playtime, Number(appid))
 	)
+}
+
+export function ownedAppIdSet(ids = []) {
+	return new Set((ids ?? []).map(appKey))
+}
+
+export function isAppOwned(ownedSet, appid) {
+	return isOwned(ownedSet, appid)
+}
+
+export function isMatureGame(game = {}) {
+	const requiredAge = Number(game?.required_age ?? 0)
+	const descriptors = [
+		...(game?.content_descriptors?.notes ? [game.content_descriptors.notes] : []),
+		...(game?.content_descriptors?.ids ?? []),
+		...(game?.genres ?? []).map(genre => genre?.description),
+		...(game?.categories ?? []).map(category => category?.description),
+		game?.name,
+		game?.short_description,
+	]
+		.filter(Boolean)
+		.join(' ')
+		.toLowerCase()
+
+	return requiredAge >= 18 ||
+		MATURE_KEYWORDS.some(keyword => descriptors.includes(keyword)) ||
+		MATURE_WORD_PATTERNS.some(pattern => pattern.test(descriptors))
+}
+
+export function shouldHideNonOwnedGame(game, { owned = new Set(), hideMature = false } = {}) {
+	const appid = game?.appid ?? game?.steam_appid
+	if (isOwned(owned, appid)) return false
+	if (!hideMature) return false
+	return isMatureGame(game)
+}
+
+export function filterOwnedCards(games = [], owned = new Set()) {
+	return games.filter(game => isOwned(owned, game?.appid ?? game?.steam_appid))
+}
+
+export function filterNonOwnedCards(games = [], owned = new Set(), { hideMature = false, details = {} } = {}) {
+	return games.filter(game => {
+		const appid = game?.appid ?? game?.steam_appid
+		if (!appid || isOwned(owned, appid)) return false
+		const detail = details?.[appid]?.data ?? details?.[appKey(appid)]?.data ?? null
+		const check = detail ? { ...game, ...detail } : game
+		return !shouldHideNonOwnedGame(check, { owned, hideMature })
+	})
 }
 
 // ─── Genre Helpers ───────────────────────────────────────────────────────────

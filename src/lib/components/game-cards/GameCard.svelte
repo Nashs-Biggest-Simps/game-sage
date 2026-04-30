@@ -1,20 +1,17 @@
 <script>
     import { goto }           from '$app/navigation'
     import { resolve }        from '$app/paths'
-    import { db }             from '$lib/data'
     import { fetchGameDetail, resolveThumbnail } from '$lib/cache'
 
-    let { game, width } = $props()
+    let { game, width, owned = false, cachedDetail = null } = $props()
 
     let appid = $derived(game?.appid ?? game?.steam_appid)
-    let owned = $derived(!!$db?.cache?.library?.appIdList?.some(id => Number(id) === Number(appid)))
     let hours = $derived(Math.round((game?.playtime_forever ?? 0) / 60))
     let recentHours = $derived(Math.round((game?.playtime_2weeks ?? 0) / 60))
 
     let imgIndex   = $state(0)
     let fetching   = $state(false)
 
-    let cachedDetail = $derived($db?.cache?.library?.details?.[appid]?.data ?? null)
     let hasDetails   = $derived(!!(game?.name || cachedDetail?.name))
 
     let imageCandidates = $derived(
@@ -91,6 +88,11 @@
                 {recentHours}h this week
             </div>
         {/if}
+
+        <div class="ownership-badge {owned ? 'owned' : 'store'}">
+            <i class="fa-solid fa-{owned ? 'check' : 'store'}"></i>
+            {owned ? 'In Library' : 'Store'}
+        </div>
 
         {#if hours > 0}
             <div class="hours-badge">
@@ -205,6 +207,33 @@
     }
 
     .hot-badge i { font-size: 0.55rem; }
+
+    .ownership-badge {
+        position: absolute;
+        bottom: 0.45rem;
+        right: 0.45rem;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.18rem 0.5rem;
+        background: hsl(0, 0%, 0%, 0.72);
+        border-radius: 100vh;
+        font-size: 0.58rem;
+        font-weight: 800;
+        color: white;
+        backdrop-filter: blur(4px);
+        pointer-events: none;
+    }
+
+    .ownership-badge.owned {
+        color: hsl(146, 72%, 70%);
+    }
+
+    .ownership-badge.store {
+        color: var(--bright-accent);
+    }
+
+    .ownership-badge i { font-size: 0.52rem; }
 
     .action-btn {
         position: absolute;

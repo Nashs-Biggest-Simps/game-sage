@@ -29,6 +29,7 @@ const FRIEND_ROW_CACHE_VERSION = 3
 let queuedCachePatches = []
 let cachePatchTimer = null
 let activeDetailRequests = new Set()
+let invalidDetailPurgeDone = false
 
 function appKey(appid) {
     return String(appid)
@@ -116,6 +117,10 @@ function slimGame(d) {
         supported_languages: normalizeSupportedLanguages(d.supported_languages),
         website:           d.website?.trim?.() ?? '',
         required_age:      normalizeRequiredAge(d.required_age),
+        content_descriptors: d.content_descriptors ? {
+            ids:   d.content_descriptors.ids ?? [],
+            notes: d.content_descriptors.notes ?? '',
+        } : null,
         controller_support: d.controller_support ?? '',
         dlc_count:         Array.isArray(d.dlc) ? d.dlc.length : 0,
         metacritic_score:  d.metacritic?.score ?? null,
@@ -167,6 +172,37 @@ function patchCache(updater) {
         if (!data.cache.recentlyPlayed)        data.cache.recentlyPlayed = {}
         updater(data.cache)
         return data
+    })
+}
+
+function ensureCacheShape() {
+    const data = snap()
+    if (
+        data.cache &&
+        data.cache.library &&
+        data.cache.library.details &&
+        data.cache.library.blacklist &&
+        data.cache.recentlyPlayed
+    ) return
+
+    patchCache(() => {})
+}
+
+function purgeInvalidDetailsOnce() {
+    if (invalidDetailPurgeDone) return
+    invalidDetailPurgeDone = true
+
+    const details = snap().cache?.library?.details ?? {}
+    if (!Object.values(details).some(entry => {
+        const d = entry?.data
+        return d && (!d.name || !d.steam_appid)
+    })) return
+
+    patchCache(c => {
+        for (const id of Object.keys(c.library.details)) {
+            const d = c.library.details[id]?.data
+            if (d && (!d.name || !d.steam_appid)) addToBlacklist(c, id)
+        }
     })
 }
 
@@ -327,11 +363,18 @@ export function refreshFriends({ force = false } = {}) {
                         if (k < cutoff) delete c.friendPopularity[k]
                     }
                     if (!c.friendPopularity[hourKey]) c.friendPopularity[hourKey] = {}
+                    const activeCounts = new Map()
                     for (const p of nowPlaying) {
-                        const key   = String(p.gameid)
-                        const count = nowPlaying.filter(p2 => String(p2.gameid) === key).length
-                        const cur   = c.friendPopularity[hourKey][key] ?? { name: p.gameextrainfo, peak: 0 }
-                        c.friendPopularity[hourKey][key] = { name: cur.name || p.gameextrainfo, peak: Math.max(cur.peak, count) }
+                        const key = String(p.gameid)
+                        const entry = activeCounts.get(key) ?? { name: p.gameextrainfo, count: 0 }
+                        entry.count++
+                        if (!entry.name && p.gameextrainfo) entry.name = p.gameextrainfo
+                        activeCounts.set(key, entry)
+                    }
+
+                    for (const [key, active] of activeCounts) {
+                        const cur = c.friendPopularity[hourKey][key] ?? { name: active.name, peak: 0 }
+                        c.friendPopularity[hourKey][key] = { name: cur.name || active.name, peak: Math.max(cur.peak, active.count) }
                     }
                 }
 
@@ -450,17 +493,8 @@ async function refreshTrending(cache) {
  * Call this from +layout.svelte on mount.
  */
 export function startCacheUpdateCycle() {
-    patchCache(() => {})
-
-    // Purge any cached entries that are missing required fields — they'll be
-    // re-fetched (and blacklisted if they fail again) in the next detail batch.
-    patchCache(c => {
-        const details = c.library.details
-        for (const id of Object.keys(details)) {
-            const d = details[id]?.data
-            if (d && (!d.name || !d.steam_appid)) addToBlacklist(c, id)
-        }
-    })
+    ensureCacheShape()
+    purgeInvalidDetailsOnce()
 
     const data = snap()
     if (!data.user?.uid) return
@@ -474,15 +508,19 @@ export function startCacheUpdateCycle() {
     }
 
     const cache = data.cache
+    const shouldCheckSteam = isStale(cache.user?.fetchedAt, TTL.user)
+    const shouldCheckLibrary = isStale(cache.library?.fetchedAt, TTL.libraryList)
 
-    patchCache(c => {
-        if (isStale(c.user?.fetchedAt, TTL.user)) {
-            setStatus(c, 'steam', 'checking', 'Checking Steam profile…')
-        }
-        if (isStale(c.library?.fetchedAt, TTL.libraryList)) {
-            setStatus(c, 'library', 'checking', 'Checking Steam library visibility…')
-        }
-    })
+    if (shouldCheckSteam || shouldCheckLibrary) {
+        patchCache(c => {
+            if (shouldCheckSteam) {
+                setStatus(c, 'steam', 'checking', 'Checking Steam profile…')
+            }
+            if (shouldCheckLibrary) {
+                setStatus(c, 'library', 'checking', 'Checking Steam library visibility…')
+            }
+        })
+    }
 
     refreshUser(cache)
     refreshLibraryList(cache)
@@ -601,7 +639,7 @@ export function buildCompactProfile(brain = null) {
 
     if (brain) lines.push('USER_FEEDBACK:', brain, '')
 
-    lines.push('Pick 5-12 owned games from UNPLAYED_OWNED that best match this user. Prioritize actual games over DLC/demos and include varied genres. JSON only: {"s":[{"id":appid,"r":"one sentence reason"},...]}')
+    lines.push('Pick 5-12 owned games from UNPLAYED_OWNED that best match this user. Prioritize actual games over DLC/demos and include varied genres. JSON only: {"s":[appid,...]}')
 
     return {
         text:          lines.join('\n'),
@@ -660,7 +698,7 @@ export function buildBuyProfile(brain = null) {
     if (friendGames.length) lines.push('FRIENDS_PLAYING:', ...friendGames, '')
     if (brain)              lines.push('USER_FEEDBACK:', brain, '')
 
-    lines.push('Suggest 5-12 Steam base games not in ALREADY_OWNED that match this taste. Consider FRIENDS_PLAYING if present, avoid DLC/editions/bundles, and use exact Steam titles. JSON only: {"b":[{"n":"exact title","r":"one sentence reason"},...]}')
+    lines.push('Suggest 5-12 Steam base games not in ALREADY_OWNED that match this taste. Consider FRIENDS_PLAYING if present, avoid DLC/editions/bundles, and use exact Steam titles. JSON only: {"b":["exact title",...]}')
 
     return {
         text:        lines.join('\n'),

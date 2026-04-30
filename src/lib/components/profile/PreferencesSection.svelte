@@ -13,6 +13,7 @@
     let refreshHours    = $derived($db?.prefs?.suggestions?.refreshHours ?? 24)
     let aiTone          = $derived($db?.prefs?.suggestions?.aiTone ?? 'brief')
     let maxResults      = $derived($db?.prefs?.suggestions?.maxResults ?? 10)
+    let hideMatureContent = $derived($db?.prefs?.suggestions?.hideMatureContent ?? false)
     let compactLibrary  = $derived($db?.prefs?.display?.compactLibrary ?? false)
     let fullWidthMode   = $derived($db?.prefs?.display?.fullWidthMode ?? false)
     let boringBackground = $derived($db?.prefs?.display?.boringBackground ?? false)
@@ -210,6 +211,19 @@
                     <button class="seg-btn {maxResults === n ? 'active' : ''}" onclick={() => savePref('suggestions.maxResults', n)}>{n}</button>
                 {/each}
             </div>
+        </div>
+        <div class="pref-toggle-row">
+            <div class="pref-label-block">
+                <div class="pref-label">Content Filter</div>
+                <div class="pref-hint">Hide mature 18+ games from non-owned suggestions. Owned library games can still appear.</div>
+            </div>
+            <button
+                class="toggle {hideMatureContent ? 'on' : ''}"
+                onclick={() => savePref('suggestions.hideMatureContent', !hideMatureContent)}
+                role="switch"
+                aria-checked={hideMatureContent}
+                aria-label="Content filter"
+            ><div class="toggle-thumb"></div></button>
         </div>
     </div>
 

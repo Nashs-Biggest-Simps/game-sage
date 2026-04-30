@@ -33,7 +33,7 @@ export const DEFAULT_DASHBOARD_LAYOUT = DASHBOARD_MODULES.map(module => ({
 export const DASHBOARD_CONTENT_MODULES = [
 	{
 		id: 'recentlyPlayed',
-		label: 'Recently Played',
+		label: 'Recently Played From Your Library',
 		defaultColumn: 'left',
 	},
 	{
@@ -43,37 +43,37 @@ export const DASHBOARD_CONTENT_MODULES = [
 	},
 	{
 		id: 'libraryBacklog',
-		label: 'Library Backlog Picks',
+		label: 'Suggested From Your Library',
 		defaultColumn: 'left',
 	},
 	{
 		id: 'changeOfPace',
-		label: 'Change of Pace',
+		label: 'Owned Change-of-Pace Picks',
 		defaultColumn: 'left',
 	},
 	{
 		id: 'thisWeek',
-		label: 'Most Played This Week',
+		label: "This Week's Library Rotation",
 		defaultColumn: 'left',
 	},
 	{
 		id: 'mostPlayed',
-		label: 'Most Played All-Time',
+		label: 'Most Played In Your Library',
 		defaultColumn: 'left',
 	},
 	{
 		id: 'friendCircle',
-		label: 'Friend Circle Momentum',
+		label: 'Trending In Your Friend Circle',
 		defaultColumn: 'left',
 	},
 	{
 		id: 'friendsUnowned',
-		label: "Friends' Unowned Picks",
+		label: "Friends Play, You Don't Own",
 		defaultColumn: 'left',
 	},
 	{
 		id: 'steamCharts',
-		label: 'Steam Chart Picks',
+		label: 'Trending To Buy',
 		defaultColumn: 'left',
 	},
 	{

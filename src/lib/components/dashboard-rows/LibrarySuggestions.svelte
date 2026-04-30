@@ -31,8 +31,8 @@
 <GameRecommendationSection
 	{games}
 	icon="fa-solid fa-book-open-reader"
-	title="Library Backlog Picks"
-	subtitle="owned games matched to your play habits"
+	title="Suggested From Your Library"
+	subtitle="owned backlog games matched to your play habits"
 	loading={hasSteamID && !games.length && !Object.keys(libraryDetails).length}
 	skeletonCount={MIN_ROW_ITEMS}
 	{ghostCount}

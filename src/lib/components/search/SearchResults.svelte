@@ -8,7 +8,7 @@
 		mode = 'owned',
 		ownedResults = [],
 		storeResults = [],
-		ownedAppIds = [],
+		ownedAppIdSet = new Set(),
 		hoursLabel,
 		ownedThumbnail,
 		storeThumbnail,
@@ -101,7 +101,7 @@
 				</div>
 				<div class="card-info">
 					<div class="card-name">{item.name}</div>
-					{#if ownedAppIds.includes(item.id)}
+					{#if ownedAppIdSet.has(Number(item.id))}
 						<span class="owned-pill"><i class="fa-solid fa-check"></i> Owned</span>
 					{/if}
 				</div>

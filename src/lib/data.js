@@ -41,7 +41,7 @@ const DEFAULT_DB = {
     steamID: '',
     prefs: {
         genres: { preferred: [], excluded: [] },
-		suggestions: { refreshHours: 24, aiTone: 'brief', maxResults: 10 },
+		suggestions: { refreshHours: 24, aiTone: 'brief', maxResults: 10, hideMatureContent: false },
 		display: {
 			compactLibrary: false,
 			fullWidthMode: false,

@@ -1,4 +1,5 @@
 <script>
+    import { onMount } from 'svelte'
     import GameCardRail from '$lib/components/game-cards/GameCardRail.svelte'
     import RowLayoutToggle from '$lib/components/game-cards/RowLayoutToggle.svelte'
 
@@ -16,9 +17,32 @@
     } = $props()
 
     let mode = $state('scroll')
+    let sectionEl
+    let hasActivated = $state(false)
+
+    onMount(() => {
+        if (typeof IntersectionObserver === 'undefined') {
+            hasActivated = true
+            return
+        }
+
+        const observer = new IntersectionObserver(
+            entries => {
+                if (!entries.some(entry => entry.isIntersecting)) return
+
+                hasActivated = true
+                observer.disconnect()
+            },
+            { rootMargin: '900px 0px' },
+        )
+
+        if (sectionEl) observer.observe(sectionEl)
+
+        return () => observer.disconnect()
+    })
 </script>
 
-<section class="row-section">
+<section class="row-section" bind:this={sectionEl}>
     <div class="row-header">
         <div class="row-heading">
             <div class="row-title">
@@ -49,7 +73,11 @@
         <RowLayoutToggle bind:value={mode} />
     </div>
 
-    <GameCardRail {games} {mode} {loading} {skeletonCount} {ghostCount} />
+    {#if hasActivated}
+        <GameCardRail {games} {mode} {loading} {skeletonCount} {ghostCount} />
+    {:else}
+        <div class="deferred-rail" aria-hidden="true"></div>
+    {/if}
 </section>
 
 <style>
@@ -57,6 +85,13 @@
         display: flex;
         flex-direction: column;
         gap: 0.8rem;
+        content-visibility: auto;
+        contain-intrinsic-size: auto 16rem;
+    }
+
+    .deferred-rail {
+        height: 11.6rem;
+        border-radius: 0.9rem;
     }
 
     .row-header {

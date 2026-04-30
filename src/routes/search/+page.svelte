@@ -28,6 +28,7 @@
 	let libraryDetails = $derived($db?.cache?.library?.details ?? {})
 	let libraryPlaytime = $derived($db?.cache?.library?.playtime ?? {})
 	let ownedAppIds    = $derived($db?.cache?.library?.appIdList ?? [])
+	let ownedAppIdSet  = $derived(new Set(ownedAppIds.map(id => Number(id))))
 
 	let ownedResults = $derived(() => {
 		if (!query.trim()) return []
@@ -164,7 +165,7 @@
 		{mode}
 		ownedResults={ownedResults()}
 		{storeResults}
-		{ownedAppIds}
+		{ownedAppIdSet}
 		{hoursLabel}
 		{ownedThumbnail}
 		{storeThumbnail}

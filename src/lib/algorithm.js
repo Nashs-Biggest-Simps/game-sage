@@ -1,7 +1,12 @@
 import { get } from 'svelte/store'
 import { db } from '$lib/data'
 import { buildCompactProfile, buildBuyProfile, getGameDetail, resolveThumbnail } from '$lib/cache'
-import { buildGenreWeights, buildLibraryGames, buildLocalLibrarySuggestions } from '$lib/suggestions'
+import {
+    buildGenreWeights,
+    buildLibraryGames,
+    buildLocalLibrarySuggestions,
+    shouldHideNonOwnedGame,
+} from '$lib/suggestions'
 import { steamAPI } from '$lib/steam'
 
 const DEFAULT_REFRESH_HOURS = 24
@@ -70,6 +75,15 @@ function slimStoreData(storeGame) {
             final_formatted: storeGame.price.final_formatted,
         } : null,
     }
+}
+
+function hideMatureContent() {
+    return !!prefs().suggestions?.hideMatureContent
+}
+
+function nonOwnedAllowed(game, owned) {
+    if (!game?.appid || owned.has(String(game.appid))) return false
+    return !shouldHideNonOwnedGame(game, { owned, hideMature: hideMatureContent() })
 }
 
 function searchSteamStoreByName(name) {
@@ -154,7 +168,7 @@ export class Algorithm {
         const owned = ownedAppIds()
         const items = type === 'play'
             ? cached.items.filter(item => owned.has(String(item?.game?.steam_appid)))
-            : cached.items.filter(item => !owned.has(String(item?.appid)))
+            : cached.items.filter(item => nonOwnedAllowed(item, owned))
 
         return items.length === cached.items.length
             ? cached
@@ -257,7 +271,9 @@ export class Algorithm {
                     ? 'A friend is playing this right now'
                     : `${item.count} friends are playing this right now`,
                 score: 100 + (item.count * 10),
+                source: 'local',
             }))
+            .filter(item => nonOwnedAllowed(item, owned))
 
         const tagWeight = { top: 5, sale: 4, new: 3 }
         const trendingPicks = (current.cache?.trending?.items ?? [])
@@ -280,8 +296,10 @@ export class Algorithm {
                         ? `${tagLabel} with ${matchedGenre.replace(/^\w/, c => c.toUpperCase())} appeal`
                         : tagLabel,
                     score: (tagWeight[game.tag] ?? 1) + (matchedGenre ? 8 : 0),
+                    source: 'local',
                 }
             })
+            .filter(game => nonOwnedAllowed({ ...game, ...(details[game.appid]?.data ?? {}) }, owned))
             .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name))
 
         return uniqueBy(
@@ -293,9 +311,10 @@ export class Algorithm {
     #resolvePlayResults(rawItems, limit) {
         const owned = ownedAppIds()
         const aiItems = rawItems
-            .map(({ id, r: reason }) => {
+            .map(item => {
+                const id = typeof item === 'object' ? item.id : item
                 const game = getGameDetail(id)
-                return game ? { game, reason } : null
+                return game ? { game, source: 'ai' } : null
             })
             .filter(Boolean)
             .filter(item => owned.has(String(item.game?.steam_appid)))
@@ -309,27 +328,29 @@ export class Algorithm {
     async #resolveBuyResults(rawItems, cachedItems, limit) {
         const owned = ownedAppIds()
         const resolved = await Promise.all(
-            rawItems.slice(0, STORE_MATCH_LIMIT).map(async ({ n: name, r: reason }) => {
+            rawItems.slice(0, STORE_MATCH_LIMIT).map(async rawItem => {
+                const name = typeof rawItem === 'object' ? rawItem.n : rawItem
                 const match = await searchSteamStoreByName(name)
                 if (!match || owned.has(String(match.id))) return null
 
-                return {
-                    name,
-                    reason,
+                const item = {
+                    name: match.name ?? name,
                     appid: match.id,
                     storeData: slimStoreData(match),
                     thumbnail: resolveThumbnail(match.id),
+                    source: 'ai',
                 }
+                return nonOwnedAllowed(item, owned) ? item : null
             })
         )
 
         return uniqueBy(
-            [...(cachedItems ?? []), ...resolved.filter(Boolean), ...this.#localBuyBackfill(resolved.filter(Boolean), limit)],
+            [...(cachedItems ?? []).filter(item => nonOwnedAllowed(item, owned)), ...resolved.filter(Boolean), ...this.#localBuyBackfill(resolved.filter(Boolean), limit)],
             item => String(item.appid),
         ).slice(0, limit)
     }
 
-    // Returns [{ game, reason }] for owned games the user should play next.
+    // Returns [{ game, source }] for AI-owned picks, with local fallback reasons when needed.
     async getPlaySuggestions() {
         const cached = this.#cached('play')
         const limit = preferredResultLimit()
@@ -378,7 +399,7 @@ export class Algorithm {
         return inFlightRequests.play
     }
 
-    // Returns [{ name, reason, appid, thumbnail, storeData }] for games not owned.
+    // Returns [{ name, appid, thumbnail, storeData, source }] for AI buy picks, with local fallback reasons when needed.
     async getBuySuggestions() {
         const cached = this.#cached('buy')
         const limit = preferredResultLimit()

@@ -1,6 +1,7 @@
 @font-face {
     font-family: Figtree;
     src: url("$lib/Figtree/Figtree-VariableFont_wght.ttf");
+    font-display: swap;
 }
 
 .empty-row {
@@ -271,5 +272,16 @@
 @media (max-width: 640px) {
     .panel-lg {
         padding: 1.25rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
     }
 }

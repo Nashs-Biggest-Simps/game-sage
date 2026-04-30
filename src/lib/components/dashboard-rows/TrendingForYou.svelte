@@ -1,7 +1,7 @@
 <script>
 	import GameRecommendationSection from '$lib/components/game-cards/GameRecommendationSection.svelte'
 	import { db } from '$lib/data'
-	import { buildLibraryGames, buildGenreWeights } from '$lib/suggestions'
+	import { buildLibraryGames, buildGenreWeights, filterNonOwnedCards } from '$lib/suggestions'
 
 	const TAG_LABEL = { new: 'New Release', top: 'Top Seller', sale: 'On Sale' }
 	const MIN_ROW_ITEMS = 5
@@ -10,6 +10,7 @@
 	let details  = $derived($db?.cache?.library?.details  ?? {})
 	let playtime = $derived($db?.cache?.library?.playtime ?? {})
 	let blacklist = $derived(new Set(($db?.cache?.library?.blacklist ?? []).map(String)))
+	let hideMatureContent = $derived($db?.prefs?.suggestions?.hideMatureContent ?? false)
 
 	// Build top-genre list to score trending games for "for you" relevance
 	let libraryGames = $derived(buildLibraryGames(details, playtime, blacklist))
@@ -28,8 +29,7 @@
 	let owned = $derived(new Set(($db?.cache?.library?.appIdList ?? []).map(String)))
 
 	let games = $derived(
-		trending
-			.filter(g => !owned.has(String(g.appid)))
+		filterNonOwnedCards(trending, owned, { hideMature: hideMatureContent, details })
 			.map(g => {
 				const cached    = details[g.appid]?.data ?? null
 				const genres    = (cached?.genres ?? []).map(d => d.description.toLowerCase())
@@ -55,8 +55,8 @@
 <GameRecommendationSection
 	{games}
 	icon="fa-solid fa-chart-line"
-	title="Steam Chart Picks"
-	subtitle="unowned charting games filtered by your library"
+	title="Trending To Buy"
+	subtitle="unowned Steam chart games filtered against your library"
 	skeletonCount={MIN_ROW_ITEMS}
 	{ghostCount}
 />

@@ -1,16 +1,18 @@
 <script>
 	import GameRecommendationSection from '$lib/components/game-cards/GameRecommendationSection.svelte'
 	import { db } from '$lib/data'
+	import { filterOwnedCards } from '$lib/suggestions'
 
 	const MIN_ROW_ITEMS = 5
 
 	let recent  = $derived($db?.cache?.recentlyPlayed?.data ?? [])
 	let details = $derived($db?.cache?.library?.details ?? {})
+	let ownedSet = $derived(new Set(($db?.cache?.library?.appIdList ?? []).map(String)))
 
 	// Sort by 2-week playtime — different from "Jump Back In" which uses Steam's
 	// last-played order. This surfaces what the user has been grinding most.
 	let sorted = $derived(
-		recent
+		filterOwnedCards(recent, ownedSet)
 			.filter(g => (g.playtime_2weeks ?? 0) > 0)
 			.sort((a, b) => (b.playtime_2weeks ?? 0) - (a.playtime_2weeks ?? 0))
 	)
@@ -34,8 +36,8 @@
 <GameRecommendationSection
 	{games}
 	icon="fa-solid fa-calendar-week"
-	title="Most Played This Week"
-	subtitle="sorted by two-week Steam playtime"
+	title="This Week's Library Rotation"
+	subtitle="owned games sorted by two-week Steam playtime"
 	skeletonCount={MIN_ROW_ITEMS}
 	{ghostCount}
 />

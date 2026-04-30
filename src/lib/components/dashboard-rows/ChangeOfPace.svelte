@@ -33,10 +33,8 @@
 <GameRecommendationSection
 	{games}
 	icon="fa-solid fa-compass"
-	title="Library Wildcards"
+	title="Owned Change-of-Pace Picks"
 	subtitle="owned games outside your usual rotation"
-	badgeLabel="Variety"
-	badgeIcon="fa-solid fa-shuffle"
 	loading={hasSteamID && !games.length && !Object.keys(libraryDetails).length}
 	skeletonCount={MIN_ROW_ITEMS}
 	{ghostCount}

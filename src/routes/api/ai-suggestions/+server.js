@@ -3,7 +3,7 @@ import { RueterModel } from 'rueter-ai'
 import { GROK_API_KEY } from '$env/static/private'
 
 const AI_PROVIDER = 'grok'
-const MAX_TOKENS = 900
+const MAX_TOKENS = 700
 const AI_TIMEOUT_MS = 20_000
 
 const PLAY_PROMPT =
@@ -13,8 +13,8 @@ const PLAY_PROMPT =
     'Rank by fit using genre affinity, high-playtime patterns, recent activity, quality signals, and variety. ' +
     'Prefer strong matches over novelty, but avoid clustering every pick in one franchise or genre. ' +
     'If USER_FEEDBACK is present, prioritize liked patterns and avoid disliked ones. ' +
-    'Return ONLY valid JSON with no markdown, code fences, or explanation. ' +
-    'Format exactly: {"s":[{"id":<appid>,"r":"<one-sentence reason>"},...]} — return 12 results when possible, never fewer than 5 unless the input list has fewer than 5 viable games.'
+    'Return ONLY valid JSON with no markdown, code fences, reasons, or explanation. ' +
+    'Format exactly: {"s":[<appid>,...]} — return 12 results when possible, never fewer than 5 unless the input list has fewer than 5 viable games.'
 
 const BUY_PROMPT =
     'You are a precise Steam store discovery engine. ' +
@@ -24,8 +24,8 @@ const BUY_PROMPT =
     'Rank by taste fit using playtime patterns, genre affinity, recent activity, quality/reputation, and freshness. Mix reliable high-confidence picks with a few tasteful discoveries. ' +
     'If FRIENDS_PLAYING is present, those are games friends are actively playing that the user does not own — prioritize recommending them if they match the user\'s taste. ' +
     'If USER_FEEDBACK is present, match liked patterns and avoid disliked ones. ' +
-    'Return ONLY valid JSON with no markdown, code fences, or explanation. ' +
-    'Format exactly: {"b":[{"n":"<exact Steam title>","r":"<one-sentence reason>"},...]} — return 12 results when possible, never fewer than 5.'
+    'Return ONLY valid JSON with no markdown, code fences, reasons, or explanation. ' +
+    'Format exactly: {"b":["<exact Steam title>",...]} — return 12 results when possible, never fewer than 5.'
 
 function basePromptFor(type) {
     return type === 'play' ? PLAY_PROMPT : BUY_PROMPT
@@ -39,8 +39,9 @@ function preferenceInstructions(prefs) {
 
     if (preferred.length) lines.push(`Prefer these genres: ${preferred.join(', ')}.`)
     if (excluded.length) lines.push(`Avoid these genres: ${excluded.join(', ')}.`)
-    if (tone === 'detailed') lines.push('Write reasons in 2 sentences with specific details.')
-    if (tone === 'enthusiastic') lines.push('Write reasons with enthusiasm and energy.')
+    if (prefs?.suggestions?.hideMatureContent) lines.push('Avoid adult-only, sexually explicit, nudity-focused, or mature 18+ games unless the user already owns them.')
+    if (tone === 'detailed') lines.push('Favor higher-confidence matches over obscure novelty.')
+    if (tone === 'enthusiastic') lines.push('Include a slightly bolder discovery pick when confidence is still high.')
 
     return lines.join(' ')
 }
