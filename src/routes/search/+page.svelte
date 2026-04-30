@@ -76,7 +76,17 @@
 <div class="page">
 
     <!-- ── Search bar ── -->
-    <div class="page-title">Search</div>
+    <div class="search-header">
+        <div>
+            <div class="page-title">Search</div>
+            <div class="page-subtitle">Find games in your library or discover titles across the Steam Store.</div>
+        </div>
+        <div class="search-stats">
+            <span><i class="fa-solid fa-gamepad"></i>{ownedAppIds.length.toLocaleString()} owned</span>
+            <span><i class="fa-brands fa-steam"></i>Store lookup</span>
+        </div>
+    </div>
+
     <div class="search-hero">
         <div class="search-bar">
             <i class="fa-solid fa-magnifying-glass search-icon"></i>
@@ -231,26 +241,80 @@
 </div>
 
 <style>
-    .search-hero {
+    .page {
         display: flex;
         flex-direction: column;
+        gap: 1.15rem;
+    }
+
+    .search-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
         gap: 1rem;
+    }
+
+    .page-subtitle {
+        margin-top: 0.28rem;
+        color: hsl(212, 18%, 84%, 0.5);
+        font-size: 0.88rem;
+    }
+
+    .search-stats {
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        flex-shrink: 0;
+    }
+
+    .search-stats span {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.38rem;
+        padding: 0.42rem 0.7rem;
+        border-radius: 100vh;
+        background: hsl(212, 24%, 12%, 0.42);
+        outline: solid 1pt hsl(212, 38%, 36%, 0.42);
+        color: hsl(212, 18%, 84%, 0.62);
+        font-size: 0.74rem;
+        font-weight: 800;
+        backdrop-filter: blur(18px) saturate(1.18);
+        -webkit-backdrop-filter: blur(18px) saturate(1.18);
+    }
+
+    .search-stats i {
+        color: var(--bright-accent);
+        font-size: 0.7rem;
+    }
+
+    .search-hero {
+        display: block;
     }
 
     .search-bar {
         display: flex;
         align-items: center;
         gap: 0.6rem;
-        padding: 0.7rem 1rem;
-        background: var(--l1);
+        padding: 0.82rem 1rem;
+        background: hsl(212, 24%, 8%, 0.45);
         border-radius: 0.9rem;
-        outline: solid 1pt var(--l3);
-        transition: outline-color 150ms;
+        transition: outline-color 150ms, background 150ms, box-shadow 150ms;
+        box-shadow: inset 0 1px 0 hsl(0, 0%, 100%, 0.04);
     }
 
-    .search-bar:focus-within { outline-color: var(--accent); }
+    .search-bar:focus-within {
+        background: hsl(212, 24%, 9%, 0.58);
+        box-shadow: 0 0 0 3px hsl(188, 80%, 56%, 0.08), inset 0 1px 0 hsl(0, 0%, 100%, 0.05);
+    }
 
-    .search-icon { opacity: 0.4; font-size: 0.9rem; flex-shrink: 0; }
+    .search-icon {
+        color: var(--bright-accent);
+        opacity: 0.72;
+        font-size: 0.9rem;
+        flex-shrink: 0;
+    }
 
     .search-input {
         flex: 1;
@@ -264,7 +328,7 @@
         min-width: 0;
     }
 
-    .search-input::placeholder { opacity: 0.35; }
+    .search-input::placeholder { color: hsl(212, 18%, 84%, 0.38); opacity: 1; }
 
     .clear-btn {
         display: flex;
@@ -273,29 +337,37 @@
         width: 1.5rem;
         height: 1.5rem;
         border-radius: 50%;
-        background: var(--l3);
+        background: hsl(212, 24%, 24%, 0.72);
         font-size: 0.65rem;
         opacity: 0.6;
         cursor: pointer;
-        transition: opacity 120ms;
+        transition: opacity 120ms, background 120ms;
         flex-shrink: 0;
     }
 
-    .clear-btn:hover { opacity: 1; }
+    .clear-btn:hover {
+        opacity: 1;
+        background: hsl(212, 24%, 30%, 0.86);
+    }
 
     .search-btn {
-        padding: 0.5rem 1.1rem;
-        background: var(--accent);
+        padding: 0.56rem 1.15rem;
+        background: linear-gradient(135deg, var(--accent), hsl(188, 82%, 48%));
         border-radius: 0.6rem;
         font-size: 0.85rem;
         font-weight: 700;
         color: white;
         cursor: pointer;
-        transition: background 120ms;
+        transition: transform 120ms, filter 120ms, box-shadow 120ms;
         flex-shrink: 0;
+        box-shadow: 0 10px 24px hsl(188, 80%, 26%, 0.24);
     }
 
-    .search-btn:hover { background: var(--bright-accent); }
+    .search-btn:hover {
+        transform: translateY(-1px);
+        filter: brightness(1.12);
+        box-shadow: 0 14px 32px hsl(188, 80%, 26%, 0.34);
+    }
 
     /* ── Filter bar ───────────────── */
 
@@ -304,15 +376,18 @@
         align-items: center;
         gap: 0.8rem;
         flex-wrap: wrap;
+        padding: 0.25rem 0.1rem;
     }
 
     .mode-tabs {
         display: flex;
         gap: 0.2rem;
-        background: var(--l1);
+        background: hsl(212, 24%, 12%, 0.5);
         border-radius: 0.65rem;
         padding: 0.25rem;
-        outline: solid 1pt var(--l2);
+        outline: solid 1pt hsl(212, 38%, 36%, 0.44);
+        backdrop-filter: blur(20px) saturate(1.18);
+        -webkit-backdrop-filter: blur(20px) saturate(1.18);
     }
 
     .mode-tab {
@@ -330,13 +405,16 @@
     }
 
     .mode-tab i { font-size: 0.78rem; }
-    .mode-tab:hover { opacity: 0.85; }
+    .mode-tab:hover {
+        opacity: 0.9;
+        background: hsl(212, 24%, 22%, 0.5);
+    }
 
     .mode-tab.active {
-        background: var(--la1);
+        background: hsl(188, 76%, 34%, 0.22);
         color: var(--bright-accent);
         opacity: 1;
-        outline: solid 1pt var(--la3);
+        outline: solid 1pt hsl(188, 72%, 48%, 0.36);
     }
 
     /* ── Genre dropdown ───────────── */
@@ -349,14 +427,20 @@
         align-items: center;
         gap: 0.5rem;
         padding: 0.45rem 0.7rem 0.45rem 0.85rem;
-        background: var(--l1);
+        background: hsl(212, 24%, 12%, 0.5);
         border-radius: 0.65rem;
-        outline: solid 1pt var(--l3);
+        outline: solid 1pt hsl(212, 38%, 36%, 0.44);
         cursor: pointer;
-        transition: outline-color 120ms;
+        transition: outline-color 120ms, background 120ms;
+        backdrop-filter: blur(20px) saturate(1.18);
+        -webkit-backdrop-filter: blur(20px) saturate(1.18);
     }
 
-    .select-wrap:focus-within { outline-color: var(--accent); }
+    .select-wrap:hover,
+    .select-wrap:focus-within {
+        background: hsl(212, 24%, 16%, 0.58);
+        outline-color: hsl(188, 80%, 56%, 0.58);
+    }
 
     .select-label {
         font-size: 0.72rem;
@@ -396,7 +480,7 @@
     .result-count {
         margin-left: auto;
         font-size: 0.78rem;
-        opacity: 0.45;
+        color: hsl(212, 18%, 84%, 0.52);
         font-weight: 500;
         display: flex;
         align-items: center;
@@ -411,13 +495,22 @@
         justify-content: center;
         gap: 0.8rem;
         height: 14rem;
-        background: var(--l1);
+        background:
+            radial-gradient(circle at 50% 0%, hsl(188, 72%, 38%, 0.12), transparent 16rem),
+            hsl(212, 24%, 12%, 0.5);
         border-radius: 1.2rem;
+        outline: solid 1pt hsl(212, 38%, 36%, 0.42);
         font-size: 0.88rem;
-        opacity: 0.4;
+        color: hsl(212, 18%, 84%, 0.55);
+        backdrop-filter: blur(24px) saturate(1.2);
+        -webkit-backdrop-filter: blur(24px) saturate(1.2);
     }
 
-    .start-state i { font-size: 1.5rem; }
+    .start-state i {
+        color: var(--bright-accent);
+        font-size: 1.5rem;
+        opacity: 0.85;
+    }
 
     /* ── Results grid ─────────────── */
 
@@ -431,25 +524,33 @@
     .card {
         display: flex;
         flex-direction: column;
-        background: var(--l1);
+        background:
+            linear-gradient(180deg, hsl(212, 24%, 15%, 0.68), hsl(212, 24%, 10%, 0.52));
         border-radius: 0.9rem;
         overflow: hidden;
-        outline: solid 1pt var(--l2);
+        outline: solid 1pt hsl(212, 38%, 36%, 0.45);
         cursor: pointer;
         text-align: left;
-        transition: transform 180ms, outline-color 180ms, box-shadow 180ms;
+        transition: transform 180ms, outline-color 180ms, box-shadow 180ms, background 180ms;
+        box-shadow:
+            0 14px 38px hsl(0, 0%, 0%, 0.16),
+            inset 0 1px 0 hsl(0, 0%, 100%, 0.04);
+        backdrop-filter: blur(20px) saturate(1.18);
+        -webkit-backdrop-filter: blur(20px) saturate(1.18);
     }
 
     .card:hover {
         transform: translateY(-3px);
-        outline-color: var(--accent);
-        box-shadow: 0 8px 28px hsl(0, 0%, 0%, 0.35);
+        outline-color: hsl(188, 76%, 52%, 0.55);
+        background:
+            linear-gradient(180deg, hsl(212, 24%, 18%, 0.76), hsl(212, 24%, 12%, 0.62));
+        box-shadow: 0 18px 46px hsl(0, 0%, 0%, 0.3);
     }
 
     .card-art {
         position: relative;
         aspect-ratio: 616 / 353;
-        background: var(--l2);
+        background: hsl(212, 24%, 18%, 0.8);
         overflow: hidden;
     }
 
@@ -464,12 +565,18 @@
 
     :global(.card-art img[data-fallback]) {
         object-fit: contain;
-        background: var(--l2);
+        background: hsl(212, 24%, 14%, 0.86);
     }
 
     .card:hover .card-art img { transform: scale(1.05); }
 
-    .art-fallback { width: 100%; height: 100%; background: var(--l2); }
+    .art-fallback {
+        width: 100%;
+        height: 100%;
+        background:
+            radial-gradient(circle at 35% 20%, hsl(188, 76%, 42%, 0.2), transparent 8rem),
+            hsl(212, 24%, 14%, 0.86);
+    }
 
     .art-badge {
         position: absolute;
@@ -479,9 +586,11 @@
         align-items: center;
         gap: 0.3rem;
         padding: 0.22rem 0.55rem;
-        background: hsl(0, 0%, 0%, 0.72);
-        backdrop-filter: blur(6px);
+        background: hsl(212, 28%, 7%, 0.74);
+        backdrop-filter: blur(10px) saturate(1.25);
+        -webkit-backdrop-filter: blur(10px) saturate(1.25);
         border-radius: 100vh;
+        outline: solid 1pt hsl(0, 0%, 100%, 0.08);
         font-size: 0.75rem;
         font-weight: 700;
         color: white;
@@ -518,9 +627,10 @@
         font-size: 0.72rem;
         font-weight: 500;
         padding: 0.2rem 0.55rem;
-        background: var(--l2);
+        background: hsl(212, 24%, 20%, 0.56);
         border-radius: 100vh;
         opacity: 0.8;
+        outline: solid 1pt hsl(212, 38%, 38%, 0.34);
     }
 
     .owned-pill {
@@ -538,4 +648,63 @@
     }
 
     .owned-pill i { font-size: 0.6rem; }
+
+    @media (max-width: 720px) {
+        .search-header {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+
+        .search-stats {
+            justify-content: flex-start;
+        }
+
+        .search-bar {
+            flex-wrap: wrap;
+        }
+
+        .search-input {
+            min-width: calc(100% - 2rem);
+            order: 2;
+        }
+
+        .search-icon {
+            order: 1;
+        }
+
+        .clear-btn,
+        .search-btn {
+            order: 3;
+        }
+
+        .search-btn {
+            margin-left: auto;
+        }
+    }
+
+    @media (max-width: 520px) {
+        .mode-tabs,
+        .genre-filter,
+        .select-wrap {
+            width: 100%;
+        }
+
+        .mode-tab {
+            flex: 1;
+            justify-content: center;
+        }
+
+        .select-wrap {
+            justify-content: space-between;
+        }
+
+        .result-count {
+            width: 100%;
+            margin-left: 0;
+        }
+
+        .grid {
+            grid-template-columns: minmax(0, 1fr);
+        }
+    }
 </style>

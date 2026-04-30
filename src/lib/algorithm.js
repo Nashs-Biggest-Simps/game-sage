@@ -4,12 +4,18 @@ import { buildCompactProfile, buildBuyProfile, getGameDetail, resolveThumbnail }
 import { buildLibraryGames, buildLocalLibrarySuggestions } from '$lib/suggestions'
 import { steamAPI } from '$lib/steam'
 
-const SUGGESTION_TTL = 24 * 60 * 60 * 1000
+const DEFAULT_SUGGESTION_TTL = 24 * 60 * 60 * 1000
 const MIN_PLAYED     = 3
 const MIN_UNPLAYED   = 1
 const MIN_ROW_ITEMS  = 8
 const MAX_ROW_ITEMS  = 12
 const inFlight = { play: null, buy: null }
+
+function preferredMaxResults() {
+    const n = Number(get(db).prefs?.suggestions?.maxResults ?? MAX_ROW_ITEMS)
+    if (!Number.isFinite(n)) return MAX_ROW_ITEMS
+    return Math.max(MIN_ROW_ITEMS, Math.min(MAX_ROW_ITEMS, n))
+}
 
 // Lightweight feedback tracker — stores liked/disliked game names
 // to pass as context to the AI on subsequent requests.
@@ -44,8 +50,13 @@ class Brain {
     reset() { this.#data = { liked: [], disliked: [] } }
 }
 
+function suggestionTTL() {
+    const hours = Number(get(db).prefs?.suggestions?.refreshHours ?? 24)
+    return Number.isFinite(hours) && hours > 0 ? hours * 60 * 60 * 1000 : DEFAULT_SUGGESTION_TTL
+}
+
 function isFresh(ts) {
-    return !!ts && (Date.now() - ts) < SUGGESTION_TTL
+    return !!ts && (Date.now() - ts) < suggestionTTL()
 }
 
 function searchStore(name) {
@@ -98,7 +109,7 @@ export class Algorithm {
     }
 
     #isUsableCache(cached) {
-        return isFresh(cached?.generatedAt) && cached.items?.length >= MIN_ROW_ITEMS
+        return isFresh(cached?.generatedAt) && cached.items?.length >= Math.min(MIN_ROW_ITEMS, preferredMaxResults())
     }
 
     #persistCache(type, items) {
@@ -145,8 +156,9 @@ export class Algorithm {
     // without depending on the detail cache being populated.
     async getPlaySuggestions() {
         const cached = this.#getCache('play')
+        const limit = preferredMaxResults()
         if (this.#isUsableCache(cached)) {
-            return cached.items.slice(0, MAX_ROW_ITEMS)
+            return cached.items.slice(0, limit)
         }
         if (inFlight.play) return inFlight.play
 
@@ -170,14 +182,14 @@ export class Algorithm {
                     return game ? { game, reason } : null
                 }).filter(Boolean)
                 const filled = uniqueBy([...items, ...this.#playBackfill(items)], item => String(item.game?.steam_appid))
-                    .slice(0, MAX_ROW_ITEMS)
+                    .slice(0, limit)
 
                 this.#persistCache('play', filled)
                 return filled
             } catch (err) {
                 console.error('[Algorithm] getPlaySuggestions failed:', err)
                 const fallback = uniqueBy([...(cached?.items ?? []), ...this.#playBackfill()], item => String(item.game?.steam_appid))
-                    .slice(0, MAX_ROW_ITEMS)
+                    .slice(0, limit)
                 this.#persistCache('play', fallback)
                 return fallback
             } finally {
@@ -192,8 +204,9 @@ export class Algorithm {
     // storeData is slimmed to only the fields BuyCard reads.
     async getBuySuggestions() {
         const cached = this.#getCache('buy')
+        const limit = preferredMaxResults()
         if (this.#isUsableCache(cached)) {
-            return cached.items.slice(0, MAX_ROW_ITEMS)
+            return cached.items.slice(0, limit)
         }
         if (inFlight.buy) return inFlight.buy
 
@@ -223,7 +236,7 @@ export class Algorithm {
                 )
 
                 const items = uniqueBy([...(cached?.items ?? []), ...resolved.filter(Boolean)], item => String(item.appid))
-                    .slice(0, MAX_ROW_ITEMS)
+                    .slice(0, limit)
                 this.#persistCache('buy', items)
                 return items
             } catch (err) {

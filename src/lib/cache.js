@@ -5,7 +5,7 @@
 
 import { get } from 'svelte/store'
 import { db } from '$lib/data'
-import { steamAPI } from '$lib/steam'
+import { steamAPI, isValidSteamId } from '$lib/steam'
 
 // ─── TTLs (milliseconds) ─────────────────────────────────────────────────────
 
@@ -35,6 +35,15 @@ function addToBlacklist(cache, appid) {
     if (!cache.library.blacklist.map(appKey).includes(key)) cache.library.blacklist.push(key)
     delete cache.library.details?.[appid]
     delete cache.library.details?.[key]
+}
+
+function setStatus(cache, key, state, message = null) {
+    cache.status ??= {}
+    cache.status[key] = {
+        state,
+        message,
+        updatedAt: Date.now(),
+    }
 }
 
 // ─── Thumbnail resolver ──────────────────────────────────────────────────────
@@ -125,10 +134,15 @@ function refreshUser(cache) {
     if (!isStale(cache.user?.fetchedAt, TTL.user)) return
     steamAPI.getPlayerSummary(res => {
         const player = res?.response?.players?.[0]
-        if (!player) return
+        if (!player) {
+            patchCache(c => setStatus(c, 'steam', 'invalid', 'No public Steam profile was found for this Steam ID. Check that the ID is the 17-digit SteamID64 value.'))
+            return
+        }
         db.update(data => {
             if (!data.cache) data.cache = {}
             data.cache.user = { data: player, fetchedAt: Date.now() }
+            data.cache.status ??= {}
+            data.cache.status.steam = { state: 'ok', message: null, updatedAt: Date.now() }
             return data
         })
     })
@@ -137,13 +151,32 @@ function refreshUser(cache) {
 function refreshLibraryList(cache) {
     if (!isStale(cache.library?.fetchedAt, TTL.libraryList)) return
     steamAPI.getOwnedGames(res => {
-        const games = res?.response?.games || []
+        if (!res?.response) {
+            patchCache(c => setStatus(c, 'library', 'error', 'Steam did not return library data. Try again in a moment.'))
+            return
+        }
+
+        const response = res.response
+        const games = response.games || []
+        const isUnavailable = !Array.isArray(response.games) && response.game_count !== 0
+
+        if (isUnavailable) {
+            patchCache(c => {
+                c.library.appIdList = []
+                c.library.playtime = {}
+                c.library.fetchedAt = Date.now()
+                setStatus(c, 'library', 'private', 'Your Steam library is private or unavailable. Set Game Details to Public in Steam privacy settings, then refresh.')
+            })
+            return
+        }
+
         patchCache(c => {
             c.library.appIdList = games.map(g => g.appid)
             c.library.playtime  = Object.fromEntries(
                 games.map(g => [g.appid, g.playtime_forever])
             )
             c.library.fetchedAt = Date.now()
+            setStatus(c, 'library', 'ok', games.length ? null : 'Steam returned a public profile with no visible games.')
         })
         // Kick off detail loading — give recently-played a moment to resolve
         // so the priority sort can put those games at the front of the queue.
@@ -154,6 +187,7 @@ function refreshLibraryList(cache) {
 function refreshRecentlyPlayed(cache) {
     if (!isStale(cache.recentlyPlayed?.fetchedAt, TTL.recentlyPlayed)) return
     steamAPI.getRecentlyPlayedGames(res => {
+        if (!res?.response) return
         patchCache(c => {
             c.recentlyPlayed = {
                 data:      res?.response?.games || [],
@@ -164,9 +198,15 @@ function refreshRecentlyPlayed(cache) {
 }
 
 export function refreshFriends() {
-    const cache = snap().cache
+    const data = snap()
+    if (!data.user?.uid || !isValidSteamId(data.steamID)) return
+    const cache = data.cache
     if (!isStale(cache?.friends?.fetchedAt, TTL.friends)) return
     steamAPI.getFriendList(data => {
+        if (!data?.friendslist) {
+            patchCache(c => setStatus(c, 'friends', 'private', 'Friend list is private or unavailable. Friend insights will stay limited until Steam friends are public.'))
+            return
+        }
         const ids = (data?.friendslist?.friends ?? []).map(f => f.steamid)
         if (!ids.length) {
             patchCache(c => { c.friends = { data: [], fetchedAt: Date.now() } })
@@ -317,9 +357,26 @@ export function startCacheUpdateCycle() {
     })
 
     const data = snap()
-    if (!data.steamID) return   // nothing to fetch without a Steam ID
+    if (!data.user?.uid) return
+    if (!data.steamID) {
+        patchCache(c => setStatus(c, 'steam', 'missing', 'Add your 17-digit Steam ID to start loading Steam data.'))
+        return
+    }
+    if (!isValidSteamId(data.steamID)) {
+        patchCache(c => setStatus(c, 'steam', 'invalid', 'Steam ID must be exactly 17 digits.'))
+        return
+    }
 
     const cache = data.cache
+
+    patchCache(c => {
+        if (isStale(c.user?.fetchedAt, TTL.user)) {
+            setStatus(c, 'steam', 'checking', 'Checking Steam profile…')
+        }
+        if (isStale(c.library?.fetchedAt, TTL.libraryList)) {
+            setStatus(c, 'library', 'checking', 'Checking Steam library visibility…')
+        }
+    })
 
     refreshUser(cache)
     refreshLibraryList(cache)

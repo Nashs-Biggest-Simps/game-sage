@@ -9,8 +9,13 @@
     let playtime    = $derived($db?.cache?.library?.playtime  ?? {})
     let details     = $derived($db?.cache?.library?.details   ?? {})
     let blacklist   = $derived(new Set(($db?.cache?.library?.blacklist ?? []).map(String)))
-    let sortKey     = $derived($db?.filters?.Sort    ?? 'None')
-    let filterMode  = $derived($db?.filters?.Display ?? 'All')
+    let defaultSort    = $derived($db?.prefs?.library?.defaultSort ?? 'None')
+    let defaultDisplay = $derived($db?.prefs?.library?.defaultFilter ?? 'All')
+    let compactLibrary = $derived($db?.prefs?.display?.compactLibrary ?? false)
+    let sortKey        = $derived(SORT_OPTIONS.includes($db?.filters?.Sort) ? $db.filters.Sort : defaultSort)
+    let filterMode     = $derived(DISPLAY_OPTIONS.includes($db?.filters?.Display) ? $db.filters.Display : defaultDisplay)
+    let steamStatus    = $derived($db?.cache?.status?.steam ?? null)
+    let libraryStatus  = $derived($db?.cache?.status?.library ?? null)
 
     function setFilter(key, value) {
         db.update(d => ({ ...d, filters: { ...d.filters, [key]: value } }))
@@ -46,7 +51,7 @@
     let unplayedCount = $derived(total - playedCount)
 </script>
 
-<div class="page">
+<div class="page" class:compact={compactLibrary}>
 
     <!-- ── Header + controls ── -->
     <div class="page-header">
@@ -94,7 +99,12 @@
     </div>
 
     <!-- ── Content ── -->
-    {#if appIdList === null}
+    {#if steamStatus?.state === 'missing' || steamStatus?.state === 'invalid' || libraryStatus?.state === 'private' || libraryStatus?.state === 'error'}
+        <div class="empty-state warning">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <span>{libraryStatus?.message ?? steamStatus?.message ?? 'Steam setup needs attention. Check your profile settings.'}</span>
+        </div>
+    {:else if appIdList === null}
         <div class="empty-state">
             <i class="fa-solid fa-circle-notch fa-spin"></i>
             <span>Loading your library…</span>
@@ -203,4 +213,18 @@
     }
 
     .empty-state i { font-size: 1.4rem; }
+
+    .empty-state.warning {
+        color: hsl(38, 80%, 68%);
+        opacity: 1;
+        outline: solid 1pt hsl(38, 55%, 34%, 0.6);
+        background: hsl(38, 45%, 12%, 0.36);
+        text-align: center;
+        padding: 1.5rem;
+    }
+
+    .page.compact :global(.grid) {
+        grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
+        gap: 1rem 0.65rem;
+    }
 </style>

@@ -17,17 +17,17 @@ let default_filters = {
     "Platform": "All",
     "Max_Playtime": "None",
     "Max_Price": "None",
-    "Sort": "Relevance"
+    "Sort": "None"
 }
 
-let initial_db = {
+const initial_db = {
     user: {},
     cache: {},
     filters: default_filters,
     steamID: '',
     prefs: {
         genres: { preferred: [], excluded: [] },
-        suggestions: { refreshHours: 24, aiTone: 'brief', maxResults: 9 },
+        suggestions: { refreshHours: 24, aiTone: 'brief', maxResults: 10 },
         display: { compactLibrary: false, accentColor: 'default' },
         dashboard: {
             showContinuePlaying: true,
@@ -40,6 +40,10 @@ let initial_db = {
         library: { defaultSort: 'None', defaultFilter: 'All' },
         privacy: { shareActivity: true },
     },
+}
+
+function freshDB() {
+    return JSON.parse(JSON.stringify(initial_db))
 }
 
 const storage = {
@@ -62,13 +66,10 @@ const storage = {
 	}
 }
 
-export const db = storage.exists(storage_ref) ? writable(JSON.parse(storage.read(storage_ref))) : writable(initial_db)
+export const db = storage.exists(storage_ref) ? writable(JSON.parse(storage.read(storage_ref))) : writable(freshDB())
 
 export const clearDB = () => {
-    db.update(data => {
-        data = initial_db
-        return data
-    })
+    db.set(freshDB())
     console.log("Cleared db")
 }
 
@@ -79,6 +80,12 @@ export const clearCache = () => {
         return data
     })
     console.log("Cache cleared")
+}
+
+export const hardResetDB = () => {
+    storage.clear()
+    db.set(freshDB())
+    console.log("Hard reset db")
 }
 
 db.subscribe(state => {
