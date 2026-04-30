@@ -28,7 +28,6 @@
 /* Shared glass surfaces for nested panels and controls. */
 :where(
     .sidebar,
-    .profile-btn,
     .select-wrap,
     .mode-tabs,
     .filter-pill,
