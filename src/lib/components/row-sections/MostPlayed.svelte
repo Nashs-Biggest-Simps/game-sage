@@ -1,6 +1,6 @@
 <!-- created by Aaron Meche -->
 <script>
-    import GameRow from '$lib/components/games/GameRow.svelte';
+    import GameRowSection from '$lib/components/games/GameRowSection.svelte';
     import { buildMostPlayedGames } from '$lib/suggestions'
     import { db } from "$lib/data"
 
@@ -12,15 +12,11 @@
 
 <!--  -->
 
-<section class="row-section">
-    <div class="row-header">
-        <div class="row-title">
-            <i class="fa-solid fa-trophy"></i>
-            All-Time Favorites
-        </div>
-    </div>
-    <GameRow games={mostPlayed} />
-</section>
+<GameRowSection
+    games={mostPlayed}
+    icon="fa-solid fa-trophy"
+    title="All-Time Favorites"
+/>
 
 <!--  -->
 

@@ -1,5 +1,5 @@
 <script>
-    import GameRow from '$lib/components/games/GameRow.svelte'
+    import GameRowSection from '$lib/components/games/GameRowSection.svelte'
     import { db } from '$lib/data'
     import { Algorithm } from '$lib/algorithm'
     import { onMount } from 'svelte'
@@ -44,19 +44,13 @@
 </script>
 
 {#if libraryGames.length > 0}
-<section class="row-section">
-    <div class="row-header">
-        <div class="row-title">
-            <i class="fa-solid fa-wand-magic-sparkles"></i>
-            Picked From Your Library
-        </div>
-        <span class="ai-badge">
-            <i class="fa-solid fa-robot"></i>
-            GameSage AI
-        </span>
-    </div>
-    <GameRow games={libraryGames} />
-</section>
+<GameRowSection
+    games={libraryGames}
+    icon="fa-solid fa-wand-magic-sparkles"
+    title="Picked From Your Library"
+    badgeLabel="GameSage AI"
+    badgeIcon="fa-solid fa-robot"
+/>
 {:else if loadingPlay}
 <section class="row-section ai-loading">
     <div class="row-header">
@@ -70,19 +64,14 @@
 {/if}
 
 {#if buyGames.length > 0}
-<section class="row-section">
-    <div class="row-header">
-        <div class="row-title">
-            <i class="fa-solid fa-store"></i>
-            Picked For You
-        </div>
-        <span class="ai-badge buy">
-            <i class="fa-solid fa-robot"></i>
-            GameSage AI
-        </span>
-    </div>
-    <GameRow games={buyGames} />
-</section>
+<GameRowSection
+    games={buyGames}
+    icon="fa-solid fa-store"
+    title="Picked For You"
+    badgeLabel="GameSage AI"
+    badgeIcon="fa-solid fa-robot"
+    badgeVariant="buy"
+/>
 {:else if loadingBuy}
 <section class="row-section ai-loading">
     <div class="row-header">

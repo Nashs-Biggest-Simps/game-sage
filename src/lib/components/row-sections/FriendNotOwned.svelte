@@ -1,5 +1,5 @@
 <script>
-    import GameRow                from '$lib/components/games/GameRow.svelte'
+    import GameRowSection         from '$lib/components/games/GameRowSection.svelte'
     import { db }                 from '$lib/data'
     import { buildFriendNotOwned } from '$lib/suggestions'
 
@@ -9,18 +9,10 @@
 </script>
 
 {#if games.length >= 4}
-<section class="row-section">
-    <div class="row-header">
-        <div class="row-title">
-            <i class="fa-solid fa-cart-shopping"></i>
-            Your Friends Play This
-        </div>
-        <span class="sub">not in your library</span>
-    </div>
-    <GameRow {games} />
-</section>
+<GameRowSection
+    {games}
+    icon="fa-solid fa-cart-shopping"
+    title="Your Friends Play This"
+    subtitle="not in your library"
+/>
 {/if}
-
-<style>
-    .sub { font-size: 0.72rem; opacity: 0.4; }
-</style>

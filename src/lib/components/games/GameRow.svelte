@@ -1,7 +1,7 @@
 <script>
     import GameItem from "$lib/components/games/GameItem.svelte";
 
-    let { games = [], inLibrary = true } = $props()
+    let { games = [], inLibrary = true, mode = 'scroll' } = $props()
 
     let leftFadeOpacity = $state(0)
     function handleScroll(e) {
@@ -17,15 +17,23 @@
 </script>
 
 <div class="wrapper">
-    <div
-        class="scroll-track horizontal-scroll"
-        style="--left-fade-width: {leftFadeOpacity * 4}rem"
-        onscroll={(e) => handleScroll(e)}
-    >
-        {#each games as game, i (`${game?.appid ?? game?.steam_appid}-${i}`)}
-            <GameItem {game} width="14" />
-        {/each}
-    </div>
+    {#if mode === 'grid'}
+        <div class="grid-track">
+            {#each games as game, i (`${game?.appid ?? game?.steam_appid}-${i}`)}
+                <GameItem {game} />
+            {/each}
+        </div>
+    {:else}
+        <div
+            class="scroll-track horizontal-scroll"
+            style="--left-fade-width: {leftFadeOpacity * 4}rem"
+            onscroll={(e) => handleScroll(e)}
+        >
+            {#each games as game, i (`${game?.appid ?? game?.steam_appid}-${i}`)}
+                <GameItem {game} width="14" />
+            {/each}
+        </div>
+    {/if}
 </div>
 
 <style>
@@ -56,5 +64,21 @@
             black calc(100% - var(--right-fade-width)),
             transparent 100%
         );
+    }
+
+    .grid-track {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(13.5rem, 1fr));
+        gap: 0.9rem;
+        padding-top: 4pt;
+        padding-left: 1px;
+        padding-right: 1px;
+        padding-bottom: 1px;
+    }
+
+    @media (max-width: 620px) {
+        .grid-track {
+            grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
+        }
     }
 </style>

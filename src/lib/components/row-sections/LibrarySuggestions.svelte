@@ -1,6 +1,6 @@
 <!-- created by Aaron Meche -->
 <script>
-    import GameRow from '$lib/components/games/GameRow.svelte';
+    import GameRowSection from '$lib/components/games/GameRowSection.svelte';
     import { db } from '$lib/data'
     import {
         buildLibraryGames,
@@ -30,15 +30,11 @@
 
 <!--  -->
 
-<section class="row-section">
-    <div class="row-header">
-        <div class="row-title">
-            <i class="fa-solid fa-book-open"></i>
-            Suggested from your Library
-        </div>
-    </div>
-    <GameRow games={games} />
-</section>
+<GameRowSection
+    {games}
+    icon="fa-solid fa-book-open"
+    title="Suggested from your Library"
+/>
 
 <!--  -->
 

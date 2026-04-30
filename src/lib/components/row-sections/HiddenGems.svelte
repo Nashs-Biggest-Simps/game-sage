@@ -1,5 +1,5 @@
 <script>
-    import GameRow from '$lib/components/games/GameRow.svelte'
+    import GameRowSection from '$lib/components/games/GameRowSection.svelte'
     import { db } from '$lib/data'
     import { buildLibraryGames, buildHiddenGems } from '$lib/suggestions'
 
@@ -22,18 +22,10 @@
 </script>
 
 {#if gems.length > 0}
-<section class="row-section">
-    <div class="row-header">
-        <div class="row-title">
-            <i class="fa-solid fa-gem"></i>
-            Hidden Gems
-        </div>
-        <span class="sub">buried in your library</span>
-    </div>
-    <GameRow games={gems} />
-</section>
+<GameRowSection
+    games={gems}
+    icon="fa-solid fa-gem"
+    title="Hidden Gems"
+    subtitle="buried in your library"
+/>
 {/if}
-
-<style>
-    .sub { font-size: 0.72rem; opacity: 0.4; }
-</style>

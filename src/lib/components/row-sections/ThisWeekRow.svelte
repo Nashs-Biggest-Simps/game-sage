@@ -1,5 +1,5 @@
 <script>
-    import GameRow from '$lib/components/games/GameRow.svelte'
+    import GameRowSection from '$lib/components/games/GameRowSection.svelte'
     import { db } from '$lib/data'
 
     let recent  = $derived($db?.cache?.recentlyPlayed?.data ?? [])
@@ -29,18 +29,10 @@
 </script>
 
 {#if games.length >= 2}
-<section class="row-section">
-    <div class="row-header">
-        <div class="row-title">
-            <i class="fa-solid fa-calendar-week"></i>
-            On Rotation This Week
-        </div>
-        <span class="sub">sorted by hours</span>
-    </div>
-    <GameRow {games} />
-</section>
+<GameRowSection
+    {games}
+    icon="fa-solid fa-calendar-week"
+    title="On Rotation This Week"
+    subtitle="sorted by hours"
+/>
 {/if}
-
-<style>
-    .sub { font-size: 0.72rem; opacity: 0.4; }
-</style>

@@ -1,5 +1,5 @@
 <script>
-    import GameRow                   from '$lib/components/games/GameRow.svelte'
+    import GameRowSection            from '$lib/components/games/GameRowSection.svelte'
     import { db }                    from '$lib/data'
     import { buildFriendGroupFavorites } from '$lib/suggestions'
 
@@ -8,18 +8,10 @@
 </script>
 
 {#if games.length >= 3}
-<section class="row-section">
-    <div class="row-header">
-        <div class="row-title">
-            <i class="fa-solid fa-fire-flame-curved"></i>
-            Trending in Your Circle
-        </div>
-        <span class="sub">past 2 weeks</span>
-    </div>
-    <GameRow {games} />
-</section>
+<GameRowSection
+    {games}
+    icon="fa-solid fa-fire-flame-curved"
+    title="Trending in Your Circle"
+    subtitle="past 2 weeks"
+/>
 {/if}
-
-<style>
-    .sub { font-size: 0.72rem; opacity: 0.4; }
-</style>
