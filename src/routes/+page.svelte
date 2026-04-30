@@ -44,7 +44,7 @@
 </script>
 
 <svelte:head>
-    <title>GameSage | Steam Library Intelligence</title>
+    <title>GameSage</title>
 </svelte:head>
 
 <div class="landing">
