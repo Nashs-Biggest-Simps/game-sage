@@ -1,7 +1,10 @@
 <script>
     import { goto } from '$app/navigation'
     import { resolve } from '$app/paths'
+    import { auth } from '$lib/auth'
     import { db } from '$lib/data'
+    import { isValidSteamId } from '$lib/steam'
+    import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
 
     const HERO_GAMES = [
         730, 570, 1172470, 1086940, 1245620, 1091500, 271590, 292030,
@@ -34,7 +37,9 @@
         ['Fast Cache', 'Keeps repeated browsing smooth and API-light'],
     ]
 
-    let targetPath = $derived($db?.steamID ? '/dashboard' : '/profile')
+    let loading = $state(false)
+    let error = $state(null)
+    let targetPath = $derived(isValidSteamId($db?.steamID) ? '/dashboard' : '/profile')
 
     $effect(() => {
         if ($db?.user?.uid) goto(resolve(targetPath))
@@ -42,6 +47,25 @@
 
     function capsule(appid) {
         return `https://cdn.akamai.steamstatic.com/steam/apps/${appid}/capsule_616x353.jpg`
+    }
+
+    async function signInWithGoogle() {
+        loading = true
+        error = null
+
+        try {
+            await signInWithPopup(auth, new GoogleAuthProvider())
+        } catch (e) {
+            console.error('[landing] signInWithPopup error:', e)
+            if (e?.code === 'auth/popup-closed-by-user' || e?.code === 'auth/cancelled-popup-request') {
+                error = null
+            } else if (e?.code === 'auth/unauthorized-domain') {
+                error = 'This domain is not authorized in Firebase. Add it to Firebase Auth authorized domains.'
+            } else {
+                error = e?.message ?? 'Sign-in failed. Please try again.'
+            }
+            loading = false
+        }
     }
 </script>
 
@@ -68,7 +92,9 @@
                 <span class="brand-mark"><i class="fa-solid fa-hat-wizard"></i></span>
                 <span>GameSage</span>
             </a>
-            <a class="nav-login" href={resolve('/login')}>Sign in</a>
+            <button class="nav-login" type="button" onclick={signInWithGoogle} disabled={loading}>
+                {loading ? 'Signing in...' : 'Continue with Google'}
+            </button>
         </nav>
 
         <div class="hero-copy">
@@ -78,10 +104,21 @@
                 what to buy, and what your friends are actually playing.
             </p>
             <div class="hero-actions">
-                <a class="btn-primary" href={resolve('/login')}>
-                    <i class="fa-brands fa-google"></i>
-                    Get started free
-                </a>
+                <button class="btn-primary" type="button" onclick={signInWithGoogle} disabled={loading}>
+                    {#if loading}
+                        <i class="fa-solid fa-circle-notch fa-spin"></i>
+                        Signing in...
+                    {:else}
+                        <i class="fa-brands fa-google"></i>
+                        Continue with Google
+                    {/if}
+                </button>
+                {#if error}
+                    <div class="auth-error">
+                        <i class="fa-solid fa-circle-xmark"></i>
+                        {error}
+                    </div>
+                {/if}
                 <span class="action-note">Connect Google, add Steam ID, start discovering.</span>
             </div>
         </div>
@@ -175,10 +212,10 @@
 
     <section class="final-cta">
         <h2>Make your Steam library feel intentional again.</h2>
-        <a class="btn-primary large" href={resolve('/login')}>
+        <button class="btn-primary large" type="button" onclick={signInWithGoogle} disabled={loading}>
             <i class="fa-solid fa-hat-wizard"></i>
-            Open GameSage
-        </a>
+            {loading ? 'Signing in...' : 'Continue with Google'}
+        </button>
     </section>
 </div>
 
@@ -315,12 +352,15 @@
 
     .nav-login {
         padding: 0.55rem 1rem;
+        border: 0;
         border-radius: 100vh;
         background: hsl(212, 24%, 12%, 0.5);
         outline: solid 1pt hsl(212, 38%, 36%, 0.5);
         backdrop-filter: blur(18px) saturate(1.25);
+        color: inherit;
         font-size: 0.84rem;
         font-weight: 700;
+        cursor: pointer;
     }
 
     .hero-copy {
@@ -367,6 +407,7 @@
         justify-content: center;
         gap: 0.65rem;
         padding: 0.78rem 1.3rem;
+        border: 0;
         background: linear-gradient(135deg, var(--accent), hsl(188, 80%, 44%));
         border-radius: 0.82rem;
         font-size: 0.88rem;
@@ -377,10 +418,16 @@
         transition: transform 140ms, box-shadow 140ms, filter 140ms;
     }
 
-    .btn-primary:hover {
+    .btn-primary:hover:not(:disabled) {
         transform: translateY(-2px);
         filter: brightness(1.08);
         box-shadow: 0 24px 58px hsl(188, 75%, 46%, 0.28);
+    }
+
+    .nav-login:disabled,
+    .btn-primary:disabled {
+        cursor: wait;
+        opacity: 0.72;
     }
 
     .btn-primary.large {
@@ -390,6 +437,22 @@
     .action-note {
         font-size: 0.74rem;
         color: hsl(212, 20%, 84%, 0.48);
+    }
+
+    .auth-error {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        max-width: 31rem;
+        padding: 0.7rem 0.9rem;
+        border-radius: 0.8rem;
+        background: hsl(0, 46%, 16%, 0.74);
+        outline: solid 1pt hsl(0, 52%, 42%, 0.55);
+        color: hsl(0, 78%, 76%);
+        font-size: 0.78rem;
+        line-height: 1.45;
+        backdrop-filter: blur(18px) saturate(1.18);
+        -webkit-backdrop-filter: blur(18px) saturate(1.18);
     }
 
     .signal-strip,

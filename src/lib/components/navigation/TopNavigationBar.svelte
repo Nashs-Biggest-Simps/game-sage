@@ -10,7 +10,8 @@
 	import { resolve } from '$app/paths'
     import TopNavigationLink from '$lib/components/navigation/TopNavigationLink.svelte';
 
-	const dashboardHref = resolve('/dashboard')
+	let { setupLocked = false } = $props()
+	let dashboardHref = $derived(resolve(setupLocked ? '/profile' : '/dashboard'))
 
 	function openDashboard(event) {
 		event.preventDefault()
@@ -25,10 +26,12 @@
 	</a>
 
 	<div class="nav-links">
-		<TopNavigationLink route="dashboard" icon="square-poll-vertical" text="Dashboard" />
-		<TopNavigationLink route="library"   icon="grip"                 text="Library"   />
-		<TopNavigationLink route="activity"  icon="star"                 text="Activity"  />
-		<TopNavigationLink route="search"    icon="magnifying-glass"     text="Search"    />
+		{#if !setupLocked}
+			<TopNavigationLink route="dashboard" icon="square-poll-vertical" text="Dashboard" />
+			<TopNavigationLink route="library"   icon="grip"                 text="Library"   />
+			<TopNavigationLink route="activity"  icon="star"                 text="Activity"  />
+			<TopNavigationLink route="search"    icon="magnifying-glass"     text="Search"    />
+		{/if}
 		<TopNavigationLink route="profile"   icon="user"     		 	 text="Profile"    />
 	</div>
 </nav>

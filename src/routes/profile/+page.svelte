@@ -5,6 +5,7 @@
     import { signOut } from 'firebase/auth'
     import { goto } from '$app/navigation'
     import { resolve } from '$app/paths'
+    import { isValidSteamId } from '$lib/steam'
     import SteamProfileData from '$lib/components/profile/SteamProfileData.svelte'
     import SteamAccountPanel from '$lib/components/profile/SteamAccountPanel.svelte'
     import LibraryStatsPanel from '$lib/components/profile/LibraryStatsPanel.svelte'
@@ -34,6 +35,8 @@
     let fireUser = $derived($db?.user)
     let steamUser = $derived($db?.cache?.user?.data ?? null)
     let savedID = $derived($db?.steamID ?? '')
+    let hasValidSteamID = $derived(isValidSteamId(savedID))
+    let needsSteamSetup = $derived(!hasValidSteamID)
     let steamStatus = $derived($db?.cache?.status?.steam ?? null)
     let libraryStatus = $derived($db?.cache?.status?.library ?? null)
     let friendsStatus = $derived($db?.cache?.status?.friends ?? null)
@@ -108,6 +111,7 @@
     let isDirty = $derived(inputID.trim() !== savedID)
     let isValid = $derived(ID_REGEX.test(inputID.trim()))
     let willWipe = $derived(isDirty && isValid)
+    let visibleNav = $derived(needsSteamSetup ? NAV.filter(item => item.id === 'account') : NAV)
 
     let connectionState = $derived(() => {
         if (!savedID) return {
@@ -156,6 +160,10 @@
 
     $effect(() => {
         if (savedID && !inputID) inputID = savedID
+    })
+
+    $effect(() => {
+        if (needsSteamSetup && activeNav !== 'account') activeNav = 'account'
     })
 
     $effect(() => {
@@ -240,7 +248,7 @@
         }
         await signOut(auth).catch(() => {})
         hardResetDB()
-        goto(resolve('/login'))
+        goto(resolve('/'))
     }
 
     async function logout() {
@@ -249,7 +257,7 @@
             data.user = {}
             return data
         })
-        goto(resolve('/login'))
+        goto(resolve('/'))
     }
 </script>
 
@@ -266,7 +274,7 @@
         </div>
 
         <nav class="sidebar-nav">
-            {#each NAV as item}
+            {#each visibleNav as item}
                 <button
                     class="nav-item {activeNav === item.id ? 'active' : ''}"
                     onclick={() => activeNav = item.id}
@@ -286,6 +294,13 @@
     </aside>
 
     <main class="main-content">
+        {#if needsSteamSetup}
+            <div class="setup-lock">
+                <i class="fa-solid fa-lock"></i>
+                <span>Add a valid 17-digit SteamID64 to unlock the dashboard, activity, library, search, friends, cache tools, and preferences.</span>
+            </div>
+        {/if}
+
         {#if activeNav === 'account'}
             <div class="account-layout">
                 <div class="account-col">
@@ -434,15 +449,18 @@
         display: flex;
         align-items: center;
         gap: 0.6rem;
+        width: 100%;
         padding: 0.5rem 0.7rem;
         border-radius: 0.55rem;
         font-size: 0.84rem;
         font-weight: 500;
+        text-align: left;
         cursor: pointer;
         transition: background 120ms;
         white-space: nowrap;
         color: inherit;
         opacity: 0.65;
+        box-sizing: border-box;
     }
 
     .nav-item i {
@@ -478,6 +496,7 @@
         border-top: 1pt solid var(--l2);
         padding-top: 0.7rem;
         margin-top: 0.3rem;
+        width: 100%;
     }
 
     .main-content,
@@ -486,6 +505,24 @@
         display: flex;
         flex-direction: column;
         gap: 1.2rem;
+    }
+
+    .setup-lock {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        padding: 0.85rem 1rem;
+        border-radius: 0.85rem;
+        background: hsl(38, 55%, 12%, 0.72);
+        outline: solid 1pt hsl(38, 58%, 28%, 0.72);
+        color: hsl(38, 86%, 72%);
+        font-size: 0.84rem;
+        line-height: 1.45;
+    }
+
+    .setup-lock i {
+        flex-shrink: 0;
+        font-size: 0.78rem;
     }
 
     .account-layout {

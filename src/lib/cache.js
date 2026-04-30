@@ -660,7 +660,7 @@ export function buildBuyProfile(brain = null) {
     if (friendGames.length) lines.push('FRIENDS_PLAYING:', ...friendGames, '')
     if (brain)              lines.push('USER_FEEDBACK:', brain, '')
 
-    lines.push('Suggest 8-12 Steam base games not in ALREADY_OWNED that match this taste. Consider FRIENDS_PLAYING if present, avoid DLC/editions/bundles, and use exact Steam titles. JSON only: {"b":[{"n":"exact title","r":"one sentence reason"},...]}')
+    lines.push('Suggest 5-12 Steam base games not in ALREADY_OWNED that match this taste. Consider FRIENDS_PLAYING if present, avoid DLC/editions/bundles, and use exact Steam titles. JSON only: {"b":[{"n":"exact title","r":"one sentence reason"},...]}')
 
     return {
         text:        lines.join('\n'),

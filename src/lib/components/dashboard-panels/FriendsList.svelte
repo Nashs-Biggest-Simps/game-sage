@@ -113,7 +113,7 @@
                 {showOffline ? 'Hide' : 'Show'} {offline.length} offline
             </button>
             {#if showOffline}
-                {#each offline.slice(0, 5) as friend}
+                {#each offline as friend}
                     <div class="friend offline">
                         <div class="av-wrap">
                             <img class="av" src={friend.avatarmedium} alt="" loading="lazy" />

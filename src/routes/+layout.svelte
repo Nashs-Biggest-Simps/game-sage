@@ -6,28 +6,38 @@
 	import { startCacheUpdateCycle } from '$lib/cache'
 	import { authReady } from '$lib/auth'
 	import { db } from '$lib/data'
+	import { isValidSteamId } from '$lib/steam'
 	import { goto } from '$app/navigation'
 	import { resolve } from '$app/paths'
 	import { page } from '$app/state'
 
 	let { children } = $props()
 
-	const PUBLIC = ['/', '/login']
-	const loginHref = resolve('/login')
+	const PUBLIC = ['/']
+	const landingHref = resolve('/')
 	const profileHref = resolve('/profile')
 	const CACHE_UPDATE_INTERVAL_MS = 60_000
 
 	let path             = $derived(page.url.pathname)
 	let isAuthed         = $derived(!!$db?.user?.uid)
-	let hasSteamID       = $derived(!!$db?.steamID)
-	let showSteamBanner  = $derived(isAuthed && !hasSteamID && !PUBLIC.includes(path) && path !== '/profile')
+	let hasValidSteamID  = $derived(isValidSteamId($db?.steamID))
+	let needsSteamSetup  = $derived(isAuthed && !hasValidSteamID)
+	let fullWidthMode    = $derived($db?.prefs?.display?.fullWidthMode ?? false)
+	let boringBackground = $derived($db?.prefs?.display?.boringBackground ?? false)
+	let showSteamBanner  = $derived(needsSteamSetup && !PUBLIC.includes(path) && path !== '/profile')
 	let cacheCycleKey    = $derived($authReady && isAuthed ? `${$db?.user?.uid ?? ''}:${$db?.steamID ?? ''}` : '')
 	let lastCacheCycleKey = $state('')
 	let cacheInterval = null
 
 	$effect(() => {
 		if ($authReady && !isAuthed && !PUBLIC.includes(path)) {
-			goto(loginHref)
+			goto(landingHref)
+		}
+	})
+
+	$effect(() => {
+		if ($authReady && needsSteamSetup && !PUBLIC.includes(path) && path !== '/profile') {
+			goto(profileHref)
 		}
 	})
 
@@ -43,7 +53,9 @@
 	}
 
 	onMount(() => {
-		cacheInterval = setInterval(startCacheUpdateCycle, CACHE_UPDATE_INTERVAL_MS)
+		cacheInterval = setInterval(() => {
+			if ($authReady && isAuthed) startCacheUpdateCycle()
+		}, CACHE_UPDATE_INTERVAL_MS)
 	})
 
 	onDestroy(() => clearInterval(cacheInterval))
@@ -56,17 +68,21 @@
 	<meta name='impact-site-verification' value='d1575fe7-a813-4dfd-9b87-47ec3fcc7e89'>
 </svelte:head>
 
-<div class="app">
+<div
+	class="app"
+	class:full-width-mode={fullWidthMode}
+	class:boring-background={boringBackground}
+>
 	{#if isAuthed}
 		<div class="top-navbar">
-			<TopNavigationBar />
+			<TopNavigationBar setupLocked={needsSteamSetup} />
 		</div>
 	{/if}
 
 	{#if showSteamBanner}
 		<div class="steam-banner">
 			<i class="fa-solid fa-triangle-exclamation"></i>
-			<span>No Steam ID linked — <a href={profileHref} onclick={(event) => navigate(event, profileHref)}>add it in your profile</a> to unlock your library and suggestions.</span>
+			<span>Valid Steam ID required — <a href={profileHref} onclick={(event) => navigate(event, profileHref)}>add your 17-digit SteamID64 in your profile</a> to unlock your library and suggestions.</span>
 		</div>
 	{/if}
 
@@ -89,6 +105,19 @@
 			radial-gradient(circle at 18% 58rem, hsl(38, 90%, 52%, 0.08), transparent 30rem),
 			radial-gradient(circle at 92% 76rem, hsl(265, 58%, 54%, 0.08), transparent 34rem),
 			linear-gradient(145deg, hsl(212, 31%, 7%) 0%, var(--bg) 38%, hsl(214, 28%, 6%) 100%);
+	}
+
+	.app.full-width-mode {
+		--inline-moat: 1.2rem;
+	}
+
+	.app.boring-background {
+		background: var(--bg);
+	}
+
+	.app.boring-background::before,
+	.app.boring-background::after {
+		display: none;
 	}
 
 	.app::before {

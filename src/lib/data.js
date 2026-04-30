@@ -18,6 +18,8 @@ const SAVE_DELAY_MS = 700
 // makes reloads fast and prevents older sessions from ballooning memory usage.
 const MAX_PERSISTED_GAME_DETAILS = 160
 const EMERGENCY_GAME_DETAIL_LIMIT = 80
+const MAX_PERSISTED_VIEW_GAMES = 40
+const MAX_PERSISTED_FRIEND_BUCKETS = 14 * 24
 
 const DEFAULT_FILTERS = {
     Display: 'All',
@@ -33,10 +35,14 @@ const DEFAULT_DB = {
     steamID: '',
     prefs: {
         genres: { preferred: [], excluded: [] },
-        suggestions: { refreshHours: 24, aiTone: 'brief', maxResults: 10 },
-        display: { compactLibrary: false },
-        library: { defaultSort: 'None', defaultFilter: 'All' },
-    },
+		suggestions: { refreshHours: 24, aiTone: 'brief', maxResults: 10 },
+		display: {
+			compactLibrary: false,
+			fullWidthMode: false,
+			boringBackground: false,
+		},
+		library: { defaultSort: 'None', defaultFilter: 'All' },
+	},
 }
 
 function clone(value) {
@@ -88,10 +94,10 @@ function applyDefaults(savedValue) {
                 ...defaults.prefs.suggestions,
                 ...(saved.prefs?.suggestions ?? {}),
             },
-            display: {
-                ...defaults.prefs.display,
-                compactLibrary: saved.prefs?.display?.compactLibrary ?? defaults.prefs.display.compactLibrary,
-            },
+			display: {
+				...defaults.prefs.display,
+				...(saved.prefs?.display ?? {}),
+			},
             library: {
                 ...defaults.prefs.library,
                 ...(saved.prefs?.library ?? {}),
@@ -111,19 +117,65 @@ function keepRecentGameDetails(details = {}, limit = MAX_PERSISTED_GAME_DETAILS)
     )
 }
 
-function shrinkForStorage(state, detailLimit = MAX_PERSISTED_GAME_DETAILS) {
-    const details = state.cache?.library?.details
-    if (!details) return state
+function mostRecentNestedFetchedAt(value = {}) {
+    return Math.max(
+        0,
+        ...Object.values(value)
+            .map(entry => entry?.fetchedAt ?? 0)
+            .filter(Number.isFinite)
+    )
+}
 
-    const trimmedDetails = keepRecentGameDetails(details, detailLimit)
-    if (trimmedDetails === details) return state
+function keepRecentViewCache(view = {}, limit = MAX_PERSISTED_VIEW_GAMES) {
+    const entries = Object.entries(view)
+    if (entries.length <= limit) return view
+
+    return Object.fromEntries(
+        entries
+            .sort(([, a], [, b]) => mostRecentNestedFetchedAt(b) - mostRecentNestedFetchedAt(a))
+            .slice(0, limit)
+    )
+}
+
+function keepRecentFriendPopularityBuckets(byHour = {}, limit = MAX_PERSISTED_FRIEND_BUCKETS) {
+    const entries = Object.entries(byHour)
+    if (entries.length <= limit) return byHour
+
+    return Object.fromEntries(
+        entries
+            .sort(([a], [b]) => b.localeCompare(a))
+            .slice(0, limit)
+    )
+}
+
+function shrinkForStorage(state, detailLimit = MAX_PERSISTED_GAME_DETAILS) {
+    const cache = state.cache
+    if (!cache) return state
+
+    const details = cache.library?.details
+    const view = cache.view
+    const friendPopularity = cache.friendPopularity
+
+    const trimmedDetails = details ? keepRecentGameDetails(details, detailLimit) : details
+    const trimmedView = view ? keepRecentViewCache(view) : view
+    const trimmedFriendPopularity = friendPopularity
+        ? keepRecentFriendPopularityBuckets(friendPopularity)
+        : friendPopularity
+
+    if (
+        trimmedDetails === details &&
+        trimmedView === view &&
+        trimmedFriendPopularity === friendPopularity
+    ) return state
 
     return {
         ...state,
         cache: {
-            ...state.cache,
+            ...cache,
+            ...(trimmedView !== view ? { view: trimmedView } : {}),
+            ...(trimmedFriendPopularity !== friendPopularity ? { friendPopularity: trimmedFriendPopularity } : {}),
             library: {
-                ...state.cache.library,
+                ...cache.library,
                 details: trimmedDetails,
             },
         },

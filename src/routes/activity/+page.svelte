@@ -75,14 +75,14 @@
     .page-content {
         display: grid;
         grid-template-columns: minmax(0, 1fr) 20rem;
-        gap: 2rem;
+        gap: 1.2rem;
         align-items: start;
     }
 
     .left, .right {
         display: flex;
         flex-direction: column;
-        gap: 1.6rem;
+        gap: 1.2rem;
     }
 
     @media (max-width: 900px) {

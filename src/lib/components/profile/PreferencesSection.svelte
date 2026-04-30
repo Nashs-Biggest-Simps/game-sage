@@ -14,6 +14,8 @@
     let aiTone          = $derived($db?.prefs?.suggestions?.aiTone ?? 'brief')
     let maxResults      = $derived($db?.prefs?.suggestions?.maxResults ?? 10)
     let compactLibrary  = $derived($db?.prefs?.display?.compactLibrary ?? false)
+    let fullWidthMode   = $derived($db?.prefs?.display?.fullWidthMode ?? false)
+    let boringBackground = $derived($db?.prefs?.display?.boringBackground ?? false)
     let defaultSort     = $derived($db?.prefs?.library?.defaultSort ?? 'None')
     let defaultFilter   = $derived($db?.prefs?.library?.defaultFilter ?? 'All')
     let prefsSaved      = $state(false)
@@ -87,10 +89,53 @@
         invalidateSuggestions()
         markSaved()
     }
+
+    function saveDisplayPref(path, value) {
+        setPref(path, value)
+        markSaved()
+    }
 </script>
 
 <section class="panel panel-lg">
-    <h2 class="panel-heading">Preferences</h2>
+    <div class="prefs-heading-row">
+        <h2 class="panel-heading">Preferences</h2>
+        {#if prefsSaved}
+            <span class="status ok prefs-saved"><i class="fa-solid fa-circle-check"></i> Saved</span>
+        {/if}
+    </div>
+
+    <div class="pref-section">
+        <div class="pref-section-title">
+            <i class="fa-solid fa-palette"></i>
+            Appearance
+        </div>
+        <div class="pref-toggle-row">
+            <div class="pref-label-block">
+                <div class="pref-label">Full Width Mode</div>
+                <div class="pref-hint">Use tighter side spacing so content has more horizontal room.</div>
+            </div>
+            <button
+                class="toggle {fullWidthMode ? 'on' : ''}"
+                onclick={() => saveDisplayPref('display.fullWidthMode', !fullWidthMode)}
+                role="switch"
+                aria-checked={fullWidthMode}
+                aria-label="Full width mode"
+            ><div class="toggle-thumb"></div></button>
+        </div>
+        <div class="pref-toggle-row">
+            <div class="pref-label-block">
+                <div class="pref-label">Boring Background</div>
+                <div class="pref-hint">Disable decorative page gradients for a flatter background.</div>
+            </div>
+            <button
+                class="toggle {boringBackground ? 'on' : ''}"
+                onclick={() => saveDisplayPref('display.boringBackground', !boringBackground)}
+                role="switch"
+                aria-checked={boringBackground}
+                aria-label="Boring background"
+            ><div class="toggle-thumb"></div></button>
+        </div>
+    </div>
 
     <div class="pref-section">
         <div class="pref-section-title">
@@ -165,9 +210,6 @@
                 {/each}
             </div>
         </div>
-        {#if prefsSaved}
-            <span class="status ok"><i class="fa-solid fa-circle-check"></i> Saved — suggestions update on next load</span>
-        {/if}
     </div>
 
     <div class="pref-section">
@@ -214,6 +256,14 @@
 </section>
 
 <style>
+    .prefs-heading-row {
+        position: relative;
+    }
+    .prefs-saved {
+        position: absolute;
+        top: 0.12rem;
+        right: 0;
+    }
     .pref-section {
         display: flex;
         flex-direction: column;

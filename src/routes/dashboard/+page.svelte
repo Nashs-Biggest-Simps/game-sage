@@ -100,7 +100,7 @@
     .main-grid {
         width: 100%;
         display: grid;
-        grid-template-columns: minmax(0, 1fr) 20rem;
+        grid-template-columns: minmax(0, 7fr) minmax(20rem, 3fr);
         gap: 2.4rem;
         align-items: start;
     }
