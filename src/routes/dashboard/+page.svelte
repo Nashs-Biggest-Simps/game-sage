@@ -81,8 +81,6 @@
 						<ThisWeekRow />
 					{:else if module.id === 'mostPlayed'}
 						<MostPlayed />
-					{:else if module.id === 'friendCircle'}
-						<FriendGroupFavorites />
 					{:else if module.id === 'friendsUnowned'}
 						<FriendNotOwned />
 					{:else if module.id === 'steamCharts'}
