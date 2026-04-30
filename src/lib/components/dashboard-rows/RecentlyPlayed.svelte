@@ -1,14 +1,14 @@
 <!-- created by Aaron Meche -->
 <script>
     import { db } from '$lib/data'
-    import GameRowSection from '$lib/components/games/GameRowSection.svelte'
+    import GameRecommendationSection from '$lib/components/game-cards/GameRecommendationSection.svelte'
 
     let recentGames = $derived($db?.cache?.recentlyPlayed?.data ?? [])
 </script>
 
 <!--  -->
 
-<GameRowSection
+<GameRecommendationSection
     games={recentGames}
     icon="fa-solid fa-clock-rotate-left"
     title="Jump Back In"

@@ -8,7 +8,7 @@
 </script>
 
 {#if librarySize > 0}
-    <section class="panel stats-panel">
+    <section class="panel panel-lg stats-panel">
         <h3 class="panel-subheading">
             <i class="fa-solid fa-chart-bar"></i>
             Library Stats
@@ -42,18 +42,7 @@
 {/if}
 
 <style>
-    .panel {
-        background: hsl(212, 24%, 12%, 0.58);
-        border-radius: 1.2rem;
-        outline: solid 1pt hsl(212, 38%, 36%, 0.52);
-        padding: 2rem;
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-        backdrop-filter: blur(26px) saturate(1.24);
-        -webkit-backdrop-filter: blur(26px) saturate(1.24);
-        box-shadow: 0 18px 52px hsl(0, 0%, 0%, 0.24), inset 0 1px 0 hsl(0, 0%, 100%, 0.05);
-    }
+    .stats-panel { gap: 1rem; }
 
     .panel-subheading {
         display: flex;
@@ -103,7 +92,6 @@
     .muted { opacity: 0.45; }
 
     @media (max-width: 640px) {
-        .panel { padding: 1.25rem; }
         .stats-grid { grid-template-columns: minmax(0, 1fr); }
     }
 </style>

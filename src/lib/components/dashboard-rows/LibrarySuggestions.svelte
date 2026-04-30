@@ -1,6 +1,6 @@
 <!-- created by Aaron Meche -->
 <script>
-    import GameRowSection from '$lib/components/games/GameRowSection.svelte';
+    import GameRecommendationSection from '$lib/components/game-cards/GameRecommendationSection.svelte';
     import { db } from '$lib/data'
     import {
         buildLibraryGames,
@@ -16,7 +16,7 @@
 
     let libraryGames = $derived(buildLibraryGames(libraryDetails, libraryPlaytime, blacklist))
 
-    // Normalize to GameRow format: { appid, name, thumbnail, playtime_forever, reason }
+    // Normalize to GameCardRail format: { appid, name, thumbnail, playtime_forever, reason }
     let games = $derived(
         buildLocalLibrarySuggestions(libraryGames, preferredGenres, excludedGenres).map(({ game, reason }) => ({
             appid: game.steam_appid,
@@ -30,7 +30,7 @@
 
 <!--  -->
 
-<GameRowSection
+<GameRecommendationSection
     {games}
     icon="fa-solid fa-book-open"
     title="Suggested from your Library"

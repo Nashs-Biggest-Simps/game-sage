@@ -1,5 +1,5 @@
 <script>
-    import GameRowSection from '$lib/components/games/GameRowSection.svelte'
+    import GameRecommendationSection from '$lib/components/game-cards/GameRecommendationSection.svelte'
     import { db } from '$lib/data'
     import { buildLibraryGames, buildGenreWeights } from '$lib/suggestions'
 
@@ -51,7 +51,7 @@
 </script>
 
 {#if games.length >= 3}
-<GameRowSection
+<GameRecommendationSection
     {games}
     icon="fa-solid fa-chart-line"
     title="New & Trending For You"

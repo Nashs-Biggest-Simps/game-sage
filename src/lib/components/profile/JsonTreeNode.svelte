@@ -1,6 +1,6 @@
 <script>
     //
-    // JsonNode.svelte
+    // JsonTreeNode.svelte
     //
     // GameSage
     // written by Aaron Meche
@@ -8,7 +8,7 @@
     // Component used for /profile Data Viewer
     //
 
-    import JsonNode from './JsonNode.svelte'
+    import JsonTreeNode from './JsonTreeNode.svelte'
 
     let { keyName = null, value, depth = 0 } = $props()
     let expanded = $state(0)
@@ -69,7 +69,7 @@
     {#if isObj && expanded}
         <div class="children">
             {#each entries as [k, v] (k)}
-                <JsonNode keyName={k} value={v} depth={depth + 1} />
+                <JsonTreeNode keyName={k} value={v} depth={depth + 1} />
             {/each}
         </div>
         <div class="close-brace row">

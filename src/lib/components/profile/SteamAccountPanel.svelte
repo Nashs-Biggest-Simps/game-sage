@@ -18,7 +18,7 @@
     } = $props()
 </script>
 
-<section class="panel steam-account-panel">
+<section class="panel panel-lg steam-account-panel">
     <h2 class="panel-heading">Steam Account</h2>
 
     <div class="form-grid">
@@ -131,51 +131,7 @@
 </section>
 
 <style>
-    .panel {
-        background: hsl(212, 24%, 12%, 0.58);
-        border-radius: 1.2rem;
-        outline: solid 1pt hsl(212, 38%, 36%, 0.52);
-        padding: 2rem;
-        display: flex;
-        flex-direction: column;
-        gap: 1.4rem;
-        backdrop-filter: blur(26px) saturate(1.24);
-        -webkit-backdrop-filter: blur(26px) saturate(1.24);
-        box-shadow: 0 18px 52px hsl(0, 0%, 0%, 0.24), inset 0 1px 0 hsl(0, 0%, 100%, 0.05);
-    }
-
-    .panel-heading { font-size: 1.4rem; font-weight: 700; margin: 0; }
-    .form-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.1rem; }
-    .field { display: flex; flex-direction: column; gap: 0.4rem; }
-    .field-label {
-        font-size: 0.72rem;
-        font-weight: 700;
-        opacity: 0.5;
-        display: flex;
-        align-items: center;
-        gap: 0.45rem;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
     .hint { font-size: 0.7rem; font-weight: 400; opacity: 0.7; text-transform: none; letter-spacing: 0; }
-    .field-val {
-        padding: 0.6rem 0.85rem;
-        background: var(--l1);
-        border-radius: 0.55rem;
-        outline: solid 1pt var(--l3);
-        font-size: 0.88rem;
-        font-family: inherit;
-        color: var(--contrast);
-        transition: outline-color 150ms;
-        box-sizing: border-box;
-        width: 100%;
-        display: block;
-    }
-    .field-val:focus { outline-color: var(--accent); }
-    .field-val.readonly { opacity: 0.5; cursor: default; }
-    .field-val.muted { opacity: 0.35; font-style: italic; }
-    .field-val.err { outline-color: var(--warning); }
-    .field-val.uid { font-family: monospace; font-size: 0.75rem; word-break: break-all; }
     .steam-link {
         display: flex;
         align-items: center;
@@ -189,26 +145,4 @@
     .notice { font-size: 0.8rem; margin: 0; display: flex; align-items: center; gap: 0.45rem; line-height: 1.5; }
     .notice.warn { color: hsl(0, 60%, 65%); }
     .notice.info { color: hsl(38, 80%, 65%); }
-    .btn-row { display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; }
-    .btn-primary,
-    .btn-ghost {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        border-radius: 0.55rem;
-        font-size: 0.88rem;
-        font-weight: 600;
-        cursor: pointer;
-    }
-    .btn-primary { padding: 0.6rem 1.4rem; background: var(--accent); color: white; }
-    .btn-primary:hover { background: var(--bright-accent); }
-    .btn-ghost { padding: 0.6rem 1.2rem; background: var(--l2); color: inherit; outline: solid 1pt var(--l3); }
-    .btn-ghost:hover { background: var(--l3); }
-    .status { font-size: 0.82rem; font-weight: 600; display: flex; align-items: center; gap: 0.35rem; }
-    .status.ok { color: hsl(130, 55%, 55%); }
-    .status.err-msg { color: hsl(0, 60%, 65%); }
-
-    @media (max-width: 640px) {
-        .panel { padding: 1.25rem; }
-    }
 </style>

@@ -4,73 +4,50 @@ import { buildCompactProfile, buildBuyProfile, getGameDetail, resolveThumbnail }
 import { buildLibraryGames, buildLocalLibrarySuggestions } from '$lib/suggestions'
 import { steamAPI } from '$lib/steam'
 
-const DEFAULT_SUGGESTION_TTL = 24 * 60 * 60 * 1000
-const MIN_PLAYED     = 3
-const MIN_UNPLAYED   = 1
-const MIN_ROW_ITEMS  = 8
-const MAX_ROW_ITEMS  = 12
-const inFlight = { play: null, buy: null }
+const DEFAULT_REFRESH_HOURS = 24
+const MIN_PLAYED_GAMES = 3
+const MIN_UNPLAYED_GAMES = 1
+const MIN_RESULTS = 8
+const MAX_RESULTS = 12
+const STORE_MATCH_LIMIT = 16
+const MAX_FEEDBACK_ITEMS = 30
 
-function preferredMaxResults() {
-    const n = Number(get(db).prefs?.suggestions?.maxResults ?? MAX_ROW_ITEMS)
-    if (!Number.isFinite(n)) return MAX_ROW_ITEMS
-    return Math.max(MIN_ROW_ITEMS, Math.min(MAX_ROW_ITEMS, n))
+const inFlightRequests = {
+    play: null,
+    buy: null,
 }
 
-// Lightweight feedback tracker — stores liked/disliked game names
-// to pass as context to the AI on subsequent requests.
-class Brain {
-    #data = { liked: [], disliked: [] }
+function state() {
+    return get(db)
+}
 
-    import(saved) {
-        if (saved?.liked && saved?.disliked) this.#data = { ...saved }
-    }
+function prefs() {
+    return state().prefs ?? {}
+}
 
-    export() { return { ...this.#data } }
+function clampResultLimit(value) {
+    const n = Number(value ?? MAX_RESULTS)
+    if (!Number.isFinite(n)) return MAX_RESULTS
+    return Math.max(MIN_RESULTS, Math.min(MAX_RESULTS, n))
+}
 
-    hasData() {
-        return !!(this.#data.liked.length || this.#data.disliked.length)
-    }
-
-    toPromptString() {
-        const parts = []
-        if (this.#data.liked.length)    parts.push(`User enjoyed: ${this.#data.liked.join(', ')}`)
-        if (this.#data.disliked.length) parts.push(`User disliked: ${this.#data.disliked.join(', ')}`)
-        return parts.join('\n')
-    }
-
-    record({ name }, liked) {
-        const list = liked ? this.#data.liked : this.#data.disliked
-        if (!list.includes(name)) {
-            list.push(name)
-            if (list.length > 30) list.shift()
-        }
-    }
-
-    reset() { this.#data = { liked: [], disliked: [] } }
+function preferredResultLimit() {
+    return clampResultLimit(prefs().suggestions?.maxResults)
 }
 
 function suggestionTTL() {
-    const hours = Number(get(db).prefs?.suggestions?.refreshHours ?? 24)
-    return Number.isFinite(hours) && hours > 0 ? hours * 60 * 60 * 1000 : DEFAULT_SUGGESTION_TTL
+    const hours = Number(prefs().suggestions?.refreshHours ?? DEFAULT_REFRESH_HOURS)
+    const safeHours = Number.isFinite(hours) && hours > 0 ? hours : DEFAULT_REFRESH_HOURS
+    return safeHours * 60 * 60 * 1000
 }
 
-function isFresh(ts) {
-    return !!ts && (Date.now() - ts) < suggestionTTL()
-}
-
-function searchStore(name) {
-    return new Promise(resolve => {
-        steamAPI.searchStore(name, data => {
-            const items = data?.items ?? []
-            const exact = items.find(i => i.name?.toLowerCase() === name.toLowerCase())
-            resolve(exact ?? items[0] ?? null)
-        })
-    })
+function cacheIsFresh(generatedAt) {
+    return !!generatedAt && (Date.now() - generatedAt) < suggestionTTL()
 }
 
 function uniqueBy(items, keyFn) {
     const seen = new Set()
+
     return items.filter(item => {
         const key = keyFn(item)
         if (!key || seen.has(key)) return false
@@ -79,40 +56,106 @@ function uniqueBy(items, keyFn) {
     })
 }
 
-// Keep only the fields BuyCard needs to avoid bloating the suggestions cache
-function slimStoreData(s) {
-    if (!s) return null
+function ownedAppIds() {
+    return new Set((state().cache?.library?.appIdList ?? []).map(id => String(id)))
+}
+
+function slimStoreData(storeGame) {
+    if (!storeGame) return null
+
     return {
-        is_free: s.is_free ?? false,
-        price:   s.price ? { final_formatted: s.price.final_formatted } : null,
+        is_free: storeGame.is_free ?? false,
+        price: storeGame.price ? {
+            final_formatted: storeGame.price.final_formatted,
+        } : null,
+    }
+}
+
+function searchSteamStoreByName(name) {
+    return new Promise(resolve => {
+        steamAPI.searchStore(name, data => {
+            const items = data?.items ?? []
+            const exactMatch = items.find(item => item.name?.toLowerCase() === name.toLowerCase())
+            resolve(exactMatch ?? items[0] ?? null)
+        })
+    })
+}
+
+// Stores explicit like/dislike feedback and injects it into future AI prompts.
+class SuggestionFeedback {
+    #data = { liked: [], disliked: [] }
+
+    import(saved) {
+        if (!saved?.liked || !saved?.disliked) return
+        this.#data = {
+            liked: [...saved.liked],
+            disliked: [...saved.disliked],
+        }
+    }
+
+    export() {
+        return {
+            liked: [...this.#data.liked],
+            disliked: [...this.#data.disliked],
+        }
+    }
+
+    hasData() {
+        return this.#data.liked.length > 0 || this.#data.disliked.length > 0
+    }
+
+    toPromptSection() {
+        const lines = []
+        if (this.#data.liked.length) lines.push(`User enjoyed: ${this.#data.liked.join(', ')}`)
+        if (this.#data.disliked.length) lines.push(`User disliked: ${this.#data.disliked.join(', ')}`)
+        return lines.join('\n')
+    }
+
+    record(game, liked) {
+        const name = game?.name
+        if (!name) return
+
+        const target = liked ? this.#data.liked : this.#data.disliked
+        if (target.includes(name)) return
+
+        target.push(name)
+        if (target.length > MAX_FEEDBACK_ITEMS) target.shift()
+    }
+
+    reset() {
+        this.#data = { liked: [], disliked: [] }
     }
 }
 
 export class Algorithm {
-    #brain = new Brain()
+    #feedback = new SuggestionFeedback()
 
     constructor() {
-        const saved = get(db).algr?.brain
-        if (saved) this.#brain.import(saved)
+        this.#feedback.import(state().algr?.brain)
     }
 
-    #saveBrain() {
+    #feedbackPrompt() {
+        return this.#feedback.hasData() ? this.#feedback.toPromptSection() : null
+    }
+
+    #saveFeedback() {
         db.update(data => {
             data.algr ??= {}
-            data.algr.brain = this.#brain.export()
+            data.algr.brain = this.#feedback.export()
             return data
         })
     }
 
-    #getCache(type) {
-        return get(db).cache?.suggestions?.[type] ?? null
+    #cached(type) {
+        return state().cache?.suggestions?.[type] ?? null
     }
 
-    #isUsableCache(cached) {
-        return isFresh(cached?.generatedAt) && cached.items?.length >= Math.min(MIN_ROW_ITEMS, preferredMaxResults())
+    #hasUsableCache(cached) {
+        const requiredCount = Math.min(MIN_RESULTS, preferredResultLimit())
+        return cacheIsFresh(cached?.generatedAt) && cached.items?.length >= requiredCount
     }
 
-    #persistCache(type, items) {
+    #saveCache(type, items) {
         db.update(data => {
             data.cache ??= {}
             data.cache.suggestions ??= {}
@@ -121,157 +164,179 @@ export class Algorithm {
         })
     }
 
-    async #callSage(type, profile) {
-        const prefs = get(db).prefs ?? {}
-        const res = await fetch('/api/sage', {
-            method:  'POST',
+    async #requestAiSuggestions(type, profileText) {
+        const res = await fetch('/api/ai-suggestions', {
+            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ type, profile, prefs }),
+            body: JSON.stringify({
+                type,
+                profile: profileText,
+                prefs: prefs(),
+            }),
         })
-        if (!res.ok) throw new Error(`/api/sage returned ${res.status}`)
+
+        if (!res.ok) throw new Error(`/api/ai-suggestions returned ${res.status}`)
         return res.json()
     }
 
-    #playBackfill(existing = []) {
-        const state = get(db)
-        const details = state.cache?.library?.details ?? {}
-        const playtime = state.cache?.library?.playtime ?? {}
-        const blacklist = new Set((state.cache?.library?.blacklist ?? []).map(String))
-        const prefs = state.prefs ?? {}
-        const games = buildLibraryGames(details, playtime, blacklist)
+    #localPlayBackfill(existing = []) {
+        const current = state()
+        const details = current.cache?.library?.details ?? {}
+        const playtime = current.cache?.library?.playtime ?? {}
+        const blacklist = new Set((current.cache?.library?.blacklist ?? []).map(String))
+        const userPrefs = current.prefs ?? {}
+
+        const libraryGames = buildLibraryGames(details, playtime, blacklist)
         const ranked = buildLocalLibrarySuggestions(
-            games,
-            prefs.genres?.preferred ?? [],
-            prefs.genres?.excluded ?? []
+            libraryGames,
+            userPrefs.genres?.preferred ?? [],
+            userPrefs.genres?.excluded ?? [],
         )
 
         const used = new Set(existing.map(item => String(item.game?.steam_appid)))
+
         return ranked
             .filter(({ game }) => !used.has(String(game.steam_appid)))
             .map(({ game, reason }) => ({ game, reason }))
     }
 
-    // Returns [{ game, reason }] — games from the user's unplayed library.
-    // Items are persisted as fully-resolved objects so they load from cache
-    // without depending on the detail cache being populated.
+    #resolvePlayResults(rawItems, limit) {
+        const aiItems = rawItems
+            .map(({ id, r: reason }) => {
+                const game = getGameDetail(id)
+                return game ? { game, reason } : null
+            })
+            .filter(Boolean)
+
+        return uniqueBy(
+            [...aiItems, ...this.#localPlayBackfill(aiItems)],
+            item => String(item.game?.steam_appid),
+        ).slice(0, limit)
+    }
+
+    async #resolveBuyResults(rawItems, cachedItems, limit) {
+        const owned = ownedAppIds()
+        const resolved = await Promise.all(
+            rawItems.slice(0, STORE_MATCH_LIMIT).map(async ({ n: name, r: reason }) => {
+                const match = await searchSteamStoreByName(name)
+                if (!match || owned.has(String(match.id))) return null
+
+                return {
+                    name,
+                    reason,
+                    appid: match.id,
+                    storeData: slimStoreData(match),
+                    thumbnail: resolveThumbnail(match.id),
+                }
+            })
+        )
+
+        return uniqueBy(
+            [...(cachedItems ?? []), ...resolved.filter(Boolean)],
+            item => String(item.appid),
+        ).slice(0, limit)
+    }
+
+    // Returns [{ game, reason }] for owned games the user should play next.
     async getPlaySuggestions() {
-        const cached = this.#getCache('play')
-        const limit = preferredMaxResults()
-        if (this.#isUsableCache(cached)) {
-            return cached.items.slice(0, limit)
-        }
-        if (inFlight.play) return inFlight.play
+        const cached = this.#cached('play')
+        const limit = preferredResultLimit()
 
-        inFlight.play = (async () => {
-            const brain = this.#brain.hasData() ? this.#brain.toPromptString() : null
-            const { text, playedCount, unplayedCount } = buildCompactProfile(brain)
+        if (this.#hasUsableCache(cached)) return cached.items.slice(0, limit)
+        if (inFlightRequests.play) return inFlightRequests.play
 
-            if (playedCount < MIN_PLAYED || unplayedCount < MIN_UNPLAYED) {
-                console.warn(`[Algorithm] Not enough data for play suggestions (played=${playedCount}, unplayed=${unplayedCount})`)
+        inFlightRequests.play = (async () => {
+            const profile = buildCompactProfile(this.#feedbackPrompt())
+
+            if (profile.playedCount < MIN_PLAYED_GAMES || profile.unplayedCount < MIN_UNPLAYED_GAMES) {
+                console.warn(`[Algorithm] Not enough data for play suggestions (played=${profile.playedCount}, unplayed=${profile.unplayedCount})`)
                 return cached?.items ?? []
             }
 
             try {
-                const { s: raw } = await this.#callSage('play', text)
-                if (!Array.isArray(raw)) throw new Error('Unexpected response shape')
+                const { s: rawItems } = await this.#requestAiSuggestions('play', profile.text)
+                if (!Array.isArray(rawItems)) throw new Error('Unexpected play response shape')
 
-                // Resolve each appid to its cached game object immediately so the
-                // persisted items are self-contained — no detail cache dependency on reload.
-                const items = raw.map(({ id, r: reason }) => {
-                    const game = getGameDetail(id)
-                    return game ? { game, reason } : null
-                }).filter(Boolean)
-                const filled = uniqueBy([...items, ...this.#playBackfill(items)], item => String(item.game?.steam_appid))
-                    .slice(0, limit)
-
-                this.#persistCache('play', filled)
-                return filled
+                const items = this.#resolvePlayResults(rawItems, limit)
+                this.#saveCache('play', items)
+                return items
             } catch (err) {
                 console.error('[Algorithm] getPlaySuggestions failed:', err)
-                const fallback = uniqueBy([...(cached?.items ?? []), ...this.#playBackfill()], item => String(item.game?.steam_appid))
-                    .slice(0, limit)
-                this.#persistCache('play', fallback)
+
+                const fallback = uniqueBy(
+                    [...(cached?.items ?? []), ...this.#localPlayBackfill()],
+                    item => String(item.game?.steam_appid),
+                ).slice(0, limit)
+
+                this.#saveCache('play', fallback)
                 return fallback
             } finally {
-                inFlight.play = null
+                inFlightRequests.play = null
             }
         })()
 
-        return inFlight.play
+        return inFlightRequests.play
     }
 
-    // Returns [{ name, reason, appid, storeData }] — games not yet owned.
-    // storeData is slimmed to only the fields BuyCard reads.
+    // Returns [{ name, reason, appid, thumbnail, storeData }] for games not owned.
     async getBuySuggestions() {
-        const cached = this.#getCache('buy')
-        const limit = preferredMaxResults()
-        if (this.#isUsableCache(cached)) {
-            return cached.items.slice(0, limit)
-        }
-        if (inFlight.buy) return inFlight.buy
+        const cached = this.#cached('buy')
+        const limit = preferredResultLimit()
 
-        inFlight.buy = (async () => {
-            const brain = this.#brain.hasData() ? this.#brain.toPromptString() : null
-            const { text, playedCount } = buildBuyProfile(brain)
+        if (this.#hasUsableCache(cached)) return cached.items.slice(0, limit)
+        if (inFlightRequests.buy) return inFlightRequests.buy
 
-            if (playedCount < MIN_PLAYED) {
-                console.warn(`[Algorithm] Not enough data for buy suggestions (played=${playedCount})`)
+        inFlightRequests.buy = (async () => {
+            const profile = buildBuyProfile(this.#feedbackPrompt())
+
+            if (profile.playedCount < MIN_PLAYED_GAMES) {
+                console.warn(`[Algorithm] Not enough data for buy suggestions (played=${profile.playedCount})`)
                 return cached?.items ?? []
             }
 
             try {
-                const { b: suggestions } = await this.#callSage('buy', text)
-                if (!Array.isArray(suggestions)) throw new Error('Unexpected response shape')
+                const { b: rawItems } = await this.#requestAiSuggestions('buy', profile.text)
+                if (!Array.isArray(rawItems)) throw new Error('Unexpected buy response shape')
 
-                const owned = new Set((get(db).cache?.library?.appIdList ?? []).map(id => String(id)))
-                const resolved = await Promise.all(
-                    suggestions.slice(0, 16).map(async ({ n: name, r: reason }) => {
-                        const match = await searchStore(name)
-                        if (!match) return null
-                        const appid     = match.id
-                        if (owned.has(String(appid))) return null
-                        const thumbnail = await resolveThumbnail(appid)
-                        return { name, reason, appid, storeData: slimStoreData(match), thumbnail }
-                    })
-                )
-
-                const items = uniqueBy([...(cached?.items ?? []), ...resolved.filter(Boolean)], item => String(item.appid))
-                    .slice(0, limit)
-                this.#persistCache('buy', items)
+                const items = await this.#resolveBuyResults(rawItems, cached?.items, limit)
+                this.#saveCache('buy', items)
                 return items
             } catch (err) {
                 console.error('[Algorithm] getBuySuggestions failed:', err)
                 return cached?.items ?? []
             } finally {
-                inFlight.buy = null
+                inFlightRequests.buy = null
             }
         })()
 
-        return inFlight.buy
+        return inFlightRequests.buy
     }
 
-    // Call when the user explicitly likes or dislikes a suggestion
     recordInteraction(game, liked) {
-        this.#brain.record({ name: game.name }, liked)
-        this.#saveBrain()
+        this.#feedback.record(game, liked)
+        this.#saveFeedback()
         this.invalidate('all')
     }
 
     invalidate(type = 'all') {
         db.update(data => {
-            const s = data.cache?.suggestions
-            if (!s) return data
-            if ((type === 'play' || type === 'all') && s.play) s.play.generatedAt = 0
-            if ((type === 'buy'  || type === 'all') && s.buy)  s.buy.generatedAt  = 0
+            const suggestions = data.cache?.suggestions
+            if (!suggestions) return data
+
+            if ((type === 'play' || type === 'all') && suggestions.play) suggestions.play.generatedAt = 0
+            if ((type === 'buy' || type === 'all') && suggestions.buy) suggestions.buy.generatedAt = 0
+
             return data
         })
     }
 
     resetFeedback() {
-        this.#brain.reset()
-        this.#saveBrain()
+        this.#feedback.reset()
+        this.#saveFeedback()
         this.invalidate('all')
     }
 
-    getBrainState() { return this.#brain.export() }
+    getBrainState() {
+        return this.#feedback.export()
+    }
 }

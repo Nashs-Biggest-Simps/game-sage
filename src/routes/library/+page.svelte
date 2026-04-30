@@ -1,6 +1,6 @@
 <script>
     import { db } from '$lib/data'
-    import GameGrid from '$lib/components/games/GameGrid.svelte'
+    import GameCardGrid from '$lib/components/game-cards/GameCardGrid.svelte'
 
     const DISPLAY_OPTIONS = ['All', 'Never Played']
     const SORT_OPTIONS    = ['None', 'Most Played', 'A → Z', 'Z → A', 'Never Played']
@@ -121,7 +121,7 @@
                 <span>No games match the current filters</span>
             </div>
         {:else}
-            <GameGrid items={sorted()} />
+            <GameCardGrid items={sorted()} />
         {/if}
     {/if}
 

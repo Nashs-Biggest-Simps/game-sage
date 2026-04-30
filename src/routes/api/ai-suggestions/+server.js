@@ -2,6 +2,9 @@ import { json, error } from '@sveltejs/kit'
 import { RueterModel } from 'rueter-ai'
 import { GROK_API_KEY } from '$env/static/private'
 
+const AI_PROVIDER = 'grok'
+const MAX_TOKENS = 900
+
 const PLAY_PROMPT =
     'You are a precise Steam library curation engine. ' +
     'Your task is to choose owned games the user should play next from UNPLAYED_OWNED only. ' +
@@ -23,63 +26,65 @@ const BUY_PROMPT =
     'Return ONLY valid JSON with no markdown, code fences, or explanation. ' +
     'Format exactly: {"b":[{"n":"<exact Steam title>","r":"<one-sentence reason>"},...]} — return 12 results when possible, never fewer than 8.'
 
-function buildSystemPrompt(type, prefs) {
-    let prompt = type === 'play' ? PLAY_PROMPT : BUY_PROMPT
-
-    const preferred = prefs?.genres?.preferred ?? []
-    const excluded  = prefs?.genres?.excluded  ?? []
-    const tone      = prefs?.suggestions?.aiTone ?? 'brief'
-
-    if (preferred.length) prompt += ` Prefer these genres: ${preferred.join(', ')}.`
-    if (excluded.length)  prompt += ` Avoid these genres: ${excluded.join(', ')}.`
-    if (tone === 'detailed')      prompt += ` Write reasons in 2 sentences with specific details.`
-    if (tone === 'enthusiastic')  prompt += ` Write reasons with enthusiasm and energy.`
-
-    return prompt
+function basePromptFor(type) {
+    return type === 'play' ? PLAY_PROMPT : BUY_PROMPT
 }
 
-// Strip markdown code fences in case the AI wraps the JSON response
-function extractJSON(raw) {
+function preferenceInstructions(prefs) {
+    const preferred = prefs?.genres?.preferred ?? []
+    const excluded = prefs?.genres?.excluded ?? []
+    const tone = prefs?.suggestions?.aiTone ?? 'brief'
+    const lines = []
+
+    if (preferred.length) lines.push(`Prefer these genres: ${preferred.join(', ')}.`)
+    if (excluded.length) lines.push(`Avoid these genres: ${excluded.join(', ')}.`)
+    if (tone === 'detailed') lines.push('Write reasons in 2 sentences with specific details.')
+    if (tone === 'enthusiastic') lines.push('Write reasons with enthusiasm and energy.')
+
+    return lines.join(' ')
+}
+
+function buildSystemPrompt(type, prefs) {
+    return [basePromptFor(type), preferenceInstructions(prefs)]
+        .filter(Boolean)
+        .join(' ')
+}
+
+function parseJsonResponse(raw) {
     const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/)
     return JSON.parse((fenced ? fenced[1] : raw).trim())
+}
+
+function validateAiResponse(type, parsed) {
+    if (type === 'play' && Array.isArray(parsed?.s)) return
+    if (type === 'buy' && Array.isArray(parsed?.b)) return
+    throw error(502, `AI ${type} response did not match expected shape.`)
+}
+
+async function requestAiJson(type, profile, prefs) {
+    const model = new RueterModel(AI_PROVIDER, GROK_API_KEY, 1)
+    model.setSystemPrompt(buildSystemPrompt(type, prefs))
+    model.setMaxTokens(MAX_TOKENS)
+    model.setTemperature(type === 'play' ? 0.45 : 0.55)
+
+    const raw = await model.prompt(profile)
+    const parsed = parseJsonResponse(raw)
+    validateAiResponse(type, parsed)
+    return parsed
 }
 
 export async function POST({ request }) {
     const body = await request.json().catch(() => null)
     const { type, profile, prefs } = body ?? {}
 
-    if (!profile?.trim()) throw error(400, '"profile" is required.')
     if (type !== 'play' && type !== 'buy') throw error(400, '"type" must be "play" or "buy".')
+    if (!profile?.trim()) throw error(400, '"profile" is required.')
 
-    const model = new RueterModel('grok', GROK_API_KEY, 1)
-    model.setSystemPrompt(buildSystemPrompt(type, prefs))
-    model.setMaxTokens(type === 'play' ? 900 : 900)
-    model.setTemperature(type === 'play' ? 0.45 : 0.55)
-
-    let raw
     try {
-        raw = await model.prompt(profile)
+        return json(await requestAiJson(type, profile, prefs))
     } catch (err) {
-        console.error('[/api/sage] AI call failed:', err)
-        throw error(502, 'AI call failed.')
+        if (err?.status) throw err
+        console.error('[/api/ai-suggestions] AI suggestion request failed:', err)
+        throw error(502, 'AI suggestion request failed.')
     }
-
-    let parsed
-    try {
-        parsed = extractJSON(raw)
-    } catch {
-        console.error('[/api/sage] Malformed AI response:', raw)
-        throw error(502, 'AI returned malformed JSON.')
-    }
-
-    if (type === 'play' && !Array.isArray(parsed?.s)) {
-        console.error('[/api/sage] Unexpected play shape:', parsed)
-        throw error(502, 'AI play response did not match expected shape.')
-    }
-    if (type === 'buy' && !Array.isArray(parsed?.b)) {
-        console.error('[/api/sage] Unexpected buy shape:', parsed)
-        throw error(502, 'AI buy response did not match expected shape.')
-    }
-
-    return json(parsed)
 }

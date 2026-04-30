@@ -1,6 +1,6 @@
 <script>
 	//
-	// TopNavbarItem.svelte
+	// TopNavigationLink.svelte
 	//
 	// GameSage
 	// written by Aaron Meche

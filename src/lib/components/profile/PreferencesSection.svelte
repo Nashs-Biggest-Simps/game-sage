@@ -89,7 +89,7 @@
     }
 </script>
 
-<section class="panel">
+<section class="panel panel-lg">
     <h2 class="panel-heading">Preferences</h2>
 
     <div class="pref-section">
@@ -214,20 +214,6 @@
 </section>
 
 <style>
-    .panel {
-        background: hsl(212, 24%, 12%, 0.58);
-        border-radius: 1.2rem;
-        outline: solid 1pt hsl(212, 38%, 36%, 0.52);
-        padding: 2rem;
-        display: flex;
-        flex-direction: column;
-        gap: 1.4rem;
-        backdrop-filter: blur(26px) saturate(1.24);
-        -webkit-backdrop-filter: blur(26px) saturate(1.24);
-        box-shadow: 0 18px 52px hsl(0, 0%, 0%, 0.24), inset 0 1px 0 hsl(0, 0%, 100%, 0.05);
-    }
-
-    .panel-heading { font-size: 1.4rem; font-weight: 700; margin: 0; }
     .pref-section {
         display: flex;
         flex-direction: column;
@@ -332,11 +318,7 @@
         box-shadow: 0 1px 4px hsl(0, 0%, 0%, 0.3);
     }
     .toggle.on .toggle-thumb { left: calc(100% - 1.35rem); }
-    .status { font-size: 0.82rem; font-weight: 600; display: flex; align-items: center; gap: 0.35rem; }
-    .status.ok { color: hsl(130, 55%, 55%); }
-
     @media (max-width: 640px) {
-        .panel { padding: 1.25rem; }
         .pref-row,
         .pref-toggle-row {
             align-items: stretch;

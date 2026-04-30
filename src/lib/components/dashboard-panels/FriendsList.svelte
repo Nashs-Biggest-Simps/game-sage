@@ -151,6 +151,7 @@
     .friend:hover { background: var(--l1); }
     .friend.in-game { background: var(--la1); }
     .friend.in-game:hover { background: var(--la2); }
+    .friend.online:hover { background: hsl(130, 42%, 18%, 0.34); }
     .friend.offline { opacity: 0.4; }
 
     .av-wrap {

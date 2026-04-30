@@ -4,18 +4,18 @@
     import { refreshFriends }    from '$lib/cache'
 
     // Left column
-    import RecentSessions        from '$lib/components/panel-sections/RecentSessions.svelte'
-    import TopGamesPlayed        from '$lib/components/panel-sections/TopGamesPlayed.svelte'
-    import JoinFriends           from '$lib/components/panel-sections/JoinFriends.svelte'
-    import GenreBreakdown        from '$lib/components/panel-sections/GenreBreakdown.svelte'
-    import FriendGameFeed        from '$lib/components/panel-sections/FriendGameFeed.svelte'
+    import RecentSessions        from '$lib/components/dashboard-panels/RecentSessions.svelte'
+    import TopGamesPlayed        from '$lib/components/dashboard-panels/TopGamesPlayed.svelte'
+    import JoinFriends           from '$lib/components/dashboard-panels/JoinFriends.svelte'
+    import GenreBreakdown        from '$lib/components/dashboard-panels/GenreBreakdown.svelte'
+    import FriendGameFeed        from '$lib/components/dashboard-panels/FriendGameFeed.svelte'
 
     // Right column
-    import ActiveFriendBreakdown from '$lib/components/panel-sections/ActiveFriendBreakdown.svelte'
-    import FriendInsights        from '$lib/components/panel-sections/FriendInsights.svelte'
-    import FriendActivityRecency from '$lib/components/panel-sections/FriendActivityRecency.svelte'
-    import LibraryProfile        from '$lib/components/panel-sections/LibraryProfile.svelte'
-    import FriendsList           from '$lib/components/panel-sections/FriendsList.svelte'
+    import ActiveFriendBreakdown from '$lib/components/dashboard-panels/ActiveFriendBreakdown.svelte'
+    import FriendInsights        from '$lib/components/dashboard-panels/FriendInsights.svelte'
+    import FriendActivityRecency from '$lib/components/dashboard-panels/FriendActivityRecency.svelte'
+    import LibraryProfile        from '$lib/components/dashboard-panels/LibraryProfile.svelte'
+    import FriendsList           from '$lib/components/dashboard-panels/FriendsList.svelte'
 
     let recentGames = $derived($db?.cache?.recentlyPlayed?.data ?? [])
     let weekHours   = $derived(

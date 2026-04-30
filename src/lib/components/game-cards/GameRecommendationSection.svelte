@@ -1,6 +1,6 @@
 <script>
-    import GameRow from '$lib/components/games/GameRow.svelte'
-    import RowViewToggle from '$lib/components/games/RowViewToggle.svelte'
+    import GameCardRail from '$lib/components/game-cards/GameCardRail.svelte'
+    import RowLayoutToggle from '$lib/components/game-cards/RowLayoutToggle.svelte'
 
     let {
         games = [],
@@ -10,6 +10,8 @@
         badgeLabel = null,
         badgeIcon = null,
         badgeVariant = 'default',
+        loading = false,
+        skeletonCount = 8,
     } = $props()
 
     let mode = $state('scroll')
@@ -43,10 +45,10 @@
             {/if}
         </div>
 
-        <RowViewToggle bind:value={mode} />
+        <RowLayoutToggle bind:value={mode} />
     </div>
 
-    <GameRow {games} {mode} />
+    <GameCardRail {games} {mode} {loading} {skeletonCount} />
 </section>
 
 <style>

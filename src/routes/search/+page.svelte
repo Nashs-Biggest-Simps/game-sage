@@ -1,6 +1,7 @@
 <script>
     import { db } from '$lib/data'
     import { steamAPI } from '$lib/steam'
+    import { resolveThumbnail } from '$lib/cache'
     import { goto } from '$app/navigation'
     import { resolve } from '$app/paths'
 
@@ -16,6 +17,9 @@
     let storeResults = $state([])
     let storeLoading = $state(false)
     let searched     = $state(false)
+    let submittedQuery = $state('')
+    let lastStoreQuery = $state('')
+    let searchToken = 0
 
     let libraryDetails = $derived($db?.cache?.library?.details ?? {})
     let libraryPlaytime = $derived($db?.cache?.library?.playtime ?? {})
@@ -35,16 +39,34 @@
             .slice(0, 60)
     })
 
-    async function runSearch() {
-        if (!query.trim()) return
+    function searchSteamStore(term) {
+        const normalized = term.trim()
+        if (!normalized || lastStoreQuery === normalized) return
+
+        const token = ++searchToken
+        lastStoreQuery = normalized
+        storeLoading = true
+        storeResults = []
+
+        steamAPI.searchStore(normalized, (res) => {
+            if (token !== searchToken) return
+            storeResults = res?.items ?? []
+            storeLoading = false
+        })
+    }
+
+    function runSearch() {
+        const term = query.trim()
+        if (!term) return
+
+        submittedQuery = term
         searched = true
+
         if (mode === 'store') {
-            storeLoading = true
-            storeResults = []
-            steamAPI.searchStore(query.trim(), (res) => {
-                storeResults = res?.items ?? []
-                storeLoading = false
-            })
+            searchSteamStore(term)
+        } else if (ownedResults().length === 0) {
+            mode = 'store'
+            searchSteamStore(term)
         }
     }
 
@@ -68,6 +90,32 @@
         if (h >= 1000) return `${(h / 1000).toFixed(1)}k h`
         return `${h.toLocaleString()}h`
     }
+
+    function ownedThumbnail(detail, appid) {
+        return detail?.thumbnail ?? detail?.header_image ?? resolveThumbnail(appid)
+    }
+
+    function storeThumbnail(item) {
+        return item.large_capsule_image
+            ?? item.header_image
+            ?? item.tiny_image
+            ?? resolveThumbnail(item.id)
+    }
+
+    function resetSearch() {
+        query = ''
+        submittedQuery = ''
+        searched = false
+        storeResults = []
+        storeLoading = false
+        lastStoreQuery = ''
+        searchToken++
+    }
+
+    $effect(() => {
+        const term = query.trim()
+        if (term !== submittedQuery) searched = false
+    })
 
     let activeResults = $derived(mode === 'owned' ? ownedResults() : storeResults)
     let isEmpty = $derived(searched && !storeLoading && activeResults.length === 0)
@@ -98,7 +146,7 @@
                 onkeydown={onKeydown}
             />
             {#if query}
-                <button class="clear-btn" onclick={() => { query = ''; searched = false; storeResults = [] }} aria-label="Clear">
+                <button class="clear-btn" onclick={resetSearch} aria-label="Clear">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             {/if}
@@ -109,11 +157,11 @@
     <!-- ── Filter bar ── -->
     <div class="filter-bar">
         <div class="mode-tabs">
-            <button class="mode-tab {mode === 'owned' ? 'active' : ''}" onclick={() => { mode = 'owned'; searched = !!query.trim() }}>
+            <button class="mode-tab {mode === 'owned' ? 'active' : ''}" onclick={() => { mode = 'owned'; searched = false }}>
                 <i class="fa-solid fa-gamepad"></i>
                 My Library
             </button>
-            <button class="mode-tab {mode === 'store' ? 'active' : ''}" onclick={() => { mode = 'store'; if (query.trim()) runSearch() }}>
+            <button class="mode-tab {mode === 'store' ? 'active' : ''}" onclick={() => { mode = 'store'; if (query.trim()) { submittedQuery = query.trim(); searched = true; searchSteamStore(query) } }}>
                 <i class="fa-brands fa-steam"></i>
                 Steam Store
             </button>
@@ -162,7 +210,7 @@
     {:else if isEmpty}
         <div class="start-state">
             <i class="fa-solid fa-face-frown"></i>
-            <span>No results for "{query}"</span>
+            <span>No results for "{submittedQuery || query}"</span>
         </div>
 
     {:else if mode === 'owned'}
@@ -175,8 +223,16 @@
                     onclick={() => goto(resolve(`/view?id=${g.appid}`))}
                 >
                     <div class="card-art">
-                        {#if detail?.header_image}
-                            <img src={detail.header_image} alt={detail.name} loading="lazy" />
+                        {#if ownedThumbnail(detail, g.appid)}
+                            <img
+                                src={ownedThumbnail(detail, g.appid)}
+                                alt={detail.name}
+                                loading="lazy"
+                                decoding="async"
+                                onerror={(e) => {
+                                    e.currentTarget.style.display = 'none'
+                                }}
+                            />
                         {:else}
                             <div class="art-fallback"></div>
                         {/if}
@@ -207,13 +263,15 @@
                 >
                     <div class="card-art">
                         <img
-                            src="https://cdn.akamai.steamstatic.com/steam/apps/{item.id}/header.jpg"
+                            src={storeThumbnail(item)}
                             alt={item.name}
                             loading="lazy"
+                            decoding="async"
                             onerror={(e) => {
                                 const el = e.currentTarget
-                                if (item.tiny_image && el.src !== item.tiny_image) {
-                                    el.src = item.tiny_image
+                                const fallback = item.tiny_image ?? resolveThumbnail(item.id)
+                                if (fallback && el.src !== fallback) {
+                                    el.src = fallback
                                     el.dataset.fallback = '1'
                                 } else {
                                     el.style.display = 'none'

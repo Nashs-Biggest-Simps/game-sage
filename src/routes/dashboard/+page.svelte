@@ -2,24 +2,24 @@
     import { db }                  from '$lib/data'
     import { resolve }             from '$app/paths'
     // Hero
-    import ContinuePlayingHero     from '$lib/components/Dashboard/ContinuePlayingHero.svelte'
+    import ContinuePlayingHero     from '$lib/components/dashboard/ContinuePlayingHero.svelte'
     // Row sections — ordered by user value / recency / discovery
-    import RecentlyPlayed          from '$lib/components/row-sections/RecentlyPlayed.svelte'
-    import AISuggestions           from '$lib/components/row-sections/AISuggestions.svelte'
-    import LibrarySuggestions      from '$lib/components/row-sections/LibrarySuggestions.svelte'
-    import ThisWeekRow             from '$lib/components/row-sections/ThisWeekRow.svelte'
-    import MostPlayed              from '$lib/components/row-sections/MostPlayed.svelte'
-    import FriendGroupFavorites    from '$lib/components/row-sections/FriendGroupFavorites.svelte'
-    import FriendNotOwned          from '$lib/components/row-sections/FriendNotOwned.svelte'
-    import TrendingForYou          from '$lib/components/row-sections/TrendingForYou.svelte'
-    import NewsDisplay             from '$lib/components/games/NewsDisplay.svelte'
+    import RecentlyPlayed          from '$lib/components/dashboard-rows/RecentlyPlayed.svelte'
+    import AISuggestions           from '$lib/components/dashboard-rows/AISuggestions.svelte'
+    import LibrarySuggestions      from '$lib/components/dashboard-rows/LibrarySuggestions.svelte'
+    import ThisWeekRow             from '$lib/components/dashboard-rows/ThisWeekRow.svelte'
+    import MostPlayed              from '$lib/components/dashboard-rows/MostPlayed.svelte'
+    import FriendGroupFavorites    from '$lib/components/dashboard-rows/FriendGroupFavorites.svelte'
+    import FriendNotOwned          from '$lib/components/dashboard-rows/FriendNotOwned.svelte'
+    import TrendingForYou          from '$lib/components/dashboard-rows/TrendingForYou.svelte'
+    import GameNewsPanel           from '$lib/components/game-cards/GameNewsPanel.svelte'
     // Right panel modules
-    import QuickStats              from '$lib/components/panel-sections/QuickStats.svelte'
-    import FriendInsights          from '$lib/components/panel-sections/FriendInsights.svelte'
-    import FriendsList             from '$lib/components/panel-sections/FriendsList.svelte'
-    import GenreSpotlightPanel     from '$lib/components/panel-sections/GenreSpotlightPanel.svelte'
-    import RecentSessions          from '$lib/components/panel-sections/RecentSessions.svelte'
-    import PopularWithFriends      from '$lib/components/panel-sections/PopularWithFriends.svelte'
+    import QuickStats              from '$lib/components/dashboard-panels/QuickStats.svelte'
+    import FriendInsights          from '$lib/components/dashboard-panels/FriendInsights.svelte'
+    import FriendsList             from '$lib/components/dashboard-panels/FriendsList.svelte'
+    import GenreSpotlightPanel     from '$lib/components/dashboard-panels/GenreSpotlightPanel.svelte'
+    import RecentSessions          from '$lib/components/dashboard-panels/RecentSessions.svelte'
+    import PopularWithFriends      from '$lib/components/dashboard-panels/PopularWithFriends.svelte'
 
     let mostRecentGame = $derived($db?.cache?.recentlyPlayed?.data[0] ?? null)
     let name           = $derived($db?.cache?.user?.data?.personaname ?? $db?.user?.displayName ?? null)
@@ -63,7 +63,7 @@
                 <!-- 8. New & Trending For You -->
                 <TrendingForYou />
                 <!-- News for most recently played game -->
-                <NewsDisplay game={mostRecentGame ?? null} />
+                <GameNewsPanel game={mostRecentGame ?? null} />
             </div>
 
             <aside class="right-col">

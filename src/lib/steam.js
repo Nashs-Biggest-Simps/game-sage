@@ -24,7 +24,7 @@ async function makeApiCall(url, callback, { requiresSteamId = false, label = 'St
 
     console.log("API Call Made:", url)
     try {
-        const res = await fetch(`/api?endpoint=${url}`)
+        const res = await fetch(`/api/steam-proxy?endpoint=${encodeURIComponent(url)}`)
         if (!res.ok) throw new Error(`${label} returned ${res.status}`)
         const data = await res.json()
         if (callback) callback(data)

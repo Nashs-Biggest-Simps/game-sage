@@ -1,5 +1,5 @@
 <script>
-    import GameRowSection from '$lib/components/games/GameRowSection.svelte'
+    import GameRecommendationSection from '$lib/components/game-cards/GameRecommendationSection.svelte'
     import { db } from '$lib/data'
 
     let recent  = $derived($db?.cache?.recentlyPlayed?.data ?? [])
@@ -29,7 +29,7 @@
 </script>
 
 {#if games.length >= 2}
-<GameRowSection
+<GameRecommendationSection
     {games}
     icon="fa-solid fa-calendar-week"
     title="On Rotation This Week"

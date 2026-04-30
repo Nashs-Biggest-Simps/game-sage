@@ -77,18 +77,7 @@
 </section>
 
 <style>
-    .panel {
-        background: hsl(212, 24%, 12%, 0.58);
-        border-radius: 1.2rem;
-        outline: solid 1pt hsl(212, 38%, 36%, 0.52);
-        padding: 1.4rem;
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-        backdrop-filter: blur(26px) saturate(1.24);
-        -webkit-backdrop-filter: blur(26px) saturate(1.24);
-        box-shadow: 0 18px 52px hsl(0, 0%, 0%, 0.24), inset 0 1px 0 hsl(0, 0%, 100%, 0.05);
-    }
+    .hero-panel { gap: 1rem; }
 
     .steam-hero {
         display: grid;
@@ -172,8 +161,7 @@
     .spill.warn, .spill.info { color: hsl(188, 80%, 72%); }
     .spill.danger { background: hsl(0, 50%, 18%, 0.54); color: hsl(0, 70%, 68%); outline-color: hsl(0, 50%, 32%, 0.72); }
 
-    .steam-profile-link,
-    .btn-ghost {
+    .steam-profile-link {
         display: flex;
         align-items: center;
         justify-content: center;
@@ -193,15 +181,6 @@
     }
 
     .steam-profile-link:hover { background: var(--la2); }
-
-    .btn-ghost {
-        padding: 0.5rem 1rem;
-        background: var(--l2);
-        color: inherit;
-        outline: solid 1pt var(--l3);
-    }
-
-    .btn-ghost:hover { background: var(--l3); }
 
     .connection-copy {
         display: flex;
@@ -231,7 +210,6 @@
     }
 
     @media (max-width: 640px) {
-        .panel { padding: 1.1rem; }
         .steam-hero { grid-template-columns: minmax(0, 1fr); gap: 0.9rem; }
         .steam-avatar-lg { width: 4.2rem; height: 4.2rem; }
         .steam-actions,

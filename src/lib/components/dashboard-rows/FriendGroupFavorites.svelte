@@ -1,5 +1,5 @@
 <script>
-    import GameRowSection            from '$lib/components/games/GameRowSection.svelte'
+    import GameRecommendationSection            from '$lib/components/game-cards/GameRecommendationSection.svelte'
     import { db }                    from '$lib/data'
     import { buildFriendGroupFavorites } from '$lib/suggestions'
 
@@ -8,7 +8,7 @@
 </script>
 
 {#if games.length >= 3}
-<GameRowSection
+<GameRecommendationSection
     {games}
     icon="fa-solid fa-fire-flame-curved"
     title="Trending in Your Circle"

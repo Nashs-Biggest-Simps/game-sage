@@ -1,6 +1,6 @@
 <script>
 	//
-	// TopNavbar.svelte
+	// TopNavigationBar.svelte
 	// 
 	// GameSage
 	// written by Aaron Meche
@@ -9,7 +9,7 @@
 	import { resolve } from '$app/paths'
 	import { page } from '$app/state'
 	import { db } from '$lib/data'
-    import TopNavbarItem from '$lib/components/TopNavbarItem.svelte';
+    import TopNavigationLink from '$lib/components/navigation/TopNavigationLink.svelte';
 
 	let name = $state(null)
 	let path = $state(null)
@@ -29,11 +29,11 @@
 	</a>
 
 	<div class="nav-links">
-		<TopNavbarItem route="dashboard" icon="square-poll-vertical" text="Dashboard" />
-		<TopNavbarItem route="library"   icon="grip"                 text="Library"   />
-		<TopNavbarItem route="activity"  icon="star"                 text="Activity"  />
-		<TopNavbarItem route="search"    icon="magnifying-glass"     text="Search"    />
-		<TopNavbarItem route="profile"   icon="user"     		 	 text="Profile"    />
+		<TopNavigationLink route="dashboard" icon="square-poll-vertical" text="Dashboard" />
+		<TopNavigationLink route="library"   icon="grip"                 text="Library"   />
+		<TopNavigationLink route="activity"  icon="star"                 text="Activity"  />
+		<TopNavigationLink route="search"    icon="magnifying-glass"     text="Search"    />
+		<TopNavigationLink route="profile"   icon="user"     		 	 text="Profile"    />
 	</div>
 </nav>
 

@@ -24,3 +24,253 @@
     0%   { background-position: 200% 0; }
     100% { background-position: -200% 0; }
 }
+
+/* Shared glass surfaces for nested panels and controls. */
+:where(
+    .sidebar,
+    .profile-btn,
+    .select-wrap,
+    .mode-tabs,
+    .filter-pill,
+    .nav-item,
+    .field-val,
+    .stat-bar,
+    .stat,
+    .fi-card,
+    .tr-row,
+    .arch-block,
+    .genre-tag,
+    .offline-toggle,
+    .stat-box,
+    .data-action,
+    .pref-card,
+    .gchip,
+    .chip-demo,
+    .seg-group,
+    .seg-btn,
+    .btn-ghost,
+    .btn-secondary,
+    .empty-state,
+    .start-state,
+    .notice-panel,
+    .pill,
+    .tag
+) {
+    background: hsl(212, 24%, 12%, 0.42) !important;
+    outline-color: hsl(212, 38%, 36%, 0.42) !important;
+    backdrop-filter: blur(18px) saturate(1.18);
+    -webkit-backdrop-filter: blur(18px) saturate(1.18);
+    box-shadow: inset 0 1px 0 hsl(0, 0%, 100%, 0.045);
+}
+
+:where(
+    .stat.primary,
+    .fi-card.ingame,
+    .arch-block,
+    .pill.accent,
+    .tag.accent,
+    .stat-box.accent,
+    .gchip.preferred,
+    .chip-demo.preferred,
+    .seg-btn.active,
+    .nav-item.active
+) {
+    background: hsl(212, 70%, 42%, 0.24) !important;
+    outline-color: hsl(212, 74%, 58%, 0.34) !important;
+}
+
+:where(.fi-card.online, .filter-pill.online.active) {
+    background: hsl(146, 54%, 22%, 0.26) !important;
+    outline-color: hsl(146, 48%, 42%, 0.36) !important;
+}
+
+:where(.gchip.excluded, .chip-demo.excluded, .nav-item.danger:hover) {
+    background: hsl(0, 50%, 18%, 0.34) !important;
+    outline-color: hsl(0, 50%, 34%, 0.42) !important;
+}
+
+:where(.bar-track, .pct-track, .gr-track, .rec-track, .s-bar-wrap, .top-bar-track) {
+    background: hsl(212, 24%, 16%, 0.36) !important;
+    backdrop-filter: blur(12px) saturate(1.12);
+    -webkit-backdrop-filter: blur(12px) saturate(1.12);
+}
+
+/* List rows should stay quiet until hover. */
+:where(
+    .friend:not(:hover),
+    .friend-card:not(:hover),
+    .friend-row:not(:hover),
+    .spot-row:not(:hover),
+    .pop-row:not(:hover),
+    .session-row:not(:hover),
+    .top-row:not(:hover),
+    .join-row:not(:hover),
+    .news-item:not(:hover),
+    .detail-row:not(:hover),
+    .hltb-row:not(:hover),
+    .ach-item:not(:hover)
+) {
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    box-shadow: none !important;
+}
+
+.panel-lg {
+    padding: 2rem;
+}
+
+.panel-heading {
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.panel-desc {
+    font-size: 0.86rem;
+    opacity: 0.55;
+    line-height: 1.6;
+    margin: 0;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.1rem;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.field-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    opacity: 0.5;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.field-val {
+    padding: 0.6rem 0.85rem;
+    background: var(--l1);
+    border-radius: 0.55rem;
+    outline: solid 1pt var(--l3);
+    font-size: 0.88rem;
+    font-family: inherit;
+    color: var(--contrast);
+    transition: outline-color 150ms;
+    box-sizing: border-box;
+    width: 100%;
+    display: block;
+}
+
+.field-val:focus { outline-color: var(--accent); }
+.field-val.readonly { opacity: 0.5; cursor: default; }
+.field-val.muted { opacity: 0.35; font-style: italic; }
+.field-val.err { outline-color: var(--warning); }
+.field-val.uid { font-family: monospace; font-size: 0.75rem; word-break: break-all; }
+
+.btn-row {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    flex-wrap: wrap;
+}
+
+.btn-primary,
+.btn-ghost,
+.btn-danger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 0.55rem;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.btn-primary {
+    padding: 0.6rem 1.4rem;
+    background: var(--accent);
+    color: white;
+}
+
+.btn-primary:hover { background: var(--bright-accent); }
+
+.btn-ghost {
+    padding: 0.6rem 1.2rem;
+    background: var(--l2);
+    color: inherit;
+    outline: solid 1pt var(--l3);
+}
+
+.btn-ghost:hover { background: var(--l3); }
+
+.btn-danger {
+    padding: 0.6rem 1.2rem;
+    background: hsl(0, 50%, 18%, 0.6);
+    color: hsl(0, 60%, 70%);
+    outline: solid 1pt hsl(0, 50%, 32%);
+}
+
+.btn-danger:hover { background: hsl(0, 50%, 24%, 0.8); }
+
+.status {
+    font-size: 0.82rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.status.ok { color: hsl(130, 55%, 55%); }
+.status.err-msg { color: hsl(0, 60%, 65%); }
+
+.load-more-button {
+    width: fit-content;
+    margin: 1.2rem auto 0;
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.65rem 1rem;
+    border-radius: 100vh;
+    background: hsl(212, 24%, 12%, 0.58);
+    outline: solid 1pt hsl(212, 38%, 36%, 0.45);
+    color: var(--contrast);
+    font-size: 0.84rem;
+    font-weight: 800;
+    cursor: pointer;
+    backdrop-filter: blur(18px) saturate(1.18);
+    -webkit-backdrop-filter: blur(18px) saturate(1.18);
+}
+
+.load-more-button.compact {
+    margin-top: 0.9rem;
+    padding: 0.55rem 0.9rem;
+    font-size: 0.8rem;
+}
+
+.load-more-button:hover {
+    background: hsl(212, 42%, 24%, 0.56);
+    outline-color: hsl(212, 72%, 62%, 0.28);
+}
+
+.load-more-button span {
+    color: hsl(212, 18%, 84%, 0.46);
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+@media (max-width: 640px) {
+    .panel-lg {
+        padding: 1.25rem;
+    }
+}

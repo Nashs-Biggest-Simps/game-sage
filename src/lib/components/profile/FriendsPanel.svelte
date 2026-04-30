@@ -283,6 +283,13 @@
             hsl(212, 24%, 10%, 0.5);
     }
 
+    .friend-card.online:hover {
+        outline-color: hsl(146, 62%, 52%, 0.46);
+        background:
+            radial-gradient(circle at 0% 0%, hsl(146, 62%, 44%, 0.16), transparent 12rem),
+            hsl(212, 24%, 15%, 0.58);
+    }
+
     .friend-top {
         display: flex;
         align-items: center;

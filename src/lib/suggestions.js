@@ -1,22 +1,94 @@
 const LOCAL_ROW_LIMIT = 12
 const MOST_PLAYED_LIMIT = 12
+const MIN_FRIEND_NOT_OWNED_RESULTS = 4
+
+// ─── Shared Helpers ──────────────────────────────────────────────────────────
+
+function appKey(appid) {
+    return String(appid)
+}
+
+function steamCapsule(appid) {
+    return `https://cdn.akamai.steamstatic.com/steam/apps/${appid}/capsule_616x353.jpg`
+}
+
+function lowerList(values = []) {
+    return values.map(value => String(value).toLowerCase())
+}
+
+function byScoreThenName(a, b) {
+    return b.score - a.score || (a.game?.name ?? a.name ?? '').localeCompare(b.game?.name ?? b.name ?? '')
+}
+
+function isUnsupportedStoreType(game) {
+    return game?.type === 'dlc' || game?.type === 'demo'
+}
+
+function toGameCard(game, playtime = 0, reason = null) {
+    return {
+        appid:            game.steam_appid,
+        name:             game.name,
+        thumbnail:        game.thumbnail ?? null,
+        playtime_forever: playtime,
+        ...(reason ? { reason } : {}),
+    }
+}
+
+function isOwned(ownedSet, appid) {
+    return ownedSet.has(appid) || ownedSet.has(appKey(appid)) || ownedSet.has(Number(appid))
+}
+
+// ─── Genre Helpers ───────────────────────────────────────────────────────────
 
 export function genreNames(game) {
-    return (game?.genres ?? []).map(g => g.description).filter(Boolean)
+    return (game?.genres ?? [])
+        .map(genre => genre.description)
+        .filter(Boolean)
 }
 
-export function hasExcludedGenre(game, excluded) {
+export function hasExcludedGenre(game, excluded = []) {
     if (!excluded.length) return false
-    const genres = genreNames(game).map(g => g.toLowerCase())
-    return excluded.some(g => genres.includes(g.toLowerCase()))
+
+    const gameGenres = lowerList(genreNames(game))
+    return lowerList(excluded).some(genre => gameGenres.includes(genre))
 }
+
+export function buildGenreWeights(games) {
+    const weights = new Map()
+
+    for (const { game, playtime } of games) {
+        if (playtime <= 0) continue
+
+        const hours = Math.max(1, Math.round(playtime / 60))
+        for (const genre of genreNames(game)) {
+            weights.set(genre, (weights.get(genre) ?? 0) + hours)
+        }
+    }
+
+    return weights
+}
+
+export function topGenreMatch(game, weights, preferred = []) {
+    const genres = genreNames(game)
+    const preferredGenres = lowerList(preferred)
+    const preferredMatch = genres.find(genre => preferredGenres.includes(genre.toLowerCase()))
+
+    if (preferredMatch) return preferredMatch
+
+    return genres
+        .map(genre => ({ genre, weight: weights.get(genre) ?? 0 }))
+        .sort((a, b) => b.weight - a.weight)[0]?.genre ?? null
+}
+
+// ─── Library Normalization ───────────────────────────────────────────────────
 
 export function buildLibraryGames(details, playtime, blacklist = new Set()) {
     return Object.entries(details)
         .map(([id, entry]) => {
             const game = entry?.data
             if (!game?.steam_appid) return null
-            if (blacklist.has(String(id)) || blacklist.has(String(game.steam_appid))) return null
+            if (blacklist.has(appKey(id)) || blacklist.has(appKey(game.steam_appid))) return null
+
             return {
                 game,
                 playtime: playtime[id] ?? playtime[game.steam_appid] ?? 0,
@@ -25,240 +97,86 @@ export function buildLibraryGames(details, playtime, blacklist = new Set()) {
         .filter(Boolean)
 }
 
-export function buildGenreWeights(games) {
-    const weights = new Map()
-    for (const { game, playtime } of games) {
-        if (playtime <= 0) continue
-        const hours = Math.max(1, Math.round(playtime / 60))
-        for (const genre of genreNames(game)) {
-            weights.set(genre, (weights.get(genre) ?? 0) + hours)
-        }
-    }
-    return weights
+function playableLibraryEntries(games, excluded = []) {
+    return games.filter(({ game }) => (
+        !isUnsupportedStoreType(game) &&
+        !hasExcludedGenre(game, excluded)
+    ))
 }
 
-export function topGenreMatch(game, weights, preferred = []) {
+// ─── Local Library Suggestions ───────────────────────────────────────────────
+
+function scoreLibrarySuggestion({ game, playtime }, weights, preferred = []) {
     const genres = genreNames(game)
-    const preferredLower = preferred.map(g => g.toLowerCase())
-    const preferredMatch = genres.find(g => preferredLower.includes(g.toLowerCase()))
-    if (preferredMatch) return preferredMatch
+    const maxWeight = Math.max(...weights.values(), 1)
+    const preferredGenres = lowerList(preferred)
+    const playtimeHours = playtime / 60
 
-    return genres
-        .map(g => ({ genre: g, weight: weights.get(g) ?? 0 }))
-        .sort((a, b) => b.weight - a.weight)[0]?.genre ?? null
+    const genreScore = genres.reduce((sum, genre) => {
+        const preferredBoost = preferredGenres.includes(genre.toLowerCase()) ? maxWeight * 0.5 : 0
+        return sum + (weights.get(genre) ?? 0) + preferredBoost
+    }, 0)
+
+    const qualityScore = (game.metacritic_score ?? 0) * (maxWeight / 100)
+    const unplayedBoost = playtime === 0 ? maxWeight * 2 : 0
+    const lowPlaytimeBoost = playtime > 0
+        ? Math.max(0, maxWeight - Math.log(playtimeHours + 1) * 20)
+        : 0
+
+    return genreScore + qualityScore + unplayedBoost + lowPlaytimeBoost
 }
 
-// Algorithm: Score each unplayed game by how closely it matches the genres
-// the user has actually spent time in. Steps:
-//   1. Build a genre weight map from all played games (hours per genre).
-//   2. Filter to non-DLC, non-excluded games.
-//   3. Score each by summing the genre weights of all its genres, plus a
-//      proportional boost for any genres the user has explicitly preferred.
-//      The preferred boost scales with the user's heaviest genre so it stays
-//      meaningful regardless of total playtime.
-//   4. Add a Metacritic quality bump (when present) to break ties toward
-//      critically respected titles. Unplayed games are preferred, then the row
-//      backfills with low-playtime games when the unplayed pool is small.
-//   5. Sort by score, then cap any single primary genre at the row limit so
-//      smaller or genre-heavy libraries can still fill the dashboard row.
-export function buildLocalLibrarySuggestions(games, preferred, excluded) {
-    const weights      = buildGenreWeights(games)
-    const maxWeight    = Math.max(...weights.values(), 1)
-    const preferredLow = preferred.map(g => g.toLowerCase())
-    const genreCap     = {}
-
-    return games
-        .filter(({ game, playtime }) => {
-            if (game.type === 'dlc' || game.type === 'demo') return false
-            return !hasExcludedGenre(game, excluded)
-        })
-        .map(({ game, playtime }) => {
-            const match  = topGenreMatch(game, weights, preferred)
-            const genres = genreNames(game)
-            const primaryGenre = genres[0] ?? 'Other'
-
-            const genreScore = genres.reduce((sum, g) => {
-                const boost = preferredLow.includes(g.toLowerCase()) ? maxWeight * 0.5 : 0
-                return sum + (weights.get(g) ?? 0) + boost
-            }, 0)
-            const qualityScore = (game.metacritic_score ?? 0) * (maxWeight / 100)
-            const playtimeHours = playtime / 60
-            const unplayedBoost = playtime === 0 ? maxWeight * 2 : 0
-            const lowPlaytimeBoost = playtime > 0 ? Math.max(0, maxWeight - Math.log(playtimeHours + 1) * 20) : 0
-
-            return {
-                game,
-                score: genreScore + qualityScore + unplayedBoost + lowPlaytimeBoost,
-                primaryGenre,
-                reason: playtime === 0
-                    ? (match ? `Matches your ${match} playtime` : 'Unplayed in your library')
-                    : (match ? `Low-playtime ${match} pick from your library` : 'Worth another look from your library'),
-            }
-        })
-        .sort((a, b) => b.score - a.score || a.game.name.localeCompare(b.game.name))
-        .filter(item => {
-            genreCap[item.primaryGenre] = (genreCap[item.primaryGenre] ?? 0) + 1
-            return genreCap[item.primaryGenre] <= LOCAL_ROW_LIMIT
-        })
-        .slice(0, LOCAL_ROW_LIMIT)
-}
-
-export function buildMostPlayedGames(details, playtime, limit = MOST_PLAYED_LIMIT, blacklist = new Set()) {
-    return buildLibraryGames(details, playtime, blacklist)
-        .filter(({ playtime: pt }) => pt > 0)
-        .sort((a, b) => b.playtime - a.playtime)
-        .slice(0, limit)
-        .map(({ game, playtime: pt }) => ({
-            appid: game.steam_appid,
-            name: game.name,
-            thumbnail: game.thumbnail ?? null,
-            playtime_forever: pt,
-        }))
-}
-
-export function buildFriendFavorites(friends, details, playtime) {
-    const inGame    = friends.filter(f => f.gameid)
-    if (!inGame.length) return []
-    const ownedIds  = new Set(Object.keys(playtime).map(String))
-    const map       = {}
-    for (const f of inGame) {
-        const key = String(f.gameid)
-        if (!map[key]) {
-            const d = details[key]?.data ?? null
-            map[key] = {
-                appid:            parseInt(key),
-                name:             d?.name ?? f.gameextrainfo ?? 'Unknown',
-                thumbnail:        d?.thumbnail ?? null,
-                playtime_forever: playtime[key] ?? 0,
-                owned:            ownedIds.has(key),
-                friendCount:      0,
-                friendNames:      [],
-            }
-        }
-        map[key].friendCount++
-        map[key].friendNames.push(f.personaname)
+function librarySuggestionReason(game, playtime, genreMatch) {
+    if (playtime === 0) {
+        return genreMatch
+            ? `Matches your ${genreMatch} playtime`
+            : 'Unplayed in your library'
     }
-    return Object.values(map)
-        .sort((a, b) => {
-            if (a.owned !== b.owned) return a.owned ? -1 : 1
-            return b.friendCount - a.friendCount
-        })
-        .slice(0, 12)
-        .map(g => ({
-            ...g,
-            reason: g.friendCount === 1
-                ? `${g.friendNames[0]} is playing right now`
-                : `${g.friendCount} friends playing right now`,
-        }))
+
+    return genreMatch
+        ? `Low-playtime ${genreMatch} pick from your library`
+        : 'Worth another look from your library'
 }
 
-export function buildHiddenGems(games, preferred, excluded, skip = 12) {
-    const weights        = buildGenreWeights(games)
-    const preferredLower = preferred.map(g => g.toLowerCase())
+function limitPerPrimaryGenre(items, limit) {
+    const genreCounts = {}
 
-    return games
-        .filter(({ game, playtime }) => playtime === 0 && !hasExcludedGenre(game, excluded))
-        .map(({ game }) => {
-            const match  = topGenreMatch(game, weights, preferred)
-            const genres = genreNames(game)
-            const score  = genres.reduce((sum, genre) => {
-                return sum + (weights.get(genre) ?? 0) + (preferredLower.includes(genre.toLowerCase()) ? 500 : 0)
-            }, 0)
-            return {
-                game,
-                score,
-                reason: match
-                    ? `Buried gem — matches your ${match} playtime`
-                    : 'Buried in your library, worth a look',
-            }
-        })
-        .filter(g => g.score > 0)
-        .sort((a, b) => b.score - a.score || a.game.name.localeCompare(b.game.name))
-        .slice(skip, skip + LOCAL_ROW_LIMIT)
+    return items.filter(item => {
+        genreCounts[item.primaryGenre] = (genreCounts[item.primaryGenre] ?? 0) + 1
+        return genreCounts[item.primaryGenre] <= limit
+    })
 }
 
-export function buildGenreSpotlight(games, targetGenre, excluded) {
-    if (!targetGenre) return []
-    const weights     = buildGenreWeights(games)
-    const targetLower = targetGenre.toLowerCase()
-
-    return games
-        .filter(({ game, playtime }) =>
-            playtime === 0 &&
-            !hasExcludedGenre(game, excluded) &&
-            genreNames(game).some(g => g.toLowerCase() === targetLower)
-        )
-        .map(({ game }) => ({
-            appid:            game.steam_appid,
-            name:             game.name,
-            thumbnail:        game.thumbnail ?? null,
-            playtime_forever: 0,
-            score:            genreNames(game).reduce((sum, g) => sum + (weights.get(g) ?? 0), 0),
-            reason:           `${targetGenre} · unplayed in your library`,
-        }))
-        .sort((a, b) => b.score - a.score)
-        .slice(0, LOCAL_ROW_LIMIT)
-}
-
-// Aggregate all friendPopularity buckets into a ranked list of games.
-// Used by the "Trending in Your Circle" row — shows what friend groups
-// have collectively spent the most time playing over the stored window.
-export function buildFriendGroupFavorites(byHour, limit = 12) {
-    if (!byHour || !Object.keys(byHour).length) return []
-    const map = {}
-    for (const bucket of Object.values(byHour)) {
-        for (const [gameid, { name, peak }] of Object.entries(bucket)) {
-            if (!map[gameid]) map[gameid] = { gameid: parseInt(gameid), name, score: 0, peakFriends: 0 }
-            map[gameid].score      += peak
-            map[gameid].peakFriends = Math.max(map[gameid].peakFriends, peak)
-        }
-    }
-    return Object.values(map)
-        .sort((a, b) => b.score - a.score)
-        .slice(0, limit)
-        .map(g => ({
-            appid:            g.gameid,
-            name:             g.name,
-            thumbnail:        `https://cdn.akamai.steamstatic.com/steam/apps/${g.gameid}/capsule_616x353.jpg`,
-            playtime_forever: 0,
-            reason:           g.peakFriends === 1
-                ? '1 friend has been playing this'
-                : `Up to ${g.peakFriends} friends playing at once`,
-        }))
-}
-
-// Same aggregation but filtered to games NOT in the user's library.
-// Hidden when fewer than 4 results so the row only appears with meaningful data.
-export function buildFriendNotOwned(byHour, ownedSet = new Set(), limit = 12) {
-    if (!byHour || !Object.keys(byHour).length) return []
-    const map = {}
-    for (const bucket of Object.values(byHour)) {
-        for (const [gameid, { name, peak }] of Object.entries(bucket)) {
-            if (ownedSet.has(gameid) || ownedSet.has(String(gameid)) || ownedSet.has(parseInt(gameid))) continue
-            if (!map[gameid]) map[gameid] = { gameid: parseInt(gameid), name, score: 0, peakFriends: 0 }
-            map[gameid].score      += peak
-            map[gameid].peakFriends = Math.max(map[gameid].peakFriends, peak)
-        }
-    }
-    const results = Object.values(map)
-        .sort((a, b) => b.score - a.score)
-        .slice(0, limit)
-        .map(g => ({
-            appid:            g.gameid,
-            name:             g.name,
-            thumbnail:        `https://cdn.akamai.steamstatic.com/steam/apps/${g.gameid}/capsule_616x353.jpg`,
-            playtime_forever: 0,
-            reason:           'Your friends play this — not in your library',
-        }))
-    return results.length >= 4 ? results : []
-}
-
-export function buildNoAiSuggestions(games, librarySuggestions, preferred, excluded) {
-    const used = new Set(librarySuggestions.map(item => item.game?.steam_appid))
+// Scores owned games by the genres the user actually plays, then prioritizes
+// unplayed and low-playtime games that fit those habits.
+export function buildLocalLibrarySuggestions(games, preferred = [], excluded = []) {
     const weights = buildGenreWeights(games)
 
-    return games
-        .filter(({ game }) => !used.has(game.steam_appid) && !hasExcludedGenre(game, excluded))
+    return limitPerPrimaryGenre(
+        playableLibraryEntries(games, excluded)
+            .map(entry => {
+                const { game, playtime } = entry
+                const match = topGenreMatch(game, weights, preferred)
+                const primaryGenre = genreNames(game)[0] ?? 'Other'
+
+                return {
+                    game,
+                    primaryGenre,
+                    score: scoreLibrarySuggestion(entry, weights, preferred),
+                    reason: librarySuggestionReason(game, playtime, match),
+                }
+            })
+            .sort(byScoreThenName),
+        LOCAL_ROW_LIMIT
+    ).slice(0, LOCAL_ROW_LIMIT)
+}
+
+export function buildNoAiSuggestions(games, librarySuggestions, preferred = [], excluded = []) {
+    const usedAppIds = new Set(librarySuggestions.map(item => appKey(item.game?.steam_appid)))
+    const weights = buildGenreWeights(games)
+
+    return playableLibraryEntries(games, excluded)
+        .filter(({ game }) => !usedAppIds.has(appKey(game.steam_appid)))
         .map(({ game, playtime }) => {
             const match = topGenreMatch(game, weights, preferred)
             const score = (playtime > 0 ? Math.log(playtime + 1) * 100 : 0)
@@ -274,6 +192,133 @@ export function buildNoAiSuggestions(games, librarySuggestions, preferred, exclu
                         : 'No-AI pick from your cached library.',
             }
         })
-        .sort((a, b) => b.score - a.score || a.game.name.localeCompare(b.game.name))
+        .sort(byScoreThenName)
         .slice(0, LOCAL_ROW_LIMIT)
+}
+
+// ─── Dashboard Library Rows ──────────────────────────────────────────────────
+
+export function buildMostPlayedGames(details, playtime, limit = MOST_PLAYED_LIMIT, blacklist = new Set()) {
+    return buildLibraryGames(details, playtime, blacklist)
+        .filter(entry => entry.playtime > 0)
+        .sort((a, b) => b.playtime - a.playtime)
+        .slice(0, limit)
+        .map(({ game, playtime: minutes }) => toGameCard(game, minutes))
+}
+
+export function buildGenreSpotlight(games, targetGenre, excluded = []) {
+    if (!targetGenre) return []
+
+    const weights = buildGenreWeights(games)
+    const target = targetGenre.toLowerCase()
+
+    return games
+        .filter(({ game, playtime }) => (
+            playtime === 0 &&
+            !hasExcludedGenre(game, excluded) &&
+            genreNames(game).some(genre => genre.toLowerCase() === target)
+        ))
+        .map(({ game }) => ({
+            ...toGameCard(game, 0, `${targetGenre} · unplayed in your library`),
+            score: genreNames(game).reduce((sum, genre) => sum + (weights.get(genre) ?? 0), 0),
+        }))
+        .sort((a, b) => b.score - a.score)
+        .slice(0, LOCAL_ROW_LIMIT)
+}
+
+// ─── Friend-Based Rows ───────────────────────────────────────────────────────
+
+function aggregateFriendPopularity(byHour = {}, { excludeOwned = null } = {}) {
+    if (!byHour || !Object.keys(byHour).length) return []
+
+    const games = {}
+
+    for (const bucket of Object.values(byHour)) {
+        for (const [gameid, { name, peak }] of Object.entries(bucket)) {
+            if (excludeOwned && isOwned(excludeOwned, gameid)) continue
+
+            games[gameid] ??= {
+                gameid: Number(gameid),
+                name,
+                score: 0,
+                peakFriends: 0,
+            }
+
+            games[gameid].score += peak
+            games[gameid].peakFriends = Math.max(games[gameid].peakFriends, peak)
+        }
+    }
+
+    return Object.values(games).sort((a, b) => b.score - a.score)
+}
+
+export function buildFriendFavorites(friends, details, playtime) {
+    const inGame = friends.filter(friend => friend.gameid)
+    if (!inGame.length) return []
+
+    const ownedIds = new Set(Object.keys(playtime).map(appKey))
+    const games = {}
+
+    for (const friend of inGame) {
+        const key = appKey(friend.gameid)
+        const detail = details[key]?.data ?? null
+
+        games[key] ??= {
+            appid:            Number(key),
+            name:             detail?.name ?? friend.gameextrainfo ?? 'Unknown',
+            thumbnail:        detail?.thumbnail ?? null,
+            playtime_forever: playtime[key] ?? 0,
+            owned:            ownedIds.has(key),
+            friendCount:      0,
+            friendNames:      [],
+        }
+
+        games[key].friendCount++
+        games[key].friendNames.push(friend.personaname)
+    }
+
+    return Object.values(games)
+        .sort((a, b) => {
+            if (a.owned !== b.owned) return a.owned ? -1 : 1
+            return b.friendCount - a.friendCount
+        })
+        .slice(0, LOCAL_ROW_LIMIT)
+        .map(game => ({
+            ...game,
+            reason: game.friendCount === 1
+                ? `${game.friendNames[0]} is playing right now`
+                : `${game.friendCount} friends playing right now`,
+        }))
+}
+
+// Shows games that friend groups have collectively played over the stored
+// popularity window.
+export function buildFriendGroupFavorites(byHour, limit = LOCAL_ROW_LIMIT) {
+    return aggregateFriendPopularity(byHour)
+        .slice(0, limit)
+        .map(game => ({
+            appid:            game.gameid,
+            name:             game.name,
+            thumbnail:        steamCapsule(game.gameid),
+            playtime_forever: 0,
+            reason:           game.peakFriends === 1
+                ? '1 friend has been playing this'
+                : `Up to ${game.peakFriends} friends playing at once`,
+        }))
+}
+
+// Same popularity source, but only for games the user does not own. Hidden when
+// there is too little data so the dashboard does not show a weak row.
+export function buildFriendNotOwned(byHour, ownedSet = new Set(), limit = LOCAL_ROW_LIMIT) {
+    const results = aggregateFriendPopularity(byHour, { excludeOwned: ownedSet })
+        .slice(0, limit)
+        .map(game => ({
+            appid:            game.gameid,
+            name:             game.name,
+            thumbnail:        steamCapsule(game.gameid),
+            playtime_forever: 0,
+            reason:           'Your friends play this — not in your library',
+        }))
+
+    return results.length >= MIN_FRIEND_NOT_OWNED_RESULTS ? results : []
 }

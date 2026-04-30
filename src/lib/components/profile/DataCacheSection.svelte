@@ -1,6 +1,6 @@
 <script>
     import { db } from '$lib/data'
-    import JsonNode from '$lib/components/JsonNode.svelte'
+    import JsonTreeNode from '$lib/components/profile/JsonTreeNode.svelte'
 
     let {
         saveStatus = null,
@@ -13,7 +13,7 @@
     } = $props()
 </script>
 
-<section class="panel">
+<section class="panel panel-lg">
     <h2 class="panel-heading">Data &amp; Cache</h2>
     <p class="panel-desc">GameSage stores your Steam library locally to speed up load times and reduce API usage.</p>
 
@@ -53,7 +53,7 @@
     {/if}
 </section>
 
-<section class="panel viewer-panel">
+<section class="panel panel-lg viewer-panel">
     <div class="viewer-header">
         <div>
             <h2 class="panel-heading">Data Viewer</h2>
@@ -65,27 +65,12 @@
     </div>
     <div class="json-tree">
         {#key dbExpanded}
-            <JsonNode value={$db} depth={dbExpanded ? 99 : 0} />
+            <JsonTreeNode value={$db} depth={dbExpanded ? 99 : 0} />
         {/key}
     </div>
 </section>
 
 <style>
-    .panel {
-        background: hsl(212, 24%, 12%, 0.58);
-        border-radius: 1.2rem;
-        outline: solid 1pt hsl(212, 38%, 36%, 0.52);
-        padding: 2rem;
-        display: flex;
-        flex-direction: column;
-        gap: 1.4rem;
-        backdrop-filter: blur(26px) saturate(1.24);
-        -webkit-backdrop-filter: blur(26px) saturate(1.24);
-        box-shadow: 0 18px 52px hsl(0, 0%, 0%, 0.24), inset 0 1px 0 hsl(0, 0%, 100%, 0.05);
-    }
-
-    .panel-heading { font-size: 1.4rem; font-weight: 700; margin: 0; }
-    .panel-desc { font-size: 0.86rem; opacity: 0.55; line-height: 1.6; margin: 0; }
     .data-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 1rem; }
     .data-card {
         background: var(--l1);
@@ -99,23 +84,6 @@
     .data-card.danger-card { outline-color: hsl(0, 50%, 28%); }
     .data-title { display: flex; align-items: center; gap: 0.5rem; font-size: 0.92rem; font-weight: 700; }
     .data-desc { font-size: 0.78rem; opacity: 0.5; line-height: 1.5; margin: 0; flex: 1; }
-    .btn-ghost,
-    .btn-danger {
-        padding: 0.6rem 1.2rem;
-        border-radius: 0.55rem;
-        font-size: 0.88rem;
-        font-weight: 500;
-        cursor: pointer;
-        color: inherit;
-        outline: solid 1pt var(--l3);
-    }
-    .btn-ghost { background: var(--l2); }
-    .btn-ghost:hover { background: var(--l3); }
-    .btn-danger { background: hsl(0, 50%, 18%, 0.6); color: hsl(0, 60%, 70%); outline-color: hsl(0, 50%, 32%); }
-    .btn-danger:hover { background: hsl(0, 50%, 24%, 0.8); }
-    .status { font-size: 0.82rem; font-weight: 600; display: flex; align-items: center; gap: 0.35rem; }
-    .status.ok { color: hsl(130, 55%, 55%); }
-    .status.err-msg { color: hsl(0, 60%, 65%); }
     .viewer-panel { gap: 1.2rem; }
     .viewer-header {
         display: flex;
@@ -135,7 +103,6 @@
     }
 
     @media (max-width: 640px) {
-        .panel { padding: 1.25rem; }
         .viewer-header { align-items: stretch; flex-direction: column; }
     }
 </style>

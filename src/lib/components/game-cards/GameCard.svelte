@@ -80,7 +80,7 @@
                 <i class="fa-solid fa-circle-notch fa-spin"></i>
             </div>
         {:else if thumbnail}
-            <img src={thumbnail} alt={displayName} decoding="async" onerror={() => imgIndex++} />
+            <img src={thumbnail} alt={displayName} loading="lazy" decoding="async" onerror={() => imgIndex++} />
         {:else}
             <div class="art-fallback"></div>
         {/if}
@@ -134,6 +134,8 @@
         backdrop-filter: blur(22px) saturate(1.22);
         -webkit-backdrop-filter: blur(22px) saturate(1.22);
         transition: transform 150ms, outline-color 150ms, box-shadow 150ms;
+        content-visibility: auto;
+        contain-intrinsic-size: 15rem 12rem;
     }
 
     .card:hover {

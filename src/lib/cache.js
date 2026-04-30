@@ -21,6 +21,10 @@ const TTL = {
 const DETAIL_BATCH_SIZE = 4
 // Larger burst used on first-ever load (empty detail cache) to populate the dashboard fast.
 const INITIAL_BATCH_SIZE = 12
+const CACHE_BATCH_DELAY = 120
+
+let queuedCachePatches = []
+let cachePatchTimer = null
 
 function appKey(appid) {
     return String(appid)
@@ -126,6 +130,20 @@ function patchCache(updater) {
         updater(data.cache)
         return data
     })
+}
+
+function queueCachePatch(updater) {
+    queuedCachePatches.push(updater)
+    if (cachePatchTimer) return
+
+    cachePatchTimer = setTimeout(() => {
+        const patches = queuedCachePatches
+        queuedCachePatches = []
+        cachePatchTimer = null
+        patchCache(cache => {
+            for (const patch of patches) patch(cache)
+        })
+    }, CACHE_BATCH_DELAY)
 }
 
 // ─── Individual refresh functions ────────────────────────────────────────────
@@ -289,15 +307,15 @@ function refreshDetailBatch(cache) {
         steamAPI.getGameDetails(appid, async res => {
             const key = String(appid)
             if (res?.[appid]?.success === false) {
-                patchCache(c => addToBlacklist(c, key))
+                queueCachePatch(c => addToBlacklist(c, key))
             } else {
                 const slim = slimGame(res?.[appid]?.data)
                 if (slim) {
-                    patchCache(c => {
+                    queueCachePatch(c => {
                         c.library.details[appid] = { data: slim, fetchedAt: Date.now() }
                     })
                 } else {
-                    patchCache(c => addToBlacklist(c, key))
+                    queueCachePatch(c => addToBlacklist(c, key))
                 }
             }
             completed++
@@ -315,7 +333,8 @@ function refreshDetailBatch(cache) {
 async function refreshTrending(cache) {
     if (!isStale(cache?.trending?.fetchedAt, 6 * 60 * 60 * 1000)) return
     try {
-        const res  = await fetch('/api?endpoint=https://store.steampowered.com/api/featuredcategories')
+        const endpoint = encodeURIComponent('https://store.steampowered.com/api/featuredcategories')
+        const res  = await fetch(`/api/steam-proxy?endpoint=${endpoint}`)
         if (!res.ok) return
         const data = await res.json()
         const pull = (key, tag) => (data?.[key]?.items ?? []).map(g => ({ ...g, _tag: tag }))

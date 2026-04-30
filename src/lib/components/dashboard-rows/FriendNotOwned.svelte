@@ -1,5 +1,5 @@
 <script>
-    import GameRowSection         from '$lib/components/games/GameRowSection.svelte'
+    import GameRecommendationSection         from '$lib/components/game-cards/GameRecommendationSection.svelte'
     import { db }                 from '$lib/data'
     import { buildFriendNotOwned } from '$lib/suggestions'
 
@@ -9,7 +9,7 @@
 </script>
 
 {#if games.length >= 4}
-<GameRowSection
+<GameRecommendationSection
     {games}
     icon="fa-solid fa-cart-shopping"
     title="Your Friends Play This"

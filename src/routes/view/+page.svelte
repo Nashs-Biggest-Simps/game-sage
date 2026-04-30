@@ -252,7 +252,7 @@
     </div>
 {/if}
 
-<div class="view-page" style={heroLoaded ? `--view-accent-image: url("${heroSrc}")` : ''}>
+<div class="view-page">
 
     {#if loadingGame && !game}
         <div class="sk-hero">
@@ -693,17 +693,21 @@
         position: absolute;
         z-index: 0;
         top: -2.4rem;
+        bottom: -4rem;
         left: 50%;
         width: 100vw;
-        height: 38rem;
+        min-height: 38rem;
         transform: translateX(-50%);
         pointer-events: none;
         background:
-            linear-gradient(to bottom, hsl(212,22%,8%,0.1) 0%, var(--bg) 92%),
-            linear-gradient(to right, var(--bg) 0%, hsl(212,22%,8%,0.18) 22%, hsl(212,22%,8%,0.18) 78%, var(--bg) 100%),
-            var(--view-accent-image, none) center top / cover no-repeat;
-        opacity: 0.34;
-        filter: saturate(1.08) blur(1px);
+            radial-gradient(circle at 18% 4%, hsl(188, 74%, 42%, 0.16), transparent 18rem),
+            radial-gradient(circle at 82% 12%, hsl(214, 78%, 46%, 0.12), transparent 20rem),
+            radial-gradient(circle at 46% 34rem, hsl(265, 60%, 50%, 0.08), transparent 28rem),
+            linear-gradient(to bottom, hsl(212,22%,8%,0.14) 0%, transparent 44rem);
+        opacity: 0.72;
+        filter: saturate(1.08);
+        mask-image: linear-gradient(to bottom, black 0%, black 58%, transparent 100%);
+        -webkit-mask-image: linear-gradient(to bottom, black 0%, black 58%, transparent 100%);
     }
 
     .view-page > * {

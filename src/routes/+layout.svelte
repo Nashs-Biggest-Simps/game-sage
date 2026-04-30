@@ -1,7 +1,7 @@
 <script>
 	import "$lib/main.css"
 	import "$lib/main.rue"
-	import TopNavbar from '$lib/components/TopNavbar.svelte'
+	import TopNavigationBar from '$lib/components/navigation/TopNavigationBar.svelte'
 	import { onMount } from 'svelte'
 	import { startCacheUpdateCycle } from '$lib/cache'
 	import { authReady } from '$lib/auth'
@@ -38,7 +38,7 @@
 <div class="app">
 	{#if isAuthed}
 		<div class="top-navbar">
-			<TopNavbar />
+			<TopNavigationBar />
 		</div>
 	{/if}
 
