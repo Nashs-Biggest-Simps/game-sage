@@ -2,7 +2,7 @@
 	import "$lib/main.css"
 	import "$lib/main.rue"
 	import TopNavigationBar from '$lib/components/navigation/TopNavigationBar.svelte'
-	import { onMount } from 'svelte'
+	import { onDestroy, onMount } from 'svelte'
 	import { startCacheUpdateCycle } from '$lib/cache'
 	import { authReady } from '$lib/auth'
 	import { db } from '$lib/data'
@@ -13,19 +13,40 @@
 	let { children } = $props()
 
 	const PUBLIC = ['/', '/login']
+	const loginHref = resolve('/login')
+	const profileHref = resolve('/profile')
+	const CACHE_UPDATE_INTERVAL_MS = 60_000
 
 	let path             = $derived(page.url.pathname)
 	let isAuthed         = $derived(!!$db?.user?.uid)
 	let hasSteamID       = $derived(!!$db?.steamID)
 	let showSteamBanner  = $derived(isAuthed && !hasSteamID && !PUBLIC.includes(path) && path !== '/profile')
+	let cacheCycleKey    = $derived($authReady && isAuthed ? `${$db?.user?.uid ?? ''}:${$db?.steamID ?? ''}` : '')
+	let lastCacheCycleKey = $state('')
+	let cacheInterval = null
 
 	$effect(() => {
 		if ($authReady && !isAuthed && !PUBLIC.includes(path)) {
-			goto(resolve('/login'))
+			goto(loginHref)
 		}
 	})
 
-	onMount(startCacheUpdateCycle)
+	$effect(() => {
+		if (!cacheCycleKey || cacheCycleKey === lastCacheCycleKey) return
+		lastCacheCycleKey = cacheCycleKey
+		startCacheUpdateCycle()
+	})
+
+	function navigate(event, href) {
+		event.preventDefault()
+		goto(href)
+	}
+
+	onMount(() => {
+		cacheInterval = setInterval(startCacheUpdateCycle, CACHE_UPDATE_INTERVAL_MS)
+	})
+
+	onDestroy(() => clearInterval(cacheInterval))
 </script>
 
 <svelte:head>
@@ -45,13 +66,15 @@
 	{#if showSteamBanner}
 		<div class="steam-banner">
 			<i class="fa-solid fa-triangle-exclamation"></i>
-			<span>No Steam ID linked — <a href={resolve('/profile')}>add it in your profile</a> to unlock your library and suggestions.</span>
+			<span>No Steam ID linked — <a href={profileHref} onclick={(event) => navigate(event, profileHref)}>add it in your profile</a> to unlock your library and suggestions.</span>
 		</div>
 	{/if}
 
-	<div class="content">
-		{@render children()}
-	</div>
+	{#key path}
+		<div class="content">
+			{@render children()}
+		</div>
+	{/key}
 </div>
 
 <style>

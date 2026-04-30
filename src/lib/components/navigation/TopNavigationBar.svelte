@@ -1,29 +1,25 @@
 <script>
 	//
 	// TopNavigationBar.svelte
-	// 
+	//
 	// GameSage
 	// written by Aaron Meche
 	//
 
+	import { goto } from '$app/navigation'
 	import { resolve } from '$app/paths'
-	import { page } from '$app/state'
-	import { db } from '$lib/data'
     import TopNavigationLink from '$lib/components/navigation/TopNavigationLink.svelte';
 
-	let name = $state(null)
-	let path = $state(null)
-	let pfp = $state(null)
+	const dashboardHref = resolve('/dashboard')
 
-	$effect(() => {
-		name = $db?.cache?.user?.data?.personaname ?? $db?.user?.displayName ?? null
-		path = page.url.pathname
-		pfp = $db?.cache?.user?.data?.avatarfull ?? $db?.user?.photoURL ?? null
-	})
+	function openDashboard(event) {
+		event.preventDefault()
+		goto(dashboardHref)
+	}
 </script>
 
 <nav class="navbar">
-	<a href={resolve("/dashboard")} class="logo">
+	<a href={dashboardHref} class="logo" onclick={openDashboard}>
 		<i class="fa-solid fa-hat-wizard"></i>
 		GameSage
 	</a>

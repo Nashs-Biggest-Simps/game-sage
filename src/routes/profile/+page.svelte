@@ -1,7 +1,7 @@
 <script>
     import { db, clearCache, hardResetDB } from '$lib/data'
     import { auth } from '$lib/auth'
-    import { startCacheUpdateCycle } from '$lib/cache'
+    import { refreshFriends, startCacheUpdateCycle } from '$lib/cache'
     import { signOut } from 'firebase/auth'
     import { goto } from '$app/navigation'
     import { resolve } from '$app/paths'
@@ -28,6 +28,7 @@
     let activeNav = $state('account')
     let dbExpanded = $state(false)
     let confirmHardReset = $state(false)
+    let didAutoRecheck = $state(false)
 
     let fireUser = $derived($db?.user)
     let steamUser = $derived($db?.cache?.user?.data ?? null)
@@ -149,6 +150,13 @@
 
     $effect(() => {
         if (savedID && !inputID) inputID = savedID
+    })
+
+    $effect(() => {
+        if (didAutoRecheck || !fireUser?.uid || !ID_REGEX.test(savedID)) return
+        didAutoRecheck = true
+        startCacheUpdateCycle()
+        refreshFriends()
     })
 
     function flashStatus(status, duration = 2500) {

@@ -38,6 +38,14 @@ function isOwned(ownedSet, appid) {
     return ownedSet.has(appid) || ownedSet.has(appKey(appid)) || ownedSet.has(Number(appid))
 }
 
+function hasOwnedPlaytimeEntry(playtime, appid) {
+    return (
+        Object.prototype.hasOwnProperty.call(playtime, appid) ||
+        Object.prototype.hasOwnProperty.call(playtime, appKey(appid)) ||
+        Object.prototype.hasOwnProperty.call(playtime, Number(appid))
+    )
+}
+
 // ─── Genre Helpers ───────────────────────────────────────────────────────────
 
 export function genreNames(game) {
@@ -88,6 +96,7 @@ export function buildLibraryGames(details, playtime, blacklist = new Set()) {
             const game = entry?.data
             if (!game?.steam_appid) return null
             if (blacklist.has(appKey(id)) || blacklist.has(appKey(game.steam_appid))) return null
+            if (!hasOwnedPlaytimeEntry(playtime, id) && !hasOwnedPlaytimeEntry(playtime, game.steam_appid)) return null
 
             return {
                 game,

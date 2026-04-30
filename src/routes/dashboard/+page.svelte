@@ -1,8 +1,9 @@
 <script>
     import { db }                  from '$lib/data'
+    import { goto }                from '$app/navigation'
     import { resolve }             from '$app/paths'
     // Hero
-    import ContinuePlayingHero     from '$lib/components/dashboard/ContinuePlayingHero.svelte'
+    import ContinuePlayingHero     from '$lib/components/dashboard-panels/ContinuePlayingHero.svelte'
     // Row sections — ordered by user value / recency / discovery
     import RecentlyPlayed          from '$lib/components/dashboard-rows/RecentlyPlayed.svelte'
     import AISuggestions           from '$lib/components/dashboard-rows/AISuggestions.svelte'
@@ -24,12 +25,18 @@
     let mostRecentGame = $derived($db?.cache?.recentlyPlayed?.data[0] ?? null)
     let name           = $derived($db?.cache?.user?.data?.personaname ?? $db?.user?.displayName ?? null)
     let pfp            = $derived($db?.cache?.user?.data?.avatarfull  ?? $db?.user?.photoURL    ?? null)
+    const profileHref  = resolve('/profile')
+
+    function openProfile(event) {
+        event.preventDefault()
+        goto(profileHref)
+    }
 </script>
 
 <div class="page">
     <div class="page-header">
         <div class="page-title">Dashboard</div>
-        <a href={resolve("/profile")} class="profile-btn">
+        <a href={profileHref} class="profile-btn" onclick={openProfile}>
             {#if pfp}
                 <img src={pfp} alt="" class="profile-img" />
             {:else}

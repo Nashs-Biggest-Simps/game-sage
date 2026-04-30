@@ -1,7 +1,7 @@
 import { get } from 'svelte/store'
 import { db } from '$lib/data'
 import { buildCompactProfile, buildBuyProfile, getGameDetail, resolveThumbnail } from '$lib/cache'
-import { buildLibraryGames, buildLocalLibrarySuggestions } from '$lib/suggestions'
+import { buildGenreWeights, buildLibraryGames, buildLocalLibrarySuggestions } from '$lib/suggestions'
 import { steamAPI } from '$lib/steam'
 
 const DEFAULT_REFRESH_HOURS = 24
@@ -11,6 +11,7 @@ const MIN_RESULTS = 8
 const MAX_RESULTS = 12
 const STORE_MATCH_LIMIT = 16
 const MAX_FEEDBACK_ITEMS = 30
+const AI_REQUEST_TIMEOUT_MS = 20_000
 
 const inFlightRequests = {
     play: null,
@@ -147,7 +148,17 @@ export class Algorithm {
     }
 
     #cached(type) {
-        return state().cache?.suggestions?.[type] ?? null
+        const cached = state().cache?.suggestions?.[type] ?? null
+        if (!cached?.items?.length) return cached
+
+        const owned = ownedAppIds()
+        const items = type === 'play'
+            ? cached.items.filter(item => owned.has(String(item?.game?.steam_appid)))
+            : cached.items.filter(item => !owned.has(String(item?.appid)))
+
+        return items.length === cached.items.length
+            ? cached
+            : { ...cached, items }
     }
 
     #hasUsableCache(cached) {
@@ -165,6 +176,9 @@ export class Algorithm {
     }
 
     async #requestAiSuggestions(type, profileText) {
+        const controller = new AbortController()
+        const timeout = setTimeout(() => controller.abort(), AI_REQUEST_TIMEOUT_MS)
+
         const res = await fetch('/api/ai-suggestions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -173,7 +187,8 @@ export class Algorithm {
                 profile: profileText,
                 prefs: prefs(),
             }),
-        })
+            signal: controller.signal,
+        }).finally(() => clearTimeout(timeout))
 
         if (!res.ok) throw new Error(`/api/ai-suggestions returned ${res.status}`)
         return res.json()
@@ -200,13 +215,90 @@ export class Algorithm {
             .map(({ game, reason }) => ({ game, reason }))
     }
 
+    #localBuyBackfill(existing = [], limit = preferredResultLimit()) {
+        const current = state()
+        const details = current.cache?.library?.details ?? {}
+        const playtime = current.cache?.library?.playtime ?? {}
+        const blacklist = new Set((current.cache?.library?.blacklist ?? []).map(String))
+        const libraryGames = buildLibraryGames(details, playtime, blacklist)
+        const weights = buildGenreWeights(libraryGames)
+        const topGenres = new Set(
+            [...weights.entries()]
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5)
+                .map(([genre]) => genre.toLowerCase())
+        )
+        const owned = ownedAppIds()
+        const used = new Set(existing.map(item => String(item.appid)))
+
+        const liveFriendCounts = new Map()
+        for (const friend of current.cache?.friends?.data ?? []) {
+            if (!friend.gameid || owned.has(String(friend.gameid))) continue
+
+            const key = String(friend.gameid)
+            const entry = liveFriendCounts.get(key) ?? {
+                appid: Number(friend.gameid),
+                name: friend.gameextrainfo ?? `App ${friend.gameid}`,
+                count: 0,
+            }
+
+            entry.count++
+            liveFriendCounts.set(key, entry)
+        }
+
+        const friendPicks = [...liveFriendCounts.values()]
+            .filter(item => !used.has(String(item.appid)))
+            .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+            .map(item => ({
+                appid: item.appid,
+                name: item.name,
+                thumbnail: resolveThumbnail(item.appid),
+                reason: item.count === 1
+                    ? 'A friend is playing this right now'
+                    : `${item.count} friends are playing this right now`,
+                score: 100 + (item.count * 10),
+            }))
+
+        const tagWeight = { top: 5, sale: 4, new: 3 }
+        const trendingPicks = (current.cache?.trending?.items ?? [])
+            .filter(game => !owned.has(String(game.appid)) && !used.has(String(game.appid)))
+            .map(game => {
+                const cached = details[game.appid]?.data ?? null
+                const genres = (cached?.genres ?? []).map(genre => genre.description.toLowerCase())
+                const matchedGenre = genres.find(genre => topGenres.has(genre)) ?? null
+                const tagLabel =
+                    game.tag === 'top' ? 'Top seller on Steam'
+                    : game.tag === 'sale' ? 'On sale on Steam'
+                    : game.tag === 'new' ? 'New on Steam'
+                    : 'Trending on Steam'
+
+                return {
+                    appid: game.appid,
+                    name: game.name,
+                    thumbnail: game.thumbnail ?? resolveThumbnail(game.appid),
+                    reason: matchedGenre
+                        ? `${tagLabel} with ${matchedGenre.replace(/^\w/, c => c.toUpperCase())} appeal`
+                        : tagLabel,
+                    score: (tagWeight[game.tag] ?? 1) + (matchedGenre ? 8 : 0),
+                }
+            })
+            .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name))
+
+        return uniqueBy(
+            [...friendPicks, ...trendingPicks],
+            item => String(item.appid),
+        ).slice(0, limit)
+    }
+
     #resolvePlayResults(rawItems, limit) {
+        const owned = ownedAppIds()
         const aiItems = rawItems
             .map(({ id, r: reason }) => {
                 const game = getGameDetail(id)
                 return game ? { game, reason } : null
             })
             .filter(Boolean)
+            .filter(item => owned.has(String(item.game?.steam_appid)))
 
         return uniqueBy(
             [...aiItems, ...this.#localPlayBackfill(aiItems)],
@@ -232,7 +324,7 @@ export class Algorithm {
         )
 
         return uniqueBy(
-            [...(cachedItems ?? []), ...resolved.filter(Boolean)],
+            [...(cachedItems ?? []), ...resolved.filter(Boolean), ...this.#localBuyBackfill(resolved.filter(Boolean), limit)],
             item => String(item.appid),
         ).slice(0, limit)
     }
@@ -241,8 +333,10 @@ export class Algorithm {
     async getPlaySuggestions() {
         const cached = this.#cached('play')
         const limit = preferredResultLimit()
+        const libraryReady = !!state().cache?.library?.fetchedAt
 
         if (this.#hasUsableCache(cached)) return cached.items.slice(0, limit)
+        if (!libraryReady) return cached?.items ?? []
         if (inFlightRequests.play) return inFlightRequests.play
 
         inFlightRequests.play = (async () => {
@@ -250,7 +344,13 @@ export class Algorithm {
 
             if (profile.playedCount < MIN_PLAYED_GAMES || profile.unplayedCount < MIN_UNPLAYED_GAMES) {
                 console.warn(`[Algorithm] Not enough data for play suggestions (played=${profile.playedCount}, unplayed=${profile.unplayedCount})`)
-                return cached?.items ?? []
+                const fallback = uniqueBy(
+                    [...(cached?.items ?? []), ...this.#localPlayBackfill()],
+                    item => String(item.game?.steam_appid),
+                ).slice(0, limit)
+
+                if (fallback.length) this.#saveCache('play', fallback)
+                return fallback
             }
 
             try {
@@ -282,8 +382,10 @@ export class Algorithm {
     async getBuySuggestions() {
         const cached = this.#cached('buy')
         const limit = preferredResultLimit()
+        const libraryReady = !!state().cache?.library?.fetchedAt
 
         if (this.#hasUsableCache(cached)) return cached.items.slice(0, limit)
+        if (!libraryReady) return cached?.items ?? []
         if (inFlightRequests.buy) return inFlightRequests.buy
 
         inFlightRequests.buy = (async () => {
@@ -291,7 +393,13 @@ export class Algorithm {
 
             if (profile.playedCount < MIN_PLAYED_GAMES) {
                 console.warn(`[Algorithm] Not enough data for buy suggestions (played=${profile.playedCount})`)
-                return cached?.items ?? []
+                const fallback = uniqueBy(
+                    [...(cached?.items ?? []), ...this.#localBuyBackfill(cached?.items ?? [], limit)],
+                    item => String(item.appid),
+                ).slice(0, limit)
+
+                if (fallback.length) this.#saveCache('buy', fallback)
+                return fallback
             }
 
             try {
@@ -303,7 +411,14 @@ export class Algorithm {
                 return items
             } catch (err) {
                 console.error('[Algorithm] getBuySuggestions failed:', err)
-                return cached?.items ?? []
+
+                const fallback = uniqueBy(
+                    [...(cached?.items ?? []), ...this.#localBuyBackfill(cached?.items ?? [], limit)],
+                    item => String(item.appid),
+                ).slice(0, limit)
+
+                if (fallback.length) this.#saveCache('buy', fallback)
+                return fallback
             } finally {
                 inFlightRequests.buy = null
             }

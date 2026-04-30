@@ -4,6 +4,7 @@ import { GROK_API_KEY } from '$env/static/private'
 
 const AI_PROVIDER = 'grok'
 const MAX_TOKENS = 900
+const AI_TIMEOUT_MS = 20_000
 
 const PLAY_PROMPT =
     'You are a precise Steam library curation engine. ' +
@@ -67,7 +68,12 @@ async function requestAiJson(type, profile, prefs) {
     model.setMaxTokens(MAX_TOKENS)
     model.setTemperature(type === 'play' ? 0.45 : 0.55)
 
-    const raw = await model.prompt(profile)
+    const raw = await Promise.race([
+        model.prompt(profile),
+        new Promise((_, reject) => {
+            setTimeout(() => reject(error(504, 'AI suggestion request timed out.')), AI_TIMEOUT_MS)
+        }),
+    ])
     const parsed = parseJsonResponse(raw)
     validateAiResponse(type, parsed)
     return parsed

@@ -4,6 +4,7 @@
     import { buildLibraryGames, buildGenreWeights } from '$lib/suggestions'
 
     const TAG_LABEL = { new: 'New Release', top: 'Top Seller', sale: 'On Sale' }
+    const MIN_ROW_ITEMS = 6
 
     let trending = $derived($db?.cache?.trending?.items ?? [])
     let details  = $derived($db?.cache?.library?.details  ?? {})
@@ -48,13 +49,14 @@
             .sort((a, b) => b._genreScore - a._genreScore)
             .slice(0, 12)
     )
+    let ghostCount = $derived(Math.max(MIN_ROW_ITEMS - games.length, 0))
 </script>
 
-{#if games.length >= 3}
 <GameRecommendationSection
     {games}
     icon="fa-solid fa-chart-line"
     title="New & Trending For You"
     subtitle="from Steam charts"
+    skeletonCount={MIN_ROW_ITEMS}
+    {ghostCount}
 />
-{/if}

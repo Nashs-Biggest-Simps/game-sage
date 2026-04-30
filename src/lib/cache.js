@@ -22,9 +22,11 @@ const DETAIL_BATCH_SIZE = 4
 // Larger burst used on first-ever load (empty detail cache) to populate the dashboard fast.
 const INITIAL_BATCH_SIZE = 12
 const CACHE_BATCH_DELAY = 120
+const TARGET_WARM_DETAIL_COUNT = 48
 
 let queuedCachePatches = []
 let cachePatchTimer = null
+let activeDetailRequests = new Set()
 
 function appKey(appid) {
     return String(appid)
@@ -220,6 +222,7 @@ export function refreshFriends() {
     if (!data.user?.uid || !isValidSteamId(data.steamID)) return
     const cache = data.cache
     if (!isStale(cache?.friends?.fetchedAt, TTL.friends)) return
+    patchCache(c => setStatus(c, 'friends', 'checking', 'Checking Steam friends visibility…'))
     steamAPI.getFriendList(data => {
         if (!data?.friendslist) {
             patchCache(c => setStatus(c, 'friends', 'private', 'Friend list is private or unavailable. Friend insights will stay limited until Steam friends are public.'))
@@ -227,7 +230,10 @@ export function refreshFriends() {
         }
         const ids = (data?.friendslist?.friends ?? []).map(f => f.steamid)
         if (!ids.length) {
-            patchCache(c => { c.friends = { data: [], fetchedAt: Date.now() } })
+            patchCache(c => {
+                c.friends = { data: [], fetchedAt: Date.now() }
+                setStatus(c, 'friends', 'ok', null)
+            })
             return
         }
         steamAPI.getPlayerSummaries(ids.slice(0, 100), res => {
@@ -240,6 +246,7 @@ export function refreshFriends() {
             const nowPlaying = players.filter(p => p.gameid)
             patchCache(c => {
                 c.friends = { data: players, fetchedAt: Date.now() }
+                setStatus(c, 'friends', 'ok', null)
 
                 // Accumulate hourly popularity buckets for 7-day trend in PopularWithFriends.
                 // Each bucket stores the peak concurrent friend count per game in that hour.
@@ -276,10 +283,12 @@ function refreshDetailBatch(cache) {
 
     const isFirstLoad = Object.keys(details).length === 0
     const batchSize   = isFirstLoad ? INITIAL_BATCH_SIZE : DETAIL_BATCH_SIZE
+    const detailCount = Object.keys(details).length
 
     const pending = appIdList
         .filter(id =>
             !blacklist.has(appKey(id)) &&
+            !activeDetailRequests.has(appKey(id)) &&
             (!details[id]?.data || isStale(details[id].fetchedAt, TTL.gameDetails))
         )
         .sort((a, b) => {
@@ -299,30 +308,37 @@ function refreshDetailBatch(cache) {
 
     let completed = 0
     batch.forEach(appid => {
-        if (blacklistSet(snap().cache?.library?.blacklist || []).has(appKey(appid))) {
+        const key = appKey(appid)
+        if (blacklistSet(snap().cache?.library?.blacklist || []).has(key)) {
             completed++
             return
         }
+        activeDetailRequests.add(key)
 
         steamAPI.getGameDetails(appid, async res => {
-            const key = String(appid)
-            if (res?.[appid]?.success === false) {
-                queueCachePatch(c => addToBlacklist(c, key))
-            } else {
-                const slim = slimGame(res?.[appid]?.data)
-                if (slim) {
-                    queueCachePatch(c => {
-                        c.library.details[appid] = { data: slim, fetchedAt: Date.now() }
-                    })
-                } else {
+            try {
+                if (res?.[appid]?.success === false) {
                     queueCachePatch(c => addToBlacklist(c, key))
+                } else {
+                    const slim = slimGame(res?.[appid]?.data)
+                    if (slim) {
+                        queueCachePatch(c => {
+                            c.library.details[appid] = { data: slim, fetchedAt: Date.now() }
+                        })
+                    } else {
+                        queueCachePatch(c => addToBlacklist(c, key))
+                    }
                 }
-            }
-            completed++
-            // After the initial burst finishes, chain one more normal batch so
-            // the library keeps filling without requiring another session.
-            if (completed === batch.length && isFirstLoad && remaining > 0) {
-                setTimeout(() => refreshDetailBatch(snap().cache), 1500)
+            } finally {
+                activeDetailRequests.delete(key)
+                completed++
+                const shouldKeepWarming =
+                    remaining > 0 &&
+                    detailCount < TARGET_WARM_DETAIL_COUNT
+
+                if (completed === batch.length && shouldKeepWarming) {
+                    setTimeout(() => refreshDetailBatch(snap().cache), isFirstLoad ? 1200 : 1800)
+                }
             }
         })
     })
@@ -400,6 +416,7 @@ export function startCacheUpdateCycle() {
     refreshUser(cache)
     refreshLibraryList(cache)
     refreshRecentlyPlayed(cache)
+    refreshFriends()
     refreshDetailBatch(cache)
     refreshTrending(cache)
 }

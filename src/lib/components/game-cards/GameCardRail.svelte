@@ -5,7 +5,7 @@
     const INITIAL_GRID_COUNT = 120
     const BATCH_SIZE = 24
 
-    let { games = [], mode = 'scroll', loading = false, skeletonCount = 8 } = $props()
+    let { games = [], mode = 'scroll', loading = false, skeletonCount = 8, ghostCount = 0 } = $props()
 
     let leftFadeOpacity = $state(0)
     let visibleCount = $state(INITIAL_SCROLL_COUNT)
@@ -13,7 +13,8 @@
 
     let railKey = $derived(`${mode}:${loading}:${games.length}:${games[0]?.appid ?? games[0]?.steam_appid ?? ''}:${games.at(-1)?.appid ?? games.at(-1)?.steam_appid ?? ''}`)
     let visibleGames = $derived(games.slice(0, visibleCount))
-    let skeletonItems = $derived(Array.from({ length: skeletonCount }))
+    let placeholderCount = $derived(loading ? Math.max(skeletonCount - visibleGames.length, 0) : ghostCount)
+    let placeholderItems = $derived(Array.from({ length: placeholderCount }))
 
     $effect(() => {
         if (railKey !== lastRailKey) {
@@ -43,24 +44,22 @@
 <div class="wrapper">
     {#if mode === 'grid'}
         <div class="grid-track">
-            {#if loading}
-                {#each skeletonItems as _, i (`grid-skeleton-${i}`)}
-                    <div class="game-card-skeleton" aria-hidden="true">
-                        <div class="skeleton-art"></div>
-                        <div class="skeleton-info">
-                            <div class="skeleton-name">Loading Game Title</div>
-                            <div class="skeleton-tags">
-                                <span>Action</span>
-                                <span>Adventure</span>
-                            </div>
+            {#each visibleGames as game, i (`${game?.appid ?? game?.steam_appid}-${i}`)}
+                <GameCard {game} />
+            {/each}
+
+            {#each placeholderItems as _, i (`grid-placeholder-${i}`)}
+                <div class="game-card-skeleton" aria-hidden="true">
+                    <div class="skeleton-art"></div>
+                    <div class="skeleton-info">
+                        <div class="skeleton-name">Loading Game Title</div>
+                        <div class="skeleton-tags">
+                            <span>Action</span>
+                            <span>Adventure</span>
                         </div>
                     </div>
-                {/each}
-            {:else}
-                {#each visibleGames as game, i (`${game?.appid ?? game?.steam_appid}-${i}`)}
-                    <GameCard {game} />
-                {/each}
-            {/if}
+                </div>
+            {/each}
         </div>
 
         {#if !loading && games.length > visibleCount}
@@ -75,24 +74,22 @@
             style="--left-fade-width: {leftFadeOpacity * 4}rem"
             onscroll={(e) => handleScroll(e)}
         >
-            {#if loading}
-                {#each skeletonItems as _, i (`scroll-skeleton-${i}`)}
-                    <div class="game-card-skeleton scroll-size" aria-hidden="true">
-                        <div class="skeleton-art"></div>
-                        <div class="skeleton-info">
-                            <div class="skeleton-name">Loading Game Title</div>
-                            <div class="skeleton-tags">
-                                <span>Action</span>
-                                <span>Adventure</span>
-                            </div>
+            {#each visibleGames as game, i (`${game?.appid ?? game?.steam_appid}-${i}`)}
+                <GameCard {game} width="14" />
+            {/each}
+
+            {#each placeholderItems as _, i (`scroll-placeholder-${i}`)}
+                <div class="game-card-skeleton scroll-size" aria-hidden="true">
+                    <div class="skeleton-art"></div>
+                    <div class="skeleton-info">
+                        <div class="skeleton-name">Loading Game Title</div>
+                        <div class="skeleton-tags">
+                            <span>Action</span>
+                            <span>Adventure</span>
                         </div>
                     </div>
-                {/each}
-            {:else}
-                {#each visibleGames as game, i (`${game?.appid ?? game?.steam_appid}-${i}`)}
-                    <GameCard {game} width="14" />
-                {/each}
-            {/if}
+                </div>
+            {/each}
         </div>
     {/if}
 </div>

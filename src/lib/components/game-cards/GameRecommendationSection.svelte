@@ -12,6 +12,7 @@
         badgeVariant = 'default',
         loading = false,
         skeletonCount = 8,
+        ghostCount = 0,
     } = $props()
 
     let mode = $state('scroll')
@@ -48,7 +49,7 @@
         <RowLayoutToggle bind:value={mode} />
     </div>
 
-    <GameCardRail {games} {mode} {loading} {skeletonCount} />
+    <GameCardRail {games} {mode} {loading} {skeletonCount} {ghostCount} />
 </section>
 
 <style>

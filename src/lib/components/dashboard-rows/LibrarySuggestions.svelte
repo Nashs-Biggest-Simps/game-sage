@@ -7,6 +7,8 @@
         buildLocalLibrarySuggestions,
     } from '$lib/suggestions'
 
+    const MIN_ROW_ITEMS = 8
+
     let hasSteamID      = $derived(!!$db?.steamID)
     let preferredGenres = $derived($db?.prefs?.genres?.preferred ?? [])
     let excludedGenres  = $derived($db?.prefs?.genres?.excluded  ?? [])
@@ -26,6 +28,7 @@
             reason,
         }))
     )
+    let ghostCount = $derived(Math.max(MIN_ROW_ITEMS - games.length, 0))
 </script>
 
 <!--  -->
@@ -34,6 +37,9 @@
     {games}
     icon="fa-solid fa-book-open"
     title="Suggested from your Library"
+    loading={hasSteamID && !games.length && !Object.keys(libraryDetails).length}
+    skeletonCount={MIN_ROW_ITEMS}
+    {ghostCount}
 />
 
 <!--  -->

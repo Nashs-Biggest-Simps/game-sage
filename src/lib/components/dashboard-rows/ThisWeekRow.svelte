@@ -2,6 +2,8 @@
     import GameRecommendationSection from '$lib/components/game-cards/GameRecommendationSection.svelte'
     import { db } from '$lib/data'
 
+    const MIN_ROW_ITEMS = 6
+
     let recent  = $derived($db?.cache?.recentlyPlayed?.data ?? [])
     let details = $derived($db?.cache?.library?.details ?? {})
 
@@ -26,13 +28,14 @@
             }
         })
     )
+    let ghostCount = $derived(Math.max(MIN_ROW_ITEMS - games.length, 0))
 </script>
 
-{#if games.length >= 2}
 <GameRecommendationSection
     {games}
     icon="fa-solid fa-calendar-week"
     title="On Rotation This Week"
     subtitle="sorted by hours"
+    skeletonCount={MIN_ROW_ITEMS}
+    {ghostCount}
 />
-{/if}

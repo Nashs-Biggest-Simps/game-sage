@@ -6,22 +6,23 @@
 	// written by Aaron Meche
 	//
 
+    import { goto } from '$app/navigation'
     import { resolve } from "$app/paths";
 	import { page } from '$app/state'
 
     let { route, icon, text = null } = $props()
-	let active = $state(null)
-	let path = $state(null)
+	let href = $derived(resolve('/' + route))
+	let active = $derived(page.url.pathname === href)
 
-	$effect(() => {
-		active = path === '/' + route
-		path = page.url.pathname
-	})
+	function navigate(event) {
+		event.preventDefault()
+		goto(href)
+	}
 </script>
 
 <!--  -->
 
-<a class="navitem {active ? 'active' : ''}" href={resolve('/' + route)}>
+<a class="navitem {active ? 'active' : ''}" href={href} aria-current={active ? 'page' : undefined} onclick={navigate}>
     <i class="fa-solid fa-{icon}"></i>
     {#if text}<span>{text}</span>{/if}
 </a>
