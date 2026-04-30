@@ -22,6 +22,21 @@ const DETAIL_BATCH_SIZE = 4
 // Larger burst used on first-ever load (empty detail cache) to populate the dashboard fast.
 const INITIAL_BATCH_SIZE = 12
 
+function appKey(appid) {
+    return String(appid)
+}
+
+function blacklistSet(list = []) {
+    return new Set(list.map(appKey))
+}
+
+function addToBlacklist(cache, appid) {
+    const key = appKey(appid)
+    if (!cache.library.blacklist.map(appKey).includes(key)) cache.library.blacklist.push(key)
+    delete cache.library.details?.[appid]
+    delete cache.library.details?.[key]
+}
+
 // ─── Thumbnail resolver ──────────────────────────────────────────────────────
 // Returns the standard Steam capsule URL for a given appid. The browser
 // <img> tag handles 404s gracefully — no HEAD probing needed (and HEAD
@@ -197,7 +212,7 @@ export function refreshFriends() {
 function refreshDetailBatch(cache) {
     const appIdList  = cache.library?.appIdList || []
     const details    = cache.library?.details   || {}
-    const blacklist  = new Set(cache.library?.blacklist || [])
+    const blacklist  = blacklistSet(cache.library?.blacklist || [])
     const recentIds  = new Set((cache.recentlyPlayed?.data || []).map(g => g.appid))
     const playtime   = cache.library?.playtime  || {}
 
@@ -206,7 +221,7 @@ function refreshDetailBatch(cache) {
 
     const pending = appIdList
         .filter(id =>
-            !blacklist.has(id) &&
+            !blacklist.has(appKey(id)) &&
             (!details[id]?.data || isStale(details[id].fetchedAt, TTL.gameDetails))
         )
         .sort((a, b) => {
@@ -226,12 +241,15 @@ function refreshDetailBatch(cache) {
 
     let completed = 0
     batch.forEach(appid => {
+        if (blacklistSet(snap().cache?.library?.blacklist || []).has(appKey(appid))) {
+            completed++
+            return
+        }
+
         steamAPI.getGameDetails(appid, async res => {
             const key = String(appid)
             if (res?.[appid]?.success === false) {
-                patchCache(c => {
-                    if (!c.library.blacklist.includes(key)) c.library.blacklist.push(key)
-                })
+                patchCache(c => addToBlacklist(c, key))
             } else {
                 const slim = slimGame(res?.[appid]?.data)
                 if (slim) {
@@ -239,9 +257,7 @@ function refreshDetailBatch(cache) {
                         c.library.details[appid] = { data: slim, fetchedAt: Date.now() }
                     })
                 } else {
-                    patchCache(c => {
-                        if (!c.library.blacklist.includes(key)) c.library.blacklist.push(key)
-                    })
+                    patchCache(c => addToBlacklist(c, key))
                 }
             }
             completed++
@@ -296,7 +312,7 @@ export function startCacheUpdateCycle() {
         const details = c.library.details
         for (const id of Object.keys(details)) {
             const d = details[id]?.data
-            if (d && (!d.name || !d.steam_appid)) delete details[id]
+            if (d && (!d.name || !d.steam_appid)) addToBlacklist(c, id)
         }
     })
 
@@ -325,12 +341,15 @@ export function getGameDetail(appid) {
  */
 export function fetchGameDetail(appid) {
     const key = String(appid)
+    const cache = snap().cache
+    if (blacklistSet(cache?.library?.blacklist || []).has(key)) {
+        return Promise.resolve(null)
+    }
+
     return new Promise((resolve) => {
         steamAPI.getGameDetails(appid, async res => {
             if (res?.[appid]?.success === false) {
-                patchCache(c => {
-                    if (!c.library.blacklist.includes(key)) c.library.blacklist.push(key)
-                })
+                patchCache(c => addToBlacklist(c, key))
                 resolve(null)
                 return
             }
@@ -340,9 +359,7 @@ export function fetchGameDetail(appid) {
                     c.library.details[appid] = { data: slim, fetchedAt: Date.now() }
                 })
             } else {
-                patchCache(c => {
-                    if (!c.library.blacklist.includes(key)) c.library.blacklist.push(key)
-                })
+                patchCache(c => addToBlacklist(c, key))
             }
             resolve(slim ?? null)
         })
@@ -355,7 +372,7 @@ export function fetchGameDetail(appid) {
 export function getCachedLibrary() {
     const library   = snap().cache?.library ?? {}
     const details   = library.details  ?? {}
-    const blacklist = new Set((library.blacklist ?? []).map(String))
+    const blacklist = blacklistSet(library.blacklist ?? [])
     return Object.entries(details)
         .filter(([id, entry]) => entry?.data && !blacklist.has(id))
         .map(([, entry]) => entry.data)

@@ -1,8 +1,9 @@
 <script>
-    import { page }    from '$app/state'
-    import { onMount } from 'svelte'
-    import { db }      from '$lib/data'
-    import { steamAPI } from '$lib/steam'
+	    import { page }    from '$app/state'
+	    import { onMount } from 'svelte'
+	    import { db }      from '$lib/data'
+	    import { steamAPI } from '$lib/steam'
+	    import { fetchGameDetail } from '$lib/cache'
 
     let appid = $derived(page.url.searchParams.get('id'))
 
@@ -16,7 +17,33 @@
     let achievements = $state(null)
     let globalPcts   = $state(null)
     let loadingAch   = $state(true)
-    let friends      = $state([])
+	    let friends      = $state([])
+
+	    const VIEW_TTL = {
+	        hltb:         7 * 24 * 60 * 60 * 1000,
+	        news:         6 * 60 * 60 * 1000,
+	        achievements: 15 * 60 * 1000,
+	        globalPcts:   7 * 24 * 60 * 60 * 1000,
+	    }
+
+	    function isFresh(entry, ttl) {
+	        return !!entry?.fetchedAt && (Date.now() - entry.fetchedAt) < ttl
+	    }
+
+	    function readViewCache(id, key, ttl) {
+	        const entry = $db?.cache?.view?.[id]?.[key] ?? null
+	        return isFresh(entry, ttl) ? entry.data : null
+	    }
+
+	    function writeViewCache(id, key, data) {
+	        db.update(state => {
+	            state.cache ??= {}
+	            state.cache.view ??= {}
+	            state.cache.view[id] ??= {}
+	            state.cache.view[id][key] = { data, fetchedAt: Date.now() }
+	            return state
+	        })
+	    }
 
     let myPlaytime = $derived($db?.cache?.library?.playtime?.[appid] ?? 0)
     let myHours    = $derived(Math.round(myPlaytime / 60))
@@ -102,37 +129,71 @@
             .slice(0, 6)
     })
 
-    onMount(() => {
-        const id = page.url.searchParams.get('id')
-        if (!id) return
+	    onMount(() => {
+	        const id = page.url.searchParams.get('id')
+	        if (!id) return
 
-        const needsRichDetail = !cachedGame?.screenshots && !cachedGame?.movies && !cachedGame?.platforms
+	        const needsRichDetail = !cachedGame?.screenshots && !cachedGame?.movies && !cachedGame?.platforms
 
-        if (!cachedGame || needsRichDetail) {
-            steamAPI.getGameDetails(id, ret => {
-                fetchedGame = ret?.[id]?.data ?? null
-                loadingGame = false
-            })
-        } else {
-            loadingGame = false
-        }
+	        if (!cachedGame || needsRichDetail) {
+	            fetchGameDetail(id).then(game => {
+	                fetchedGame = game
+	                loadingGame = false
+	            })
+	        } else {
+	            loadingGame = false
+	        }
 
-        steamAPI.howLongToBeat(id, ret => { hltb = ret ?? null })
-        steamAPI.getNewsForApp(id, ret => { news = ret?.appnews?.newsitems?.slice(0, 4) ?? [] })
-        steamAPI.getPlayerAchievements(id, ret => {
-            achievements = ret?.playerstats ?? null
-            loadingAch = false
-        })
-        steamAPI.getGlobalAchievementPercentages(id, ret => { globalPcts = ret ?? null })
+	        friends = $db?.cache?.friends?.data ?? []
 
-        steamAPI.getFriendList(data => {
-            const ids = (data?.friendslist?.friends ?? []).map(f => f.steamid)
-            if (!ids.length) return
-            steamAPI.getPlayerSummaries(ids.slice(0, 100), res => {
-                friends = res?.response?.players ?? []
-            })
-        })
-    })
+	        const cachedHltb = readViewCache(id, 'hltb', VIEW_TTL.hltb)
+	        if (cachedHltb !== null) {
+	            hltb = cachedHltb
+	        } else {
+	            steamAPI.howLongToBeat(id, ret => {
+	                hltb = ret ?? null
+	                writeViewCache(id, 'hltb', hltb)
+	            })
+	        }
+
+	        const cachedNews = readViewCache(id, 'news', VIEW_TTL.news)
+	        if (cachedNews !== null) {
+	            news = cachedNews
+	        } else {
+	            steamAPI.getNewsForApp(id, ret => {
+	                news = ret?.appnews?.newsitems?.slice(0, 4) ?? []
+	                writeViewCache(id, 'news', news)
+	            })
+	        }
+
+	        const owned = Object.prototype.hasOwnProperty.call($db?.cache?.library?.playtime ?? {}, id)
+	        if (!owned) {
+	            loadingAch = false
+	            return
+	        }
+
+	        const cachedAchievements = readViewCache(id, 'achievements', VIEW_TTL.achievements)
+	        if (cachedAchievements !== null) {
+	            achievements = cachedAchievements
+	            loadingAch = false
+	        } else {
+	            steamAPI.getPlayerAchievements(id, ret => {
+	                achievements = ret?.playerstats ?? null
+	                loadingAch = false
+	                writeViewCache(id, 'achievements', achievements)
+	            })
+	        }
+
+	        const cachedGlobalPcts = readViewCache(id, 'globalPcts', VIEW_TTL.globalPcts)
+	        if (cachedGlobalPcts !== null) {
+	            globalPcts = cachedGlobalPcts
+	        } else {
+	            steamAPI.getGlobalAchievementPercentages(id, ret => {
+	                globalPcts = ret ?? null
+	                writeViewCache(id, 'globalPcts', globalPcts)
+	            })
+	        }
+	    })
 
     function hltbFmt(val) {
         if (!val) return null

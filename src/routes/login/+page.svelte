@@ -71,23 +71,30 @@
 
 <style>
     .page {
-        height: calc(100vh - 4rem);
+        min-height: 100dvh;
+        margin: -2.4rem calc(var(--inline-moat) * -1);
+        box-sizing: border-box;
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 2rem;
-        background: radial-gradient(ellipse at 60% 40%, hsl(212, 30%, 12%) 0%, var(--bg) 70%);
+        padding: 2rem var(--inline-moat);
+        overflow: hidden;
+        background:
+            radial-gradient(circle at 24% 24%, hsl(188, 84%, 48%, 0.18), transparent 28rem),
+            radial-gradient(circle at 78% 38%, hsl(146, 68%, 44%, 0.12), transparent 28rem),
+            radial-gradient(circle at 52% 74%, hsl(218, 80%, 58%, 0.1), transparent 34rem),
+            linear-gradient(145deg, hsl(212, 31%, 7%, 0.1), hsl(212, 30%, 6%, 0.42));
     }
 
     .card {
         width: 100%;
         max-width: 22rem;
-        background: hsl(212, 24%, 12%, 0.62);
+        background: hsl(212, 24%, 12%, 0.44);
         border-radius: 1.4rem;
-        outline: solid 1pt hsl(212, 38%, 36%, 0.52);
-        box-shadow: 0 24px 64px hsl(0, 0%, 0%, 0.4);
-        backdrop-filter: blur(26px) saturate(1.24);
-        -webkit-backdrop-filter: blur(26px) saturate(1.24);
+        outline: solid 1pt hsl(212, 38%, 42%, 0.46);
+        box-shadow: 0 24px 70px hsl(0, 0%, 0%, 0.34), inset 0 1px 0 hsl(0, 0%, 100%, 0.06);
+        backdrop-filter: blur(30px) saturate(1.32);
+        -webkit-backdrop-filter: blur(30px) saturate(1.32);
         overflow: hidden;
     }
 
@@ -97,7 +104,9 @@
         align-items: center;
         gap: 0.4rem;
         padding: 2.4rem 2rem 2rem;
-        background: linear-gradient(to bottom, var(--la1), transparent);
+        background:
+            radial-gradient(circle at 50% 0%, hsl(188, 76%, 54%, 0.14), transparent 10rem),
+            linear-gradient(to bottom, hsl(212, 75%, 50%, 0.12), transparent);
     }
 
     .brand-icon {
@@ -127,7 +136,7 @@
 
     .divider {
         height: 1pt;
-        background: var(--l2);
+        background: hsl(212, 38%, 42%, 0.35);
     }
 
     .body {
@@ -193,5 +202,24 @@
         line-height: 1.55;
         text-align: center;
         margin: 0;
+    }
+
+    @media (max-height: 620px) {
+        .page {
+            padding-block: 1rem;
+        }
+
+        .card {
+            max-height: calc(100dvh - 2rem);
+            overflow: auto;
+        }
+
+        .brand {
+            padding-block: 1.4rem 1.2rem;
+        }
+
+        .body {
+            padding-block: 1.2rem 1.4rem;
+        }
     }
 </style>
