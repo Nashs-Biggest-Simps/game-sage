@@ -3,7 +3,7 @@
     import { db } from '$lib/data'
     import GameRecommendationSection from '$lib/components/game-cards/GameRecommendationSection.svelte'
 
-    const MIN_ROW_ITEMS = 8
+    const MIN_ROW_ITEMS = 5
 
     let recentGames = $derived($db?.cache?.recentlyPlayed?.data ?? [])
     let ghostCount = $derived(Math.max(MIN_ROW_ITEMS - recentGames.length, 0))

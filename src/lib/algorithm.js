@@ -7,7 +7,7 @@ import { steamAPI } from '$lib/steam'
 const DEFAULT_REFRESH_HOURS = 24
 const MIN_PLAYED_GAMES = 3
 const MIN_UNPLAYED_GAMES = 1
-const MIN_RESULTS = 8
+const MIN_RESULTS = 5
 const MAX_RESULTS = 12
 const STORE_MATCH_LIMIT = 16
 const MAX_FEEDBACK_ITEMS = 30

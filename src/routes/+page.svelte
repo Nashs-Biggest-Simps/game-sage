@@ -34,8 +34,10 @@
         ['Fast Cache', 'Keeps repeated browsing smooth and API-light'],
     ]
 
+    let targetPath = $derived($db?.steamID ? '/dashboard' : '/profile')
+
     $effect(() => {
-        if ($db?.user?.uid) goto(resolve('/dashboard'))
+        if ($db?.user?.uid) goto(resolve(targetPath))
     })
 
     function capsule(appid) {

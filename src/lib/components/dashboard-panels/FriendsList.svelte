@@ -1,6 +1,7 @@
 <!-- created by Aaron Meche -->
 <script>
     import { db } from "$lib/data"
+    import SteamGameImage from '$lib/components/shared/SteamGameImage.svelte'
  
  
     const STATE_LABEL = ['Offline', 'Online', 'Busy', 'Away', 'Snooze', 'Trade', 'Play']
@@ -79,7 +80,12 @@
                         </div>
                     </div>
                     <div class="f-side">
-                        <div class="f-game-thumb" style="background-image: url('https://cdn.akamai.steamstatic.com/steam/apps/{friend.gameid}/capsule_231x87.jpg')"></div>
+                        <SteamGameImage
+                            appid={friend.gameid}
+                            alt={friend.gameextrainfo ?? 'Game art'}
+                            className="f-game-thumb"
+                            decorative={true}
+                        />
                     </div>
                 </div>
             {/each}
@@ -212,13 +218,13 @@
     /* Game thumbnail for in-game friends */
     .f-side { flex-shrink: 0; }
 
-    .f-game-thumb {
+    :global(.f-game-thumb) {
         width: 3.2rem;
         height: 1.5rem;
         border-radius: 0.3rem;
         background: var(--l2);
-        background-size: cover;
-        background-position: center;
+        display: block;
+        object-fit: cover;
         opacity: 0.8;
     }
 

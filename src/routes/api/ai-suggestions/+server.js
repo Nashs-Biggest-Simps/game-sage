@@ -14,7 +14,7 @@ const PLAY_PROMPT =
     'Prefer strong matches over novelty, but avoid clustering every pick in one franchise or genre. ' +
     'If USER_FEEDBACK is present, prioritize liked patterns and avoid disliked ones. ' +
     'Return ONLY valid JSON with no markdown, code fences, or explanation. ' +
-    'Format exactly: {"s":[{"id":<appid>,"r":"<one-sentence reason>"},...]} — return 12 results when possible, never fewer than 8 unless the input list has fewer than 8 viable games.'
+    'Format exactly: {"s":[{"id":<appid>,"r":"<one-sentence reason>"},...]} — return 12 results when possible, never fewer than 5 unless the input list has fewer than 5 viable games.'
 
 const BUY_PROMPT =
     'You are a precise Steam store discovery engine. ' +
@@ -25,7 +25,7 @@ const BUY_PROMPT =
     'If FRIENDS_PLAYING is present, those are games friends are actively playing that the user does not own — prioritize recommending them if they match the user\'s taste. ' +
     'If USER_FEEDBACK is present, match liked patterns and avoid disliked ones. ' +
     'Return ONLY valid JSON with no markdown, code fences, or explanation. ' +
-    'Format exactly: {"b":[{"n":"<exact Steam title>","r":"<one-sentence reason>"},...]} — return 12 results when possible, never fewer than 8.'
+    'Format exactly: {"b":[{"n":"<exact Steam title>","r":"<one-sentence reason>"},...]} — return 12 results when possible, never fewer than 5.'
 
 function basePromptFor(type) {
     return type === 'play' ? PLAY_PROMPT : BUY_PROMPT
@@ -68,12 +68,13 @@ async function requestAiJson(type, profile, prefs) {
     model.setMaxTokens(MAX_TOKENS)
     model.setTemperature(type === 'play' ? 0.45 : 0.55)
 
+    let timeout
     const raw = await Promise.race([
         model.prompt(profile),
         new Promise((_, reject) => {
-            setTimeout(() => reject(error(504, 'AI suggestion request timed out.')), AI_TIMEOUT_MS)
+            timeout = setTimeout(() => reject(new Error('AI suggestion request timed out.')), AI_TIMEOUT_MS)
         }),
-    ])
+    ]).finally(() => clearTimeout(timeout))
     const parsed = parseJsonResponse(raw)
     validateAiResponse(type, parsed)
     return parsed
@@ -89,6 +90,9 @@ export async function POST({ request }) {
     try {
         return json(await requestAiJson(type, profile, prefs))
     } catch (err) {
+        if (err?.message === 'AI suggestion request timed out.') {
+            throw error(504, 'AI suggestion request timed out.')
+        }
         if (err?.status) throw err
         console.error('[/api/ai-suggestions] AI suggestion request failed:', err)
         throw error(502, 'AI suggestion request failed.')

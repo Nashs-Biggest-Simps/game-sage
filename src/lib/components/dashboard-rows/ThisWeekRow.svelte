@@ -2,7 +2,7 @@
     import GameRecommendationSection from '$lib/components/game-cards/GameRecommendationSection.svelte'
     import { db } from '$lib/data'
 
-    const MIN_ROW_ITEMS = 6
+    const MIN_ROW_ITEMS = 5
 
     let recent  = $derived($db?.cache?.recentlyPlayed?.data ?? [])
     let details = $derived($db?.cache?.library?.details ?? {})

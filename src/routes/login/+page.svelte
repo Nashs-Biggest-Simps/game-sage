@@ -7,9 +7,10 @@
 
     let loading = $state(false)
     let error   = $state(null)
+    let targetPath = $derived($db?.steamID ? '/dashboard' : '/profile')
 
     $effect(() => {
-        if ($db?.user?.uid) goto(resolve('/dashboard'))
+        if ($db?.user?.uid) goto(resolve(targetPath))
     })
 
     async function signInWithGoogle() {

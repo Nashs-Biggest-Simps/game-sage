@@ -2,6 +2,7 @@
     import { onDestroy, onMount } from 'svelte'
     import { db } from '$lib/data'
     import { refreshFriends } from '$lib/cache'
+    import SteamGameImage from '$lib/components/shared/SteamGameImage.svelte'
 
     const STATE_LABEL = ['Offline', 'Online', 'Busy', 'Away', 'Snooze', 'Looking to Trade', 'Looking to Play']
 
@@ -9,7 +10,16 @@
     let friendsStatus = $derived($db?.cache?.status?.friends ?? null)
     let steamStatus = $derived($db?.cache?.status?.steam ?? null)
     let libraryStatus = $derived($db?.cache?.status?.library ?? null)
-    let loading = $derived($db?.cache?.friends == null && !friendsStatus)
+    let refreshing = $state(false)
+    let effectiveFriendsStatus = $derived(
+        refreshing && friendsStatus?.state === 'private'
+            ? { ...friendsStatus, state: 'checking' }
+            : friendsStatus
+    )
+    let loading = $derived(
+        (refreshing && friendsStatus?.state === 'private') ||
+        ($db?.cache?.friends == null && !friendsStatus)
+    )
     let selectedFilter = $state('all')
     let refreshInterval
 
@@ -26,13 +36,16 @@
 
     let statusMessage = $derived(() => {
         if (steamStatus?.state === 'missing' || steamStatus?.state === 'invalid') return steamStatus.message
-        if (friendsStatus?.state === 'private') return friendsStatus.message
+        if (effectiveFriendsStatus?.state === 'private') return effectiveFriendsStatus.message
         if (libraryStatus?.state === 'private') return 'Steam library is private. Friend data may be limited until Steam privacy settings are public.'
         return null
     })
 
     onMount(() => {
-        refreshFriends()
+        refreshing = true
+        refreshFriends({ force: true }).finally(() => {
+            refreshing = false
+        })
         refreshInterval = setInterval(refreshFriends, 60_000)
     })
 
@@ -126,10 +139,12 @@
 
                     {#if friend.gameid}
                         <div class="game-strip">
-                            <div
-                                class="game-art"
-                                style="background-image: url('https://cdn.akamai.steamstatic.com/steam/apps/{friend.gameid}/capsule_231x87.jpg')"
-                            ></div>
+                            <SteamGameImage
+                                appid={friend.gameid}
+                                alt={friend.gameextrainfo ?? 'Game art'}
+                                className="game-art"
+                                decorative={true}
+                            />
                             <div class="game-copy">
                                 <span>Currently playing</span>
                                 <strong>{friend.gameextrainfo}</strong>
@@ -361,12 +376,12 @@
         outline: solid 1pt hsl(188, 64%, 36%, 0.24);
     }
 
-    .game-art {
+    :global(.game-art) {
         aspect-ratio: 231 / 87;
         border-radius: 0.45rem;
-        background-size: cover;
-        background-position: center;
         background-color: hsl(212, 24%, 16%);
+        display: block;
+        object-fit: cover;
     }
 
     .game-copy {

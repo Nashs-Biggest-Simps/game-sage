@@ -74,7 +74,7 @@
 
     .page-content {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) 19rem;
+        grid-template-columns: minmax(0, 1fr) 20rem;
         gap: 2rem;
         align-items: start;
     }

@@ -4,7 +4,7 @@
     import { Algorithm } from '$lib/algorithm'
     import { onDestroy } from 'svelte'
 
-    const MIN_ROW_ITEMS = 8
+    const MIN_ROW_ITEMS = 5
 
     let loadingPlay = $state(false)
     let loadingBuy  = $state(false)

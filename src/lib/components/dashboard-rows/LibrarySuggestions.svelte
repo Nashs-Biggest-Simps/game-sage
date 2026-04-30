@@ -7,7 +7,7 @@
         buildLocalLibrarySuggestions,
     } from '$lib/suggestions'
 
-    const MIN_ROW_ITEMS = 8
+    const MIN_ROW_ITEMS = 5
 
     let hasSteamID      = $derived(!!$db?.steamID)
     let preferredGenres = $derived($db?.prefs?.genres?.preferred ?? [])

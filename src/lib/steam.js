@@ -6,6 +6,7 @@ import { db } from '$lib/data'
 
 const APIkey = "20C1F35B7542A2AA3770FBCA32674486"
 const STEAM_ID_RE = /^\d{17}$/
+const API_TIMEOUT_MS = 15_000
 
 function id() {
     return get(db)?.steamID ?? ''
@@ -22,9 +23,13 @@ async function makeApiCall(url, callback, { requiresSteamId = false, label = 'St
         return null
     }
 
-    console.log("API Call Made:", url)
     try {
-        const res = await fetch(`/api/steam-proxy?endpoint=${encodeURIComponent(url)}`)
+        const controller = new AbortController()
+        const timeout = setTimeout(() => controller.abort(), API_TIMEOUT_MS)
+
+        const res = await fetch(`/api/steam-proxy?endpoint=${encodeURIComponent(url)}`, {
+            signal: controller.signal,
+        }).finally(() => clearTimeout(timeout))
         if (!res.ok) throw new Error(`${label} returned ${res.status}`)
         const data = await res.json()
         if (callback) callback(data)

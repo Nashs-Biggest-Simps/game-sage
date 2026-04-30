@@ -4,7 +4,7 @@
     import { buildLibraryGames, buildGenreWeights } from '$lib/suggestions'
 
     const TAG_LABEL = { new: 'New Release', top: 'Top Seller', sale: 'On Sale' }
-    const MIN_ROW_ITEMS = 6
+    const MIN_ROW_ITEMS = 5
 
     let trending = $derived($db?.cache?.trending?.items ?? [])
     let details  = $derived($db?.cache?.library?.details  ?? {})

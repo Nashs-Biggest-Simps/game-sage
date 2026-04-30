@@ -29,6 +29,7 @@
     let dbExpanded = $state(false)
     let confirmHardReset = $state(false)
     let didAutoRecheck = $state(false)
+    let refreshingFriends = $state(false)
 
     let fireUser = $derived($db?.user)
     let steamUser = $derived($db?.cache?.user?.data ?? null)
@@ -36,6 +37,11 @@
     let steamStatus = $derived($db?.cache?.status?.steam ?? null)
     let libraryStatus = $derived($db?.cache?.status?.library ?? null)
     let friendsStatus = $derived($db?.cache?.status?.friends ?? null)
+    let profileFriendsStatus = $derived(
+        refreshingFriends && friendsStatus?.state === 'private'
+            ? { ...friendsStatus, state: 'checking' }
+            : friendsStatus
+    )
 
     let avatar = $derived(steamUser?.avatarfull ?? fireUser?.photoURL ?? null)
     let googleAvatar = $derived(fireUser?.photoURL ?? null)
@@ -155,8 +161,11 @@
     $effect(() => {
         if (didAutoRecheck || !fireUser?.uid || !ID_REGEX.test(savedID)) return
         didAutoRecheck = true
+        refreshingFriends = true
         startCacheUpdateCycle()
-        refreshFriends()
+        refreshFriends({ force: true }).finally(() => {
+            refreshingFriends = false
+        })
     })
 
     function flashStatus(status, duration = 2500) {
@@ -194,8 +203,12 @@
             flashStatus('error', 3000)
             return
         }
+        refreshingFriends = true
         clearCache()
         startCacheUpdateCycle()
+        refreshFriends({ force: true }).finally(() => {
+            refreshingFriends = false
+        })
         flashStatus('refreshed')
     }
 
@@ -282,7 +295,7 @@
                         connection={connectionState()}
                         steamVisibility={steamVisibility()}
                         lastLogoff={lastLogoff()}
-                        {friendsStatus}
+                        friendsStatus={profileFriendsStatus}
                         onRefresh={refreshLibrary}
                     />
                     <SteamAccountPanel

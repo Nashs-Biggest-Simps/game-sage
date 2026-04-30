@@ -4,7 +4,7 @@
     import { buildMostPlayedGames } from '$lib/suggestions'
     import { db } from "$lib/data"
 
-    const MIN_ROW_ITEMS = 8
+    const MIN_ROW_ITEMS = 5
 
     let libraryDetails  = $derived($db?.cache?.library?.details  ?? {})
     let libraryPlaytime = $derived($db?.cache?.library?.playtime ?? {})

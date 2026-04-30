@@ -59,7 +59,7 @@ function writeLocalStorage(key, value) {
 
 function clearLocalStorage() {
     if (typeof window === 'undefined') return
-    localStorage.clear()
+    localStorage.removeItem(STORAGE_KEY)
 }
 
 function keepKnownFilters(filters = {}) {
@@ -229,7 +229,6 @@ export function clearCache() {
         data.algr = {}
         return data
     })
-    console.log('Cache cleared')
 }
 
 export function hardResetDB() {
@@ -240,7 +239,6 @@ export function hardResetDB() {
     saveTimer = null
 
     db.set(createDefaultDB())
-    console.log('Hard reset db')
 }
 
 db.subscribe(state => {

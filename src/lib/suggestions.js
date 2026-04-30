@@ -1,6 +1,9 @@
 const LOCAL_ROW_LIMIT = 12
 const MOST_PLAYED_LIMIT = 12
 const MIN_FRIEND_NOT_OWNED_RESULTS = 4
+const FRIEND_TREND_RECENT_HOURS = 48
+const FRIEND_TREND_MIN_TRACKED_HOURS = 2
+const FRIEND_NOT_OWNED_MIN_TRACKED_HOURS = 3
 
 // ─── Shared Helpers ──────────────────────────────────────────────────────────
 
@@ -237,28 +240,150 @@ export function buildGenreSpotlight(games, targetGenre, excluded = []) {
 
 // ─── Friend-Based Rows ───────────────────────────────────────────────────────
 
-function aggregateFriendPopularity(byHour = {}, { excludeOwned = null } = {}) {
+function parseHourBucketKey(key) {
+    const timestamp = Date.parse(`${key}:00:00Z`)
+    return Number.isFinite(timestamp) ? timestamp : null
+}
+
+function collectLiveFriendCounts(friends = [], { excludeOwned = null } = {}) {
+    const live = new Map()
+
+    for (const friend of friends ?? []) {
+        if (!friend?.gameid) continue
+
+        const key = appKey(friend.gameid)
+        if (excludeOwned && isOwned(excludeOwned, key)) continue
+
+        const existing = live.get(key) ?? {
+            gameid: Number(friend.gameid),
+            name: friend.gameextrainfo ?? `App ${friend.gameid}`,
+            liveFriends: 0,
+        }
+
+        existing.liveFriends++
+        live.set(key, existing)
+    }
+
+    return live
+}
+
+function buildFriendTrendPool(byHour = {}, friends = [], { excludeOwned = null } = {}) {
     if (!byHour || !Object.keys(byHour).length) return []
 
-    const games = {}
+    const now = Date.now()
+    const recentCutoff = now - FRIEND_TREND_RECENT_HOURS * 60 * 60 * 1000
+    const games = new Map()
 
-    for (const bucket of Object.values(byHour)) {
-        for (const [gameid, { name, peak }] of Object.entries(bucket)) {
+    for (const [hourKey, bucket] of Object.entries(byHour)) {
+        const bucketTimestamp = parseHourBucketKey(hourKey)
+        if (!bucketTimestamp) continue
+
+        const ageHours = Math.max(0, (now - bucketTimestamp) / (60 * 60 * 1000))
+        const recencyWeight = (
+            ageHours <= 24 ? 2.8 :
+            ageHours <= 48 ? 2.2 :
+            ageHours <= 96 ? 1.6 :
+            ageHours <= 168 ? 1.2 :
+            1
+        )
+        const dayKey = hourKey.slice(0, 10)
+
+        for (const [gameid, entry] of Object.entries(bucket ?? {})) {
             if (excludeOwned && isOwned(excludeOwned, gameid)) continue
 
-            games[gameid] ??= {
+            const peak = Number(entry?.peak ?? 0)
+            if (!peak) continue
+
+            const key = appKey(gameid)
+            const existing = games.get(key) ?? {
                 gameid: Number(gameid),
-                name,
-                score: 0,
+                name: entry?.name ?? `App ${gameid}`,
+                totalPeak: 0,
+                weightedPeak: 0,
                 peakFriends: 0,
+                hoursSeen: 0,
+                recentPeak: 0,
+                recentHours: 0,
+                liveFriends: 0,
+                lastSeenAt: 0,
+                dayKeys: new Set(),
             }
 
-            games[gameid].score += peak
-            games[gameid].peakFriends = Math.max(games[gameid].peakFriends, peak)
+            existing.totalPeak += peak
+            existing.weightedPeak += peak * recencyWeight
+            existing.peakFriends = Math.max(existing.peakFriends, peak)
+            existing.hoursSeen++
+            existing.lastSeenAt = Math.max(existing.lastSeenAt, bucketTimestamp)
+            existing.dayKeys.add(dayKey)
+
+            if (bucketTimestamp >= recentCutoff) {
+                existing.recentPeak += peak
+                existing.recentHours++
+            }
+
+            games.set(key, existing)
         }
     }
 
-    return Object.values(games).sort((a, b) => b.score - a.score)
+    const liveCounts = collectLiveFriendCounts(friends, { excludeOwned })
+    for (const [key, live] of liveCounts.entries()) {
+        const existing = games.get(key)
+        if (!existing) continue
+        existing.liveFriends = live.liveFriends
+        existing.name = existing.name || live.name
+        existing.weightedPeak += live.liveFriends * 0.75
+    }
+
+    return [...games.values()].map(game => {
+        const uniqueDays = game.dayKeys.size
+        const olderPeak = Math.max(game.totalPeak - game.recentPeak, 0)
+        const olderHours = Math.max(game.hoursSeen - game.recentHours, 0)
+        const recentAverage = game.recentHours > 0 ? game.recentPeak / game.recentHours : 0
+        const olderAverage = olderHours > 0 ? olderPeak / olderHours : 0
+        const momentum = Math.max(0, recentAverage - olderAverage)
+
+        return {
+            ...game,
+            uniqueDays,
+            momentum,
+            score:
+                game.weightedPeak +
+                game.recentPeak * 1.6 +
+                game.hoursSeen * 2.4 +
+                uniqueDays * 4.2 +
+                game.peakFriends * 3.4 +
+                momentum * 5.5,
+        }
+    })
+}
+
+function qualifiesFriendTrend(game, { minTrackedHours = FRIEND_TREND_MIN_TRACKED_HOURS } = {}) {
+    return (
+        game.hoursSeen >= minTrackedHours ||
+        game.uniqueDays >= 2
+    )
+}
+
+function friendTrendReason(game, { notOwned = false } = {}) {
+    const cadence = game.uniqueDays >= 2
+        ? `tracked across ${game.uniqueDays} days`
+        : `tracked across ${game.hoursSeen} hours`
+    const peak = game.peakFriends === 1
+        ? 'peaking at 1 friend'
+        : `peaking at ${game.peakFriends} friends`
+    const live = game.liveFriends > 0
+        ? ` · ${game.liveFriends} playing now`
+        : ''
+
+    if (notOwned) {
+        return `${cadence} in your circle, ${peak}${live} · not in your library`
+    }
+
+    if (game.momentum >= 0.75 && game.recentHours >= 2) {
+        return `${cadence}, ${peak}${live} · gaining momentum lately`
+    }
+
+    return `${cadence} in your circle, ${peak}${live}`
 }
 
 export function buildFriendFavorites(friends, details, playtime) {
@@ -302,32 +427,35 @@ export function buildFriendFavorites(friends, details, playtime) {
 
 // Shows games that friend groups have collectively played over the stored
 // popularity window.
-export function buildFriendGroupFavorites(byHour, limit = LOCAL_ROW_LIMIT) {
-    return aggregateFriendPopularity(byHour)
+export function buildFriendGroupFavorites(byHour, friends = [], limit = LOCAL_ROW_LIMIT) {
+    return buildFriendTrendPool(byHour, friends)
+        .filter(game => qualifiesFriendTrend(game))
+        .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name))
         .slice(0, limit)
         .map(game => ({
             appid:            game.gameid,
             name:             game.name,
             thumbnail:        steamCapsule(game.gameid),
             playtime_forever: 0,
-            reason:           game.peakFriends === 1
-                ? '1 friend has been playing this'
-                : `Up to ${game.peakFriends} friends playing at once`,
+            reason:           friendTrendReason(game),
         }))
 }
 
-// Same popularity source, but only for games the user does not own. Hidden when
-// there is too little data so the dashboard does not show a weak row.
-export function buildFriendNotOwned(byHour, ownedSet = new Set(), limit = LOCAL_ROW_LIMIT) {
-    const results = aggregateFriendPopularity(byHour, { excludeOwned: ownedSet })
+// Same friend signal, but only for games the user does not own.
+export function buildFriendNotOwned(byHour, ownedSet = new Set(), friends = [], limit = LOCAL_ROW_LIMIT) {
+    const results = buildFriendTrendPool(byHour, friends, { excludeOwned: ownedSet })
+        .filter(game => qualifiesFriendTrend(game, { minTrackedHours: FRIEND_NOT_OWNED_MIN_TRACKED_HOURS }))
+        .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name))
+
+    if (results.length < MIN_FRIEND_NOT_OWNED_RESULTS) return []
+
+    return results
         .slice(0, limit)
         .map(game => ({
             appid:            game.gameid,
             name:             game.name,
             thumbnail:        steamCapsule(game.gameid),
             playtime_forever: 0,
-            reason:           'Your friends play this — not in your library',
+            reason:           friendTrendReason(game, { notOwned: true }),
         }))
-
-    return results.length >= MIN_FRIEND_NOT_OWNED_RESULTS ? results : []
 }

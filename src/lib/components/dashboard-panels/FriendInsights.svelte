@@ -1,5 +1,6 @@
 <script>
     import { db } from '$lib/data'
+    import SteamGameImage from '$lib/components/shared/SteamGameImage.svelte'
 
     const MIN_FRIENDS = 5
 
@@ -51,7 +52,12 @@
         <div class="trending">
             <div class="trending-lbl">Trending right now</div>
             <div class="tr-row">
-                <div class="tr-art" style="background-image:url('https://cdn.akamai.steamstatic.com/steam/apps/{t.gameid}/capsule_231x87.jpg')"></div>
+                <SteamGameImage
+                    appid={t.gameid}
+                    alt={t.name}
+                    className="tr-art"
+                    decorative={true}
+                />
                 <div class="tr-info">
                     <div class="tr-name">{t.name}</div>
                     <div class="tr-count">{t.count} friend{t.count !== 1 ? 's' : ''} playing</div>
@@ -113,16 +119,20 @@
         grid-template-columns: 4rem 1fr;
         gap: 0.65rem;
         align-items: center;
-        background: var(--l1);
         border-radius: 0.6rem;
         padding: 0.5rem;
+        transition: background 120ms;
     }
 
-    .tr-art {
+    .tr-row:hover { background: var(--l1); }
+
+    :global(.tr-art) {
         width: 4rem;
         height: 1.9rem;
         border-radius: 0.3rem;
-        background: var(--l2) center / cover no-repeat;
+        background: var(--l2);
+        display: block;
+        object-fit: cover;
         flex-shrink: 0;
     }
 

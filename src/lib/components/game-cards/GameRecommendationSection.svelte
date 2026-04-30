@@ -11,7 +11,7 @@
         badgeIcon = null,
         badgeVariant = 'default',
         loading = false,
-        skeletonCount = 8,
+        skeletonCount = 5,
         ghostCount = 0,
     } = $props()
 

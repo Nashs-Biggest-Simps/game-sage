@@ -6,6 +6,7 @@
 import { get } from 'svelte/store'
 import { db } from '$lib/data'
 import { steamAPI, isValidSteamId } from '$lib/steam'
+import { buildFriendGroupFavorites, buildFriendNotOwned } from '$lib/suggestions'
 
 // ─── TTLs (milliseconds) ─────────────────────────────────────────────────────
 
@@ -23,6 +24,7 @@ const DETAIL_BATCH_SIZE = 4
 const INITIAL_BATCH_SIZE = 12
 const CACHE_BATCH_DELAY = 120
 const TARGET_WARM_DETAIL_COUNT = 48
+const FRIEND_ROW_CACHE_VERSION = 3
 
 let queuedCachePatches = []
 let cachePatchTimer = null
@@ -61,6 +63,31 @@ export function resolveThumbnail(appid) {
     return `https://cdn.akamai.steamstatic.com/steam/apps/${appid}/capsule_616x353.jpg`
 }
 
+function stripHtmlText(value = '') {
+    return String(value)
+        .replace(/<br\s*\/?>/gi, ', ')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+}
+
+function normalizeSupportedLanguages(value) {
+    if (!value) return []
+    return stripHtmlText(value)
+        .split(',')
+        .map(language => language.trim())
+        .filter(language => (
+            language &&
+            language !== '*' &&
+            !/languages with full audio support/i.test(language)
+        ))
+}
+
+function normalizeRequiredAge(value) {
+    const age = Number.parseInt(value, 10)
+    return Number.isFinite(age) && age > 0 ? age : null
+}
+
 // ─── Game detail slimmer ─────────────────────────────────────────────────────
 // Steam's appdetails endpoint returns ~10-50KB per game (screenshots, HTML
 // descriptions, system requirements, etc.). We only store the fields we
@@ -74,14 +101,23 @@ function slimGame(d) {
         name:              d.name,
         type:              d.type ?? 'game',
         thumbnail,
+        hero_image:        d.background_raw ?? null,
         is_free:           d.is_free ?? false,
         short_description: d.short_description?.slice(0, 300) ?? '',
         genres:            (d.genres        ?? []).map(g => ({ description: g.description })),
         categories:        (d.categories    ?? []).map(c => ({ description: c.description })),
         developers:        (d.developers    ?? []).slice(0, 3),
         publishers:        (d.publishers    ?? []).slice(0, 2),
-        release_date:      d.release_date   ?? null,
+        release_date:      d.release_date ? {
+            date: d.release_date.date ?? '',
+            coming_soon: !!d.release_date.coming_soon,
+        } : null,
         platforms:         d.platforms      ?? null,
+        supported_languages: normalizeSupportedLanguages(d.supported_languages),
+        website:           d.website?.trim?.() ?? '',
+        required_age:      normalizeRequiredAge(d.required_age),
+        controller_support: d.controller_support ?? '',
+        dlc_count:         Array.isArray(d.dlc) ? d.dlc.length : 0,
         metacritic_score:  d.metacritic?.score ?? null,
         metacritic:        d.metacritic ? {
             score: d.metacritic.score ?? null,
@@ -148,6 +184,26 @@ function queueCachePatch(updater) {
     }, CACHE_BATCH_DELAY)
 }
 
+function updateFriendRowCaches(cache) {
+    cache.rows ??= {}
+
+    const byHour = cache.friendPopularity ?? {}
+    const friends = cache.friends?.data ?? []
+    const ownedSet = new Set((cache.library?.appIdList ?? []).map(String))
+
+    cache.rows.friendGroupFavorites = {
+        items: buildFriendGroupFavorites(byHour, friends),
+        fetchedAt: Date.now(),
+        version: FRIEND_ROW_CACHE_VERSION,
+    }
+
+    cache.rows.friendNotOwned = {
+        items: buildFriendNotOwned(byHour, ownedSet, friends),
+        fetchedAt: Date.now(),
+        version: FRIEND_ROW_CACHE_VERSION,
+    }
+}
+
 // ─── Individual refresh functions ────────────────────────────────────────────
 
 function refreshUser(cache) {
@@ -197,6 +253,7 @@ function refreshLibraryList(cache) {
             )
             c.library.fetchedAt = Date.now()
             setStatus(c, 'library', 'ok', games.length ? null : 'Steam returned a public profile with no visible games.')
+            updateFriendRowCaches(c)
         })
         // Kick off detail loading — give recently-played a moment to resolve
         // so the priority sort can put those games at the front of the queue.
@@ -217,15 +274,25 @@ function refreshRecentlyPlayed(cache) {
     })
 }
 
-export function refreshFriends() {
+export function refreshFriends({ force = false } = {}) {
     const data = snap()
-    if (!data.user?.uid || !isValidSteamId(data.steamID)) return
+    if (!data.user?.uid || !isValidSteamId(data.steamID)) return Promise.resolve(null)
     const cache = data.cache
-    if (!isStale(cache?.friends?.fetchedAt, TTL.friends)) return
+    if (!force && !isStale(cache?.friends?.fetchedAt, TTL.friends)) {
+        return Promise.resolve(cache?.friends?.data ?? null)
+    }
+
     patchCache(c => setStatus(c, 'friends', 'checking', 'Checking Steam friends visibility…'))
-    steamAPI.getFriendList(data => {
+
+    return new Promise(resolve => {
+        steamAPI.getFriendList(data => {
         if (!data?.friendslist) {
-            patchCache(c => setStatus(c, 'friends', 'private', 'Friend list is private or unavailable. Friend insights will stay limited until Steam friends are public.'))
+            patchCache(c => {
+                c.friends = { data: [], fetchedAt: Date.now() }
+                setStatus(c, 'friends', 'private', 'Friend list is private or unavailable. Friend insights will stay limited until Steam friends are public.')
+                updateFriendRowCaches(c)
+            })
+            resolve([])
             return
         }
         const ids = (data?.friendslist?.friends ?? []).map(f => f.steamid)
@@ -233,7 +300,9 @@ export function refreshFriends() {
             patchCache(c => {
                 c.friends = { data: [], fetchedAt: Date.now() }
                 setStatus(c, 'friends', 'ok', null)
+                updateFriendRowCaches(c)
             })
+            resolve([])
             return
         }
         steamAPI.getPlayerSummaries(ids.slice(0, 100), res => {
@@ -265,8 +334,12 @@ export function refreshFriends() {
                         c.friendPopularity[hourKey][key] = { name: cur.name || p.gameextrainfo, peak: Math.max(cur.peak, count) }
                     }
                 }
+
+                updateFriendRowCaches(c)
             })
+            resolve(players)
         })
+    })
     })
 }
 
@@ -304,8 +377,6 @@ function refreshDetailBatch(cache) {
 
     const batch     = pending.slice(0, batchSize)
     const remaining = pending.length - batch.length
-    console.log(`[Cache] Fetching details: ${batch.length} now, ${remaining} remaining`)
-
     let completed = 0
     batch.forEach(appid => {
         const key = appKey(appid)
@@ -530,7 +601,7 @@ export function buildCompactProfile(brain = null) {
 
     if (brain) lines.push('USER_FEEDBACK:', brain, '')
 
-    lines.push('Pick 8-12 owned games from UNPLAYED_OWNED that best match this user. Prioritize actual games over DLC/demos and include varied genres. JSON only: {"s":[{"id":appid,"r":"one sentence reason"},...]}')
+    lines.push('Pick 5-12 owned games from UNPLAYED_OWNED that best match this user. Prioritize actual games over DLC/demos and include varied genres. JSON only: {"s":[{"id":appid,"r":"one sentence reason"},...]}')
 
     return {
         text:          lines.join('\n'),

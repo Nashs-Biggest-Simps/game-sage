@@ -1,9 +1,9 @@
 <script>
 	    import { page }    from '$app/state'
-	    import { onMount } from 'svelte'
+	    import { get } from 'svelte/store'
 	    import { db }      from '$lib/data'
 	    import { steamAPI } from '$lib/steam'
-	    import { fetchGameDetail } from '$lib/cache'
+	    import { fetchGameDetail, resolveThumbnail } from '$lib/cache'
 
     let appid = $derived(page.url.searchParams.get('id'))
 
@@ -17,7 +17,7 @@
     let achievements = $state(null)
     let globalPcts   = $state(null)
     let loadingAch   = $state(true)
-	    let friends      = $state([])
+	    let friends      = $derived($db?.cache?.friends?.data ?? [])
 
 	    const VIEW_TTL = {
 	        hltb:         7 * 24 * 60 * 60 * 1000,
@@ -31,7 +31,7 @@
 	    }
 
 	    function readViewCache(id, key, ttl) {
-	        const entry = $db?.cache?.view?.[id]?.[key] ?? null
+	        const entry = get(db)?.cache?.view?.[id]?.[key] ?? null
 	        return isFresh(entry, ttl) ? entry.data : null
 	    }
 
@@ -49,31 +49,157 @@
     let myHours    = $derived(Math.round(myPlaytime / 60))
     let isOwned    = $derived(appid in ($db?.cache?.library?.playtime ?? {}))
 
-    let screenshots    = $derived(game?.screenshots?.slice(0, 12) ?? [])
-    let movies         = $derived(game?.movies?.filter(m => m.mp4)?.slice(0, 3) ?? [])
-    let price          = $derived(game?.price_overview?.final_formatted ?? (game?.is_free ? 'Free' : null))
-    let discount       = $derived(game?.price_overview?.discount_percent ?? 0)
-    let origPrice      = $derived(game?.price_overview?.initial_formatted ?? null)
-    let storeUrl       = $derived(`https://store.steampowered.com/app/${appid}`)
-    let wishlistUrl    = $derived(`https://store.steampowered.com/app/${appid}`)
-    let genres         = $derived(game?.genres?.map(g => g.description) ?? [])
-    let categories     = $derived(game?.categories?.slice(0, 6)?.map(c => c.description) ?? [])
-    let friendsInGame  = $derived(friends.filter(f => f.gameid && String(f.gameid) === String(appid)))
-    let criticScore    = $derived(game?.metacritic?.score ?? game?.metacritic_score ?? null)
-    let criticUrl      = $derived(game?.metacritic?.url ?? null)
-    let reviewTotal    = $derived(game?.recommendations?.total ?? null)
-    let mediaCount     = $derived(screenshots.length + movies.length)
+	    let screenshots    = $derived(game?.screenshots?.slice(0, 12) ?? [])
+	    let movies         = $derived(game?.movies?.filter(m => m.mp4)?.slice(0, 3) ?? [])
+	    let price          = $derived(game?.price_overview?.final_formatted ?? (game?.is_free ? 'Free' : null))
+	    let discount       = $derived(game?.price_overview?.discount_percent ?? 0)
+	    let origPrice      = $derived(game?.price_overview?.initial_formatted ?? null)
+	    let storeUrl       = $derived(`https://store.steampowered.com/app/${appid}`)
+	    let genres         = $derived(game?.genres?.map(g => g.description) ?? [])
+	    let categories     = $derived(game?.categories?.slice(0, 6)?.map(c => c.description) ?? [])
+	    let platformNames  = $derived(
+	        Object.entries(game?.platforms ?? {})
+	            .filter(([, supported]) => supported)
+	            .map(([platform]) => titleCase(platform))
+	    )
+	    let supportedLanguages = $derived(game?.supported_languages ?? [])
+	    let friendsInGame  = $derived(friends.filter(f => f.gameid && String(f.gameid) === String(appid)))
+	    let criticScore    = $derived(game?.metacritic?.score ?? game?.metacritic_score ?? null)
+	    let criticUrl      = $derived(game?.metacritic?.url ?? null)
+	    let reviewTotal    = $derived(game?.recommendations?.total ?? null)
+	    let mediaCount     = $derived(screenshots.length + movies.length)
+	    let websiteHref    = $derived(normalizeWebsiteUrl(game?.website))
+	    let releaseLabel   = $derived(() => {
+	        const date = game?.release_date?.date?.trim?.() ?? ''
+	        if (!date) return null
+	        return game?.release_date?.coming_soon ? `Coming ${date}` : date
+	    })
+	    let controllerSupportLabel = $derived(() => {
+	        const support = String(game?.controller_support ?? '').trim().toLowerCase()
+	        if (!support) return null
+	        if (support === 'full') return 'Full controller support'
+	        if (support === 'partial') return 'Partial controller support'
+	        return titleCase(support)
+	    })
+	    let ageRating = $derived(() => {
+	        const age = Number(game?.required_age ?? 0)
+	        return Number.isFinite(age) && age > 0 ? `${age}+` : null
+	    })
+	    let heroMetaItems = $derived(() => {
+	        const items = []
+	        if (game?.developers?.[0]) items.push(game.developers[0])
+	        if (game?.publishers?.[0] && game.publishers[0] !== game?.developers?.[0]) items.push(game.publishers[0])
+	        if (releaseLabel()) items.push(releaseLabel())
+	        return items
+	    })
+	    let snapshotItems = $derived(() => {
+	        const items = [
+	            {
+	                label: 'Library',
+	                value: isOwned ? 'Owned' : 'Not owned',
+	                note: isOwned
+	                    ? (myHours > 0 ? `${myHours.toLocaleString()}h logged` : 'In your Steam library')
+	                    : (game?.is_free ? 'Free to claim on Steam' : 'Available on Steam'),
+	            },
+	        ]
 
-    // Hero image with JS preload fallback chain
-    let heroIdx    = $state(0)
-    const HERO_IMGS = (id) => [
-        `https://cdn.akamai.steamstatic.com/steam/apps/${id}/library_hero.jpg`,
-        `https://cdn.akamai.steamstatic.com/steam/apps/${id}/capsule_616x353.jpg`,
-        `https://cdn.akamai.steamstatic.com/steam/apps/${id}/header.jpg`,
-    ]
-    let heroSrc    = $derived(HERO_IMGS(appid ?? '0')[heroIdx] ?? null)
-    let heroFailed = $derived(heroIdx >= HERO_IMGS(appid ?? '0').length)
-    $effect(() => { appid; heroIdx = 0 })
+	        if (price || game?.is_free) {
+	            items.push({
+	                label: 'Price',
+	                value: price ?? 'Free',
+	                note: discount > 0 && origPrice
+	                    ? `Was ${origPrice}`
+	                    : (game?.is_free ? 'Free to play' : 'Current store price'),
+	            })
+	        }
+	        if (reviewTotal) items.push({
+	            label: 'Reviews',
+	            value: reviewTotal.toLocaleString(),
+	            note: 'Steam user reviews',
+	        })
+	        if (criticScore !== null) items.push({
+	            label: 'Critics',
+	            value: String(criticScore),
+	            note: 'Metacritic score',
+	        })
+	        if (platformNames.length) items.push({
+	            label: 'Platforms',
+	            value: platformNames.join(' / '),
+	            note: platformNames.length > 1 ? 'Supported platforms' : 'Supported platform',
+	        })
+	        if (supportedLanguages.length) items.push({
+	            label: 'Languages',
+	            value: String(supportedLanguages.length),
+	            note: supportedLanguages.slice(0, 3).join(', '),
+	        })
+	        if (mediaCount > 0) items.push({
+	            label: 'Media',
+	            value: String(mediaCount),
+	            note: `${screenshots.length} screenshots${movies.length ? `, ${movies.length} trailers` : ''}`,
+	        })
+	        if (game?.dlc_count > 0) items.push({
+	            label: 'DLC',
+	            value: String(game.dlc_count),
+	            note: 'Additional downloadable items',
+	        })
+
+	        return items.slice(0, 6)
+	    })
+	    let gameDetailRows = $derived(() => {
+	        const rows = []
+	        if (game?.type) rows.push({ label: 'Type', value: titleCase(game.type) })
+	        if (releaseLabel()) rows.push({
+	            label: game?.release_date?.coming_soon ? 'Launch' : 'Released',
+	            value: releaseLabel(),
+	        })
+	        if (game?.developers?.length) rows.push({ label: 'Developer', value: game.developers.join(', ') })
+	        if (game?.publishers?.length) rows.push({ label: 'Publisher', value: game.publishers.join(', ') })
+	        if (platformNames.length) rows.push({ label: 'Platforms', value: platformNames.join(', ') })
+	        if (totalAch > 0) rows.push({ label: 'Achievements', value: `${totalAch} total` })
+	        if (reviewTotal) rows.push({ label: 'Reviews', value: `${reviewTotal.toLocaleString()} reviews` })
+	        if (game?.dlc_count > 0) rows.push({ label: 'DLC', value: `${game.dlc_count} items` })
+	        if (screenshots.length > 0) rows.push({ label: 'Screenshots', value: `${screenshots.length} available` })
+	        if (movies.length > 0) rows.push({ label: 'Trailers', value: `${movies.length} available` })
+	        return rows
+	    })
+	    let supportRows = $derived(() => {
+	        const rows = []
+	        if (controllerSupportLabel()) rows.push({ label: 'Controller', value: controllerSupportLabel() })
+	        if (ageRating()) rows.push({ label: 'Age Gate', value: ageRating() })
+	        if (supportedLanguages.length) rows.push({
+	            label: 'Languages',
+	            value: supportedLanguages.slice(0, 5).join(', ') + (supportedLanguages.length > 5 ? ` +${supportedLanguages.length - 5} more` : ''),
+	        })
+	        return rows
+	    })
+
+	    function fallbackHeroImages(id) {
+	        return [
+	            `https://cdn.akamai.steamstatic.com/steam/apps/${id}/library_hero.jpg`,
+	            `https://cdn.akamai.steamstatic.com/steam/apps/${id}/header.jpg`,
+	        ]
+	    }
+
+	    // Hero image with JS preload fallback chain
+	    let heroIdx    = $state(0)
+	    let heroCandidates = $derived(
+	        [...new Set([
+	            ...fallbackHeroImages(appid ?? '0'),
+	            game?.hero_image,
+	            cachedGame?.hero_image,
+	            game?.thumbnail,
+	            cachedGame?.thumbnail,
+	            appid ? resolveThumbnail(appid) : null,
+	        ].filter(Boolean))]
+	    )
+	    let heroSrc    = $derived(heroCandidates[heroIdx] ?? null)
+	    let heroFailed = $derived(heroIdx >= heroCandidates.length)
+	    $effect(() => {
+	        appid
+	        game?.thumbnail
+	        cachedGame?.thumbnail
+	        heroIdx = 0
+	    })
 
     let heroLoaded = $state(false)
     $effect(() => {
@@ -129,14 +255,54 @@
             .slice(0, 6)
     })
 
-	    onMount(() => {
-	        const id = page.url.searchParams.get('id')
-	        if (!id) return
+	    let activeViewLoad = 0
+	    let lastLoadedAppid = null
 
-	        const needsRichDetail = !cachedGame?.screenshots && !cachedGame?.movies && !cachedGame?.platforms
+	    $effect(() => {
+	        const id = appid
+	        if (!id) {
+	            lastLoadedAppid = null
+	            activeViewLoad++
+	            fetchedGame = null
+	            loadingGame = false
+	            hltb = null
+	            news = []
+	            achievements = null
+	            globalPcts = null
+	            loadingAch = false
+	            return
+	        }
 
-	        if (!cachedGame || needsRichDetail) {
+	        if (id === lastLoadedAppid) return
+	        lastLoadedAppid = id
+
+	        const viewLoadId = ++activeViewLoad
+	        const state = get(db)
+	        const currentCachedGame = state?.cache?.library?.details?.[id]?.data ?? null
+	        const owned = Object.prototype.hasOwnProperty.call(state?.cache?.library?.playtime ?? {}, id)
+	        const needsRichDetail = (
+	            !Array.isArray(currentCachedGame?.screenshots) ||
+	            !Array.isArray(currentCachedGame?.movies) ||
+	            currentCachedGame?.platforms == null ||
+	            currentCachedGame?.supported_languages === undefined ||
+	            currentCachedGame?.website === undefined ||
+	            currentCachedGame?.required_age === undefined ||
+	            currentCachedGame?.controller_support === undefined ||
+	            currentCachedGame?.dlc_count === undefined ||
+	            currentCachedGame?.hero_image === undefined
+	        )
+
+	        fetchedGame = null
+	        loadingGame = true
+	        hltb = null
+	        news = []
+	        achievements = null
+	        globalPcts = null
+	        loadingAch = owned
+
+	        if (!currentCachedGame || needsRichDetail) {
 	            fetchGameDetail(id).then(game => {
+	                if (viewLoadId !== activeViewLoad) return
 	                fetchedGame = game
 	                loadingGame = false
 	            })
@@ -144,13 +310,12 @@
 	            loadingGame = false
 	        }
 
-	        friends = $db?.cache?.friends?.data ?? []
-
 	        const cachedHltb = readViewCache(id, 'hltb', VIEW_TTL.hltb)
 	        if (cachedHltb !== null) {
 	            hltb = cachedHltb
 	        } else {
 	            steamAPI.howLongToBeat(id, ret => {
+	                if (viewLoadId !== activeViewLoad) return
 	                hltb = ret ?? null
 	                writeViewCache(id, 'hltb', hltb)
 	            })
@@ -161,12 +326,12 @@
 	            news = cachedNews
 	        } else {
 	            steamAPI.getNewsForApp(id, ret => {
+	                if (viewLoadId !== activeViewLoad) return
 	                news = ret?.appnews?.newsitems?.slice(0, 4) ?? []
 	                writeViewCache(id, 'news', news)
 	            })
 	        }
 
-	        const owned = Object.prototype.hasOwnProperty.call($db?.cache?.library?.playtime ?? {}, id)
 	        if (!owned) {
 	            loadingAch = false
 	            return
@@ -178,6 +343,7 @@
 	            loadingAch = false
 	        } else {
 	            steamAPI.getPlayerAchievements(id, ret => {
+	                if (viewLoadId !== activeViewLoad) return
 	                achievements = ret?.playerstats ?? null
 	                loadingAch = false
 	                writeViewCache(id, 'achievements', achievements)
@@ -189,6 +355,7 @@
 	            globalPcts = cachedGlobalPcts
 	        } else {
 	            steamAPI.getGlobalAchievementPercentages(id, ret => {
+	                if (viewLoadId !== activeViewLoad) return
 	                globalPcts = ret ?? null
 	                writeViewCache(id, 'globalPcts', globalPcts)
 	            })
@@ -208,9 +375,23 @@
         return new Date(unix * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
     }
 
-    function stripHtml(html) {
-        return (html ?? '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 220)
-    }
+	    function stripHtml(html) {
+	        return (html ?? '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 220)
+	    }
+
+	    function titleCase(value = '') {
+	        return String(value)
+	            .split(/[\s_-]+/)
+	            .filter(Boolean)
+	            .map(word => word[0].toUpperCase() + word.slice(1))
+	            .join(' ')
+	    }
+
+	    function normalizeWebsiteUrl(value) {
+	        const url = String(value ?? '').trim()
+	        if (!url) return null
+	        return /^https?:\/\//i.test(url) ? url : `https://${url}`
+	    }
 </script>
 
 <svelte:window onkeydown={handleKeydown} />
@@ -276,10 +457,13 @@
     {:else if game}
 
         <!-- Hero -->
-        <div class="hero" style={heroLoaded ? `background-image: url('${heroSrc}')` : ''}>
-            <div class="hero-gradient"></div>
-            <button class="back-btn hero-back" onclick={() => history.back()} aria-label="Go back">
-                <i class="fa-solid fa-arrow-left"></i>
+	        <div class="hero">
+	            {#if heroLoaded && heroSrc}
+	                <img class="hero-media" src={heroSrc} alt="" aria-hidden="true" />
+	            {/if}
+	            <div class="hero-gradient"></div>
+	            <button class="back-btn hero-back" onclick={() => history.back()} aria-label="Go back">
+	                <i class="fa-solid fa-arrow-left"></i>
                 <span>Back</span>
             </button>
             <div class="hero-content">
@@ -291,15 +475,16 @@
                     </div>
                 {/if}
                 <h1 class="hero-title">{game.name}</h1>
-                <div class="hero-meta">
-                    {#if game.developers?.length}
-                        <span>{game.developers[0]}</span>
-                    {/if}
-                    {#if game.release_date?.date}
-                        <span class="dot-sep">·</span>
-                        <span>{game.release_date.date}</span>
-                    {/if}
-                </div>
+	                {#if heroMetaItems().length > 0}
+	                    <div class="hero-meta">
+	                        {#each heroMetaItems() as item, i}
+	                            {#if i > 0}
+	                                <span class="dot-sep">·</span>
+	                            {/if}
+	                            <span>{item}</span>
+	                        {/each}
+	                    </div>
+	                {/if}
 
                 <div class="hero-stats">
                     {#if isOwned}
@@ -314,12 +499,12 @@
                             <span class="hero-stat-label">{earnedAch}/{totalAch} Achievements</span>
                         </div>
                     {/if}
-                    {#if criticScore}
-                        <div class="hero-stat">
-                            <span class="hero-stat-value">{criticScore}</span>
-                            <span class="hero-stat-label">Metacritic</span>
-                        </div>
-                    {/if}
+	                    {#if criticScore !== null}
+	                        <div class="hero-stat">
+	                            <span class="hero-stat-value">{criticScore}</span>
+	                            <span class="hero-stat-label">Metacritic</span>
+	                        </div>
+	                    {/if}
                     {#if hltbPrimary}
                         <div class="hero-stat">
                             <span class="hero-stat-value">{hltbPrimary}</span>
@@ -348,13 +533,30 @@
             <!-- ── Main column ── -->
             <div class="main-col">
 
-                <!-- About -->
-                {#if game.short_description}
-                    <section class="panel">
-                        <div class="panel-label"><i class="fa-solid fa-align-left"></i>About</div>
-                        <p class="description">{game.short_description}</p>
-                    </section>
-                {/if}
+	                <!-- About -->
+	                {#if game.short_description}
+	                    <section class="panel">
+	                        <div class="panel-label"><i class="fa-solid fa-align-left"></i>About This Game</div>
+	                        <p class="description">{game.short_description}</p>
+	                    </section>
+	                {/if}
+
+	                {#if snapshotItems().length > 0}
+	                    <section class="panel">
+	                        <div class="panel-label"><i class="fa-solid fa-table-cells-large"></i>At a Glance</div>
+	                        <div class="snapshot-grid">
+	                            {#each snapshotItems() as item (item.label)}
+	                                <div class="snapshot-card">
+	                                    <div class="snapshot-label">{item.label}</div>
+	                                    <div class="snapshot-value">{item.value}</div>
+	                                    {#if item.note}
+	                                        <div class="snapshot-note">{item.note}</div>
+	                                    {/if}
+	                                </div>
+	                            {/each}
+	                        </div>
+	                    </section>
+	                {/if}
 
                 <!-- Trailers -->
                 {#if movies.length > 0}
@@ -480,13 +682,19 @@
                             <i class="fa-solid fa-play"></i>
                             Play in Steam
                         </button>
-                        <a href={storeUrl} target="_blank" rel="noopener noreferrer" class="btn-secondary">
-                            <i class="fa-brands fa-steam"></i>
-                            View on Store
-                        </a>
-                    {:else}
-                        <a href={storeUrl} target="_blank" rel="noopener noreferrer" class="btn-primary btn-buy">
-                            <i class="fa-solid fa-cart-shopping"></i>
+	                        <a href={storeUrl} target="_blank" rel="noopener noreferrer" class="btn-secondary">
+	                            <i class="fa-brands fa-steam"></i>
+	                            View on Store
+	                        </a>
+	                        {#if websiteHref}
+	                            <a href={websiteHref} target="_blank" rel="noopener noreferrer" class="btn-secondary">
+	                                <i class="fa-solid fa-globe"></i>
+	                                Official Website
+	                            </a>
+	                        {/if}
+	                    {:else}
+	                        <a href={storeUrl} target="_blank" rel="noopener noreferrer" class="btn-primary btn-buy">
+	                            <i class="fa-solid fa-cart-shopping"></i>
                             {#if discount > 0}
                                 <span class="discount-badge">-{discount}%</span>
                             {/if}
@@ -499,14 +707,20 @@
                                 rel="noopener noreferrer"
                                 class="btn-secondary"
                             >
-                                <i class="fa-solid fa-bookmark"></i>
-                                Add to Wishlist
-                            </a>
-                        {/if}
-                        {#if discount > 0 && origPrice}
-                            <div class="orig-price">Was {origPrice}</div>
-                        {/if}
-                    {/if}
+	                                <i class="fa-solid fa-bookmark"></i>
+	                                Add to Wishlist
+	                            </a>
+	                        {/if}
+	                        {#if websiteHref}
+	                            <a href={websiteHref} target="_blank" rel="noopener noreferrer" class="btn-secondary">
+	                                <i class="fa-solid fa-globe"></i>
+	                                Official Website
+	                            </a>
+	                        {/if}
+	                        {#if discount > 0 && origPrice}
+	                            <div class="orig-price">Was {origPrice}</div>
+	                        {/if}
+	                    {/if}
                 </div>
 
                 <!-- Personal playtime (only when owned) -->
@@ -571,10 +785,10 @@
                 {/if}
 
                 <!-- Metacritic score (if available) -->
-                {#if criticScore}
-                    <div class="panel">
-                        <div class="panel-label"><i class="fa-solid fa-star-half-stroke"></i>Metacritic</div>
-                        <div class="meta-score-row">
+	                {#if criticScore !== null}
+	                    <div class="panel">
+	                        <div class="panel-label"><i class="fa-solid fa-star-half-stroke"></i>Metacritic</div>
+	                        <div class="meta-score-row">
                             <div class="meta-score {criticScore >= 75 ? 'great' : criticScore >= 50 ? 'mixed' : 'poor'}">
                                 {criticScore}
                             </div>
@@ -591,83 +805,57 @@
                                 <div class="meta-link muted">Critic score</div>
                             {/if}
                         </div>
-                    </div>
-                {/if}
+	                    </div>
+	                {/if}
 
-                <!-- Game details -->
-                <div class="panel">
-                    <div class="panel-label"><i class="fa-solid fa-circle-info"></i>Game Details</div>
-                    <div class="detail-rows">
-                        {#if game.developers?.length}
-                            <div class="detail-row">
-                                <span class="detail-key">Developer</span>
-                                <span class="detail-val">{game.developers.join(', ')}</span>
-                            </div>
-                        {/if}
-                        {#if game.publishers?.length}
-                            <div class="detail-row">
-                                <span class="detail-key">Publisher</span>
-                                <span class="detail-val">{game.publishers.join(', ')}</span>
-                            </div>
-                        {/if}
-                        {#if game.release_date?.date}
-                            <div class="detail-row">
-                                <span class="detail-key">Released</span>
-                                <span class="detail-val">{game.release_date.date}</span>
-                            </div>
-                        {/if}
-                        {#if game.platforms}
-                            <div class="detail-row">
-                                <span class="detail-key">Platforms</span>
-                                <span class="detail-val">
-                                    {Object.entries(game.platforms).filter(([, v]) => v).map(([k]) => k[0].toUpperCase() + k.slice(1)).join(', ')}
-                                </span>
-                            </div>
-                        {/if}
-                        {#if totalAch > 0}
-                            <div class="detail-row">
-                                <span class="detail-key">Achievements</span>
-                                <span class="detail-val">{totalAch} total</span>
-                            </div>
-                        {/if}
-                        {#if reviewTotal}
-                            <div class="detail-row">
-                                <span class="detail-key">Reviews</span>
-                                <span class="detail-val">{reviewTotal.toLocaleString()} reviews</span>
-                            </div>
-                        {/if}
-                        {#if screenshots.length > 0}
-                            <div class="detail-row">
-                                <span class="detail-key">Screenshots</span>
-                                <span class="detail-val">{screenshots.length} cached</span>
-                            </div>
-                        {/if}
-                        {#if movies.length > 0}
-                            <div class="detail-row">
-                                <span class="detail-key">Trailers</span>
-                                <span class="detail-val">{movies.length} available</span>
-                            </div>
-                        {/if}
-                    </div>
+	                {#if supportRows().length > 0 || categories.length > 0}
+	                    <div class="panel">
+	                        <div class="panel-label"><i class="fa-solid fa-layer-group"></i>Store Features</div>
+	                        {#if supportRows().length > 0}
+	                            <div class="detail-rows">
+	                                {#each supportRows() as row (row.label)}
+	                                    <div class="detail-row">
+	                                        <span class="detail-key">{row.label}</span>
+	                                        <span class="detail-val">{row.value}</span>
+	                                    </div>
+	                                {/each}
+	                            </div>
+	                        {/if}
+	                        {#if categories.length > 0}
+	                            <div class="chip-row">
+	                                {#each categories as c}
+	                                    <span class="chip dim">{c}</span>
+	                                {/each}
+	                            </div>
+	                        {/if}
+	                    </div>
+	                {/if}
 
-                    {#if genres.length > 0}
-                        <div class="chip-row">
-                            {#each genres as g}
-                                <span class="chip">{g}</span>
-                            {/each}
-                        </div>
-                    {/if}
-                    {#if categories.length > 0}
-                        <div class="chip-row">
-                            {#each categories as c}
-                                <span class="chip dim">{c}</span>
-                            {/each}
-                        </div>
-                    {/if}
-                </div>
+	                {#if gameDetailRows().length > 0 || genres.length > 0}
+	                    <div class="panel">
+	                        <div class="panel-label"><i class="fa-solid fa-circle-info"></i>Game Details</div>
+	                        {#if gameDetailRows().length > 0}
+	                            <div class="detail-rows">
+	                                {#each gameDetailRows() as row (row.label)}
+	                                    <div class="detail-row">
+	                                        <span class="detail-key">{row.label}</span>
+	                                        <span class="detail-val">{row.value}</span>
+	                                    </div>
+	                                {/each}
+	                            </div>
+	                        {/if}
+	                        {#if genres.length > 0}
+	                            <div class="chip-row">
+	                                {#each genres as g}
+	                                    <span class="chip">{g}</span>
+	                                {/each}
+	                            </div>
+	                        {/if}
+	                    </div>
+	                {/if}
 
-            </aside>
-        </div>
+	            </aside>
+	        </div>
 
     {:else}
         <div class="not-found">
@@ -679,36 +867,53 @@
 </div>
 
 <style>
-    .view-page {
-        position: relative;
-        display: flex;
-        flex-direction: column;
-        gap: 1.4rem;
-        isolation: isolate;
-        margin-top: -0.8rem;
-    }
+	    .view-page {
+	        position: relative;
+	        display: flex;
+	        flex-direction: column;
+	        gap: 1.4rem;
+	        isolation: isolate;
+	        margin-top: -0.8rem;
+	        padding-bottom: 2rem;
+	    }
 
     .view-page::before {
         content: '';
-        position: absolute;
-        z-index: 0;
-        top: -2.4rem;
-        bottom: -4rem;
-        left: 50%;
-        width: 100vw;
-        min-height: 38rem;
-        transform: translateX(-50%);
-        pointer-events: none;
-        background:
-            radial-gradient(circle at 18% 4%, hsl(188, 74%, 42%, 0.16), transparent 18rem),
-            radial-gradient(circle at 82% 12%, hsl(214, 78%, 46%, 0.12), transparent 20rem),
-            radial-gradient(circle at 46% 34rem, hsl(265, 60%, 50%, 0.08), transparent 28rem),
-            linear-gradient(to bottom, hsl(212,22%,8%,0.14) 0%, transparent 44rem);
-        opacity: 0.72;
-        filter: saturate(1.08);
-        mask-image: linear-gradient(to bottom, black 0%, black 58%, transparent 100%);
-        -webkit-mask-image: linear-gradient(to bottom, black 0%, black 58%, transparent 100%);
-    }
+	        position: absolute;
+	        z-index: 0;
+	        top: -2.4rem;
+	        bottom: -8rem;
+	        left: 50%;
+	        width: 100vw;
+	        min-height: calc(100% + 10rem);
+	        transform: translateX(-50%);
+	        pointer-events: none;
+	        background:
+	            radial-gradient(circle at 18% 4%, hsl(188, 74%, 42%, 0.16), transparent 18rem),
+	            radial-gradient(circle at 82% 12%, hsl(214, 78%, 46%, 0.12), transparent 20rem),
+	            radial-gradient(circle at 46% 34rem, hsl(265, 60%, 50%, 0.08), transparent 28rem),
+	            radial-gradient(circle at 50% calc(100% - 4rem), hsl(188, 64%, 40%, 0.08), transparent 20rem),
+	            linear-gradient(to bottom, hsl(212,22%,8%,0.14) 0%, hsl(212,22%,8%,0.06) 44rem, hsl(212,22%,8%,0.24) 100%);
+	        opacity: 0.78;
+	        filter: saturate(1.08);
+	    }
+
+	    .view-page::after {
+	        content: '';
+	        position: absolute;
+	        z-index: 0;
+	        left: 50%;
+	        bottom: -9rem;
+	        width: 100vw;
+	        height: 18rem;
+	        transform: translateX(-50%);
+	        pointer-events: none;
+	        background:
+	            radial-gradient(circle at 24% 0%, hsl(188, 74%, 42%, 0.08), transparent 18rem),
+	            radial-gradient(circle at 78% 10%, hsl(214, 78%, 46%, 0.07), transparent 18rem),
+	            linear-gradient(to bottom, transparent 0%, hsl(212, 24%, 8%, 0.3) 100%);
+	        opacity: 0.72;
+	    }
 
     .view-page > * {
         position: relative;
@@ -799,34 +1004,36 @@
 
     /* ── Page Controls ───────────────────── */
 
-    .back-btn {
-        min-width: 2.45rem;
-        height: 2.45rem;
-        padding-inline: 0.82rem;
-        border-radius: 100vh;
-        background: hsl(212, 22%, 10%, 0.44);
-        outline: solid 1pt hsl(0, 0%, 100%, 0.15);
-        color: hsl(0, 0%, 100%, 0.88);
-        display: flex;
-        align-items: center;
+	    .back-btn {
+	        min-width: 2.45rem;
+	        height: 2.45rem;
+	        padding-inline: 0.82rem;
+	        border-radius: 100vh;
+	        background: hsl(212, 24%, 12%, 0.42);
+	        outline: solid 1pt hsl(212, 38%, 36%, 0.42);
+	        color: hsl(0, 0%, 100%, 0.88);
+	        display: flex;
+	        align-items: center;
         justify-content: center;
         gap: 0.45rem;
-        font-size: 0.85rem;
-        font-weight: 700;
-        cursor: pointer;
-        flex-shrink: 0;
-        backdrop-filter: blur(18px) saturate(1.2);
-        -webkit-backdrop-filter: blur(18px) saturate(1.2);
-        box-shadow: 0 12px 30px hsl(0, 0%, 0%, 0.24);
-        transition: background 120ms, color 120ms, outline-color 120ms, transform 120ms;
-    }
+	        font-size: 0.85rem;
+	        font-weight: 700;
+	        cursor: pointer;
+	        flex-shrink: 0;
+	        backdrop-filter: blur(18px) saturate(1.18);
+	        -webkit-backdrop-filter: blur(18px) saturate(1.18);
+	        box-shadow:
+	            0 12px 30px hsl(0, 0%, 0%, 0.24),
+	            inset 0 1px 0 hsl(0, 0%, 100%, 0.045);
+	        transition: background 120ms, color 120ms, outline-color 120ms, transform 120ms;
+	    }
 
-    .back-btn:hover {
-        background: hsl(212, 28%, 18%, 0.62);
-        outline-color: hsl(0, 0%, 100%, 0.28);
-        color: white;
-        transform: translateY(-1px);
-    }
+	    .back-btn:hover {
+	        background: hsl(212, 28%, 18%, 0.58);
+	        outline-color: hsl(212, 74%, 58%, 0.34);
+	        color: white;
+	        transform: translateY(-1px);
+	    }
 
     .hero-back {
         position: absolute;
@@ -837,16 +1044,24 @@
 
     /* ── Hero ────────────────────────────── */
 
-    .hero {
-        position: relative;
-        height: clamp(27rem, 42vw, 34rem);
-        border-radius: 1.2rem;
-        overflow: hidden;
-        background: var(--l1);
-        background-size: cover;
-        background-position: center top;
-        outline: solid 1pt var(--l3);
-    }
+	    .hero {
+	        position: relative;
+	        height: clamp(27rem, 42vw, 34rem);
+	        border-radius: 1.2rem;
+	        overflow: hidden;
+	        background: var(--l1);
+	        outline: solid 1pt var(--l3);
+	    }
+
+	    .hero-media {
+	        position: absolute;
+	        inset: 0;
+	        width: 100%;
+	        height: 100%;
+	        object-fit: cover;
+	        object-position: center;
+	        display: block;
+	    }
 
     .hero-gradient {
         position: absolute;
@@ -868,17 +1083,20 @@
 
     .hero-chips { display: flex; gap: 0.4rem; flex-wrap: wrap; }
 
-    .genre-chip {
-        font-size: 0.65rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.07em;
-        padding: 0.2rem 0.6rem;
-        background: hsl(0,0%,100%,0.15);
-        border-radius: 100vh;
-        backdrop-filter: blur(4px);
-        color: white;
-    }
+	    .genre-chip {
+	        font-size: 0.65rem;
+	        font-weight: 700;
+	        text-transform: uppercase;
+	        letter-spacing: 0.07em;
+	        padding: 0.2rem 0.6rem;
+	        background: hsl(212, 24%, 12%, 0.42);
+	        outline: solid 1pt hsl(212, 38%, 36%, 0.42);
+	        border-radius: 100vh;
+	        backdrop-filter: blur(18px) saturate(1.18);
+	        -webkit-backdrop-filter: blur(18px) saturate(1.18);
+	        box-shadow: inset 0 1px 0 hsl(0, 0%, 100%, 0.045);
+	        color: white;
+	    }
 
     .hero-title {
         font-size: 2.8rem;
@@ -911,23 +1129,26 @@
         margin-top: 0.7rem;
     }
 
-    .hero-stat {
-        min-width: 7rem;
-        padding: 0.62rem 0.78rem;
-        border-radius: 0.7rem;
-        background: hsl(212, 18%, 10%, 0.68);
-        outline: solid 1pt hsl(0, 0%, 100%, 0.12);
-        display: flex;
-        flex-direction: column;
-        gap: 0.24rem;
-        backdrop-filter: blur(10px);
-        box-shadow: 0 12px 28px hsl(0, 0%, 0%, 0.22);
-    }
+	    .hero-stat {
+	        min-width: 7rem;
+	        padding: 0.62rem 0.78rem;
+	        border-radius: 0.7rem;
+	        background: hsl(212, 24%, 12%, 0.42);
+	        outline: solid 1pt hsl(212, 38%, 36%, 0.42);
+	        display: flex;
+	        flex-direction: column;
+	        gap: 0.24rem;
+	        backdrop-filter: blur(18px) saturate(1.18);
+	        -webkit-backdrop-filter: blur(18px) saturate(1.18);
+	        box-shadow:
+	            0 12px 28px hsl(0, 0%, 0%, 0.22),
+	            inset 0 1px 0 hsl(0, 0%, 100%, 0.045);
+	    }
 
-    .hero-stat.live {
-        background: hsl(212, 40%, 16%, 0.74);
-        outline-color: hsl(212, 75%, 65%, 0.28);
-    }
+	    .hero-stat.live {
+	        background: hsl(212, 70%, 42%, 0.24);
+	        outline-color: hsl(212, 74%, 58%, 0.34);
+	    }
 
     .hero-stat-value {
         color: white;
@@ -949,15 +1170,15 @@
 
     /* ── Content grid ────────────────────── */
 
-    .content-grid {
-        display: grid;
-        grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
-        gap: 1.4rem;
-        align-items: start;
-    }
+	    .content-grid {
+	        display: grid;
+	        grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+	        gap: 1.4rem;
+	        align-items: start;
+	    }
 
-    .main-col { display: flex; flex-direction: column; gap: 1.2rem; }
-    .info-col  { display: flex; flex-direction: column; gap: 1rem; position: sticky; top: 2.4rem; }
+	    .main-col { display: flex; flex-direction: column; gap: 1.2rem; }
+	    .info-col  { display: flex; flex-direction: column; gap: 1rem; position: static; }
 
     /* ── Panels ──────────────────────────── */
 
@@ -989,12 +1210,53 @@
 
     /* ── Description ─────────────────────── */
 
-    .description {
-        font-size: 0.9rem;
-        line-height: 1.65;
-        opacity: 0.82;
-        margin: 0;
-    }
+	    .description {
+	        font-size: 0.9rem;
+	        line-height: 1.65;
+	        opacity: 0.82;
+	        margin: 0;
+	    }
+
+	    .snapshot-grid {
+	        display: grid;
+	        grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
+	        gap: 0.8rem;
+	    }
+
+	    .snapshot-card {
+	        display: flex;
+	        flex-direction: column;
+	        gap: 0.35rem;
+	        min-height: 7rem;
+	        padding: 0.95rem 1rem;
+	        border-radius: 0.85rem;
+	        background: hsl(212, 24%, 12%, 0.42);
+	        outline: solid 1pt hsl(212, 38%, 36%, 0.42);
+	        backdrop-filter: blur(18px) saturate(1.18);
+	        -webkit-backdrop-filter: blur(18px) saturate(1.18);
+	        box-shadow: inset 0 1px 0 hsl(0, 0%, 100%, 0.045);
+	    }
+
+	    .snapshot-label {
+	        font-size: 0.64rem;
+	        font-weight: 800;
+	        text-transform: uppercase;
+	        letter-spacing: 0.08em;
+	        opacity: 0.48;
+	    }
+
+	    .snapshot-value {
+	        font-size: 1.1rem;
+	        font-weight: 800;
+	        line-height: 1.1;
+	        color: white;
+	    }
+
+	    .snapshot-note {
+	        font-size: 0.74rem;
+	        line-height: 1.45;
+	        opacity: 0.58;
+	    }
 
     /* ── Trailers ────────────────────────── */
 
@@ -1415,9 +1677,9 @@
         transition: background 120ms;
     }
 
-    .detail-row:hover { background: var(--l1); }
-    .detail-key { font-size: 0.78rem; opacity: 0.5; white-space: nowrap; flex-shrink: 0; }
-    .detail-val { font-size: 0.78rem; font-weight: 500; text-align: right; }
+	    .detail-row:hover { background: var(--l1); }
+	    .detail-key { font-size: 0.78rem; opacity: 0.5; white-space: nowrap; flex-shrink: 0; }
+	    .detail-val { font-size: 0.78rem; font-weight: 500; text-align: right; word-break: break-word; }
 
     .chip-row { display: flex; gap: 0.35rem; flex-wrap: wrap; }
 

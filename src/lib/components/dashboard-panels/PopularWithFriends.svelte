@@ -1,5 +1,6 @@
 <script>
     import { db } from "$lib/data"
+    import SteamGameImage from '$lib/components/shared/SteamGameImage.svelte'
 
     let byHour  = $derived($db?.cache?.friendPopularity ?? {})
     let friends = $derived($db?.cache?.friends?.data ?? [])
@@ -52,7 +53,12 @@
         {#if popularGames().length > 0}
             {#each popularGames() as game (game.gameid)}
                 <div class="pop-row">
-                    <div class="pop-art" style="background-image:url('https://cdn.akamai.steamstatic.com/steam/apps/{game.gameid}/capsule_231x87.jpg')"></div>
+                    <SteamGameImage
+                        appid={game.gameid}
+                        alt={game.name}
+                        className="pop-art"
+                        decorative={true}
+                    />
                     <div class="pop-info">
                         <div class="pop-name">{game.name}</div>
                         <div class="pop-meta">
@@ -112,11 +118,13 @@
 
     .pop-row:hover { background: var(--l1); }
 
-    .pop-art {
+    :global(.pop-art) {
         width: 3.8rem;
         height: 1.8rem;
         border-radius: 0.35rem;
-        background: var(--l2) center / cover no-repeat;
+        background: var(--l2);
+        display: block;
+        object-fit: cover;
         flex-shrink: 0;
     }
 

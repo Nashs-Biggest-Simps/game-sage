@@ -2,6 +2,7 @@
     import { db }      from '$lib/data'
     import { goto }    from '$app/navigation'
     import { resolve } from '$app/paths'
+    import SteamGameImage from '$lib/components/shared/SteamGameImage.svelte'
 
     let friends  = $derived($db?.cache?.friends?.data ?? [])
     let playtime = $derived($db?.cache?.library?.playtime ?? {})
@@ -102,10 +103,12 @@
                 onclick={() => openGameDetails(game.gameid)}
                 onkeydown={(event) => handleRowKeydown(event, game.gameid)}
             >
-                <div
-                    class="j-art"
-                    style="background-image:url('https://cdn.akamai.steamstatic.com/steam/apps/{game.gameid}/capsule_616x353.jpg')"
-                ></div>
+                <SteamGameImage
+                    appid={game.gameid}
+                    alt={game.name}
+                    className="j-art"
+                    decorative={true}
+                />
 
                 <div class="j-info">
                     <div class="j-name">{game.name}</div>
@@ -182,11 +185,13 @@
 
     .join-row:hover { background: var(--l1); }
 
-    .j-art {
+    :global(.j-art) {
         height: 100%;
         aspect-ratio: 616 / 353;
         border-radius: 0.45rem;
-        background: var(--l2) center / cover no-repeat;
+        background: var(--l2);
+        display: block;
+        object-fit: cover;
         flex-shrink: 0;
     }
 
@@ -333,7 +338,7 @@
             grid-template-columns: 1fr;
         }
 
-        .j-art {
+        :global(.j-art) {
             width: 100%;
             height: auto;
         }

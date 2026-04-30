@@ -5,7 +5,7 @@
     const INITIAL_GRID_COUNT = 120
     const BATCH_SIZE = 24
 
-    let { games = [], mode = 'scroll', loading = false, skeletonCount = 8, ghostCount = 0 } = $props()
+    let { games = [], mode = 'scroll', loading = false, skeletonCount = 5, ghostCount = 0 } = $props()
 
     let leftFadeOpacity = $state(0)
     let visibleCount = $state(INITIAL_SCROLL_COUNT)

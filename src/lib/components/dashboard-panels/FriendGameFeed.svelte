@@ -2,6 +2,7 @@
     import { db }      from '$lib/data'
     import { goto }    from '$app/navigation'
     import { resolve } from '$app/paths'
+    import SteamGameImage from '$lib/components/shared/SteamGameImage.svelte'
 
     const MIN_IN_GAME = 2
 
@@ -9,6 +10,7 @@
     let details = $derived($db?.cache?.library?.details ?? {})
     let owned   = $derived(new Set(($db?.cache?.library?.appIdList ?? []).map(String)))
     let inGame  = $derived(friends.filter(f => f.gameid))
+    let hiddenArtIds = $state(new Set())
 
     let gameGroups = $derived(() => {
         const map = {}
@@ -26,6 +28,12 @@
     })
 
     let show = $derived(inGame.length >= MIN_IN_GAME)
+
+    function hideArt(appid) {
+        const key = String(appid)
+        if (hiddenArtIds.has(key)) return
+        hiddenArtIds = new Set([...hiddenArtIds, key])
+    }
 </script>
 
 {#if show}
@@ -50,15 +58,25 @@
                 onclick={() => goto(resolve(`/view?id=${g.gameid}`))}
                 onkeydown={(e) => e.key === 'Enter' && goto(resolve(`/view?id=${g.gameid}`))}
             >
-                <div class="fc-art" style="background-image:url('https://cdn.akamai.steamstatic.com/steam/apps/{g.gameid}/capsule_616x353.jpg')">
-                    <div class="fc-overlay">
-                        {#if g.owned}
-                            <span class="fc-badge owned">In Library</span>
-                        {:else}
-                            <span class="fc-badge">Not Owned</span>
-                        {/if}
+                {#if !hiddenArtIds.has(String(g.gameid))}
+                    <div class="fc-art-wrap">
+                        <SteamGameImage
+                            appid={g.gameid}
+                            alt={g.name}
+                            className="fc-art"
+                            decorative={true}
+                            renderFallback={false}
+                            onUnavailable={hideArt}
+                        />
+                        <div class="fc-overlay">
+                            {#if g.owned}
+                                <span class="fc-badge owned">In Library</span>
+                            {:else}
+                                <span class="fc-badge">Not Owned</span>
+                            {/if}
+                        </div>
                     </div>
-                </div>
+                {/if}
                 <div class="fc-info">
                     <div class="fc-name">{g.name}</div>
                     <div class="fc-friends">
@@ -98,11 +116,19 @@
 
     .feed-card:hover { outline-color: var(--accent); transform: translateY(-2px); }
 
-    .fc-art {
+    .fc-art-wrap {
         width: 100%;
         aspect-ratio: 616 / 353;
-        background: var(--l2) center / cover no-repeat;
         position: relative;
+    }
+
+    :global(.fc-art) {
+        width: 100%;
+        height: 100%;
+        border-radius: inherit;
+        background: var(--l2);
+        display: block;
+        object-fit: cover;
     }
 
     .fc-overlay {
