@@ -36,7 +36,7 @@
     .grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
-        gap: 1.6rem 0.8rem;
+        gap: 0.8rem;
         padding-top: 4pt;
         padding-left: 1px;
         padding-right: 1px;
