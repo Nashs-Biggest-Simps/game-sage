@@ -23,7 +23,7 @@
 </script>
 
 <nav class="navbar">
-	<a href={resolve("/")} class="logo">
+	<a href={resolve("/dashboard")} class="logo">
 		<i class="fa-solid fa-hat-wizard"></i>
 		GameSage
 	</a>

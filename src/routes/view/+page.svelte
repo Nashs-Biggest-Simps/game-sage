@@ -713,11 +713,15 @@
 
     /* ── Modal ───────────────────────────── */
 
+    :global(.content:has(.modal-backdrop)) {
+        z-index: 100;
+    }
+
     .modal-backdrop {
         position: fixed;
         inset: 0;
         background: hsl(0,0%,0%,0.92);
-        z-index: 1000;
+        z-index: 10000;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -749,7 +753,7 @@
         color: white;
         cursor: pointer;
         transition: background 120ms;
-        z-index: 1001;
+        z-index: 10001;
     }
 
     .modal-close:hover { background: hsl(0,0%,100%,0.22); }
@@ -769,7 +773,7 @@
         color: white;
         cursor: pointer;
         transition: background 120ms;
-        z-index: 1001;
+        z-index: 10001;
     }
 
     .modal-nav:hover { background: hsl(0,0%,100%,0.25); }
