@@ -7,6 +7,12 @@
 // - Persistence is delayed so large Steam cache updates do not block the UI.
 
 import { writable } from 'svelte/store'
+import {
+	DEFAULT_ACTIVITY_LAYOUT,
+	DEFAULT_DASHBOARD_CONTENT_LAYOUT,
+	DEFAULT_DASHBOARD_LAYOUT,
+	DEFAULT_DASHBOARD_RIGHT_ORDER,
+} from '$lib/dashboardLayout'
 
 const APP_TITLE = 'gamesage_0.4'
 const STORAGE_KEY = `ldb-${APP_TITLE}`
@@ -42,6 +48,12 @@ const DEFAULT_DB = {
 			boringBackground: false,
 		},
 		library: { defaultSort: 'None', defaultFilter: 'All' },
+		dashboard: {
+			layout: DEFAULT_DASHBOARD_LAYOUT,
+			contentLayout: DEFAULT_DASHBOARD_CONTENT_LAYOUT,
+			rightOrder: DEFAULT_DASHBOARD_RIGHT_ORDER,
+		},
+		activity: { layout: DEFAULT_ACTIVITY_LAYOUT },
 	},
 }
 
@@ -102,6 +114,18 @@ function applyDefaults(savedValue) {
                 ...defaults.prefs.library,
                 ...(saved.prefs?.library ?? {}),
             },
+			dashboard: {
+				...defaults.prefs.dashboard,
+				...(saved.prefs?.dashboard ?? {}),
+				layout: saved.prefs?.dashboard?.layout ?? defaults.prefs.dashboard.layout,
+				contentLayout: saved.prefs?.dashboard?.contentLayout ?? defaults.prefs.dashboard.contentLayout,
+				rightOrder: saved.prefs?.dashboard?.rightOrder ?? defaults.prefs.dashboard.rightOrder,
+			},
+			activity: {
+				...defaults.prefs.activity,
+				...(saved.prefs?.activity ?? {}),
+				layout: saved.prefs?.activity?.layout ?? defaults.prefs.activity.layout,
+			},
         },
     }
 }

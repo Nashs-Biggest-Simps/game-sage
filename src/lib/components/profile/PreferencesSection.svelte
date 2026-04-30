@@ -94,6 +94,7 @@
         setPref(path, value)
         markSaved()
     }
+
 </script>
 
 <section class="panel panel-lg">

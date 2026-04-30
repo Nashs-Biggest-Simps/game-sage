@@ -2,8 +2,13 @@
 	import { db }                  from '$lib/data'
 	import { goto }                from '$app/navigation'
 	import { resolve }             from '$app/paths'
+	import {
+		dashboardRightColumnItems,
+		normalizeDashboardContentLayout,
+		normalizeDashboardLayout,
+	} from '$lib/dashboardLayout'
 	// Hero
-	import ContinuePlayingHero     from '$lib/components/dashboard-panels/ContinuePlayingHero.svelte'
+	import ContinuePlayingHero     from '$lib/components/hero/ContinuePlayingHero.svelte'
 	// Row sections — ordered by user value / recency / discovery
 	import RecentlyPlayed          from '$lib/components/dashboard-rows/RecentlyPlayed.svelte'
 	import AISuggestions           from '$lib/components/dashboard-rows/AISuggestions.svelte'
@@ -26,6 +31,15 @@
 	let mostRecentGame = $derived($db?.cache?.recentlyPlayed?.data[0] ?? null)
 	let name           = $derived($db?.cache?.user?.data?.personaname ?? $db?.user?.displayName ?? null)
 	let pfp            = $derived($db?.cache?.user?.data?.avatarfull  ?? $db?.user?.photoURL    ?? null)
+	let dashboardContentLayout = $derived(normalizeDashboardContentLayout($db?.prefs?.dashboard?.contentLayout))
+	let leftContentModules = $derived(dashboardContentLayout.left.filter(module => module.enabled))
+	let rightColumnItems = $derived(
+		dashboardRightColumnItems(
+			dashboardContentLayout,
+			normalizeDashboardLayout($db?.prefs?.dashboard?.layout),
+			$db?.prefs?.dashboard?.rightOrder
+		).filter(entry => entry.item.enabled)
+	)
 	const profileHref  = resolve('/profile')
 
 	function openProfile(event) {
@@ -54,35 +68,67 @@
 
 		<div class="main-grid">
 			<div class="left-col">
-				<!-- 1. Recently Played -->
-				<RecentlyPlayed />
-				<!-- 2. AI store discovery (not owned) -->
-				<AISuggestions />
-				<!-- 3. Library Backlog Picks (owned, taste-matched) -->
-				<LibrarySuggestions />
-				<!-- 4. Library Wildcards (owned, variety-oriented) -->
-				<ChangeOfPace />
-				<!-- 5. Most Played This Week -->
-				<ThisWeekRow />
-				<!-- 6. Most Played All-Time -->
-				<MostPlayed />
-				<!-- 7. Friend Circle Momentum -->
-				<FriendGroupFavorites />
-				<!-- 8. Friends' Unowned Picks -->
-				<FriendNotOwned />
-				<!-- 9. Steam Chart Picks -->
-				<TrendingForYou />
-				<!-- News for most recently played game -->
-				<GameNewsPanel game={mostRecentGame ?? null} />
+				{#each leftContentModules as module (module.id)}
+					{#if module.id === 'recentlyPlayed'}
+						<RecentlyPlayed />
+					{:else if module.id === 'aiStorePicks'}
+						<AISuggestions />
+					{:else if module.id === 'libraryBacklog'}
+						<LibrarySuggestions />
+					{:else if module.id === 'changeOfPace'}
+						<ChangeOfPace />
+					{:else if module.id === 'thisWeek'}
+						<ThisWeekRow />
+					{:else if module.id === 'mostPlayed'}
+						<MostPlayed />
+					{:else if module.id === 'friendCircle'}
+						<FriendGroupFavorites />
+					{:else if module.id === 'friendsUnowned'}
+						<FriendNotOwned />
+					{:else if module.id === 'steamCharts'}
+						<TrendingForYou />
+					{:else if module.id === 'gameNews'}
+						<GameNewsPanel game={mostRecentGame ?? null} />
+					{/if}
+				{/each}
 			</div>
 
 			<aside class="right-col">
-				<DashboardBriefing />
-				<QuickStats />
-				<FriendInsights />
-				<GenreSpotlightPanel />
-				<RecentSessions compact />
-				<PopularWithFriends />
+				{#each rightColumnItems as entry (entry.key)}
+					{#if entry.type === 'content' && entry.item.id === 'recentlyPlayed'}
+						<RecentlyPlayed />
+					{:else if entry.type === 'content' && entry.item.id === 'aiStorePicks'}
+						<AISuggestions />
+					{:else if entry.type === 'content' && entry.item.id === 'libraryBacklog'}
+						<LibrarySuggestions />
+					{:else if entry.type === 'content' && entry.item.id === 'changeOfPace'}
+						<ChangeOfPace />
+					{:else if entry.type === 'content' && entry.item.id === 'thisWeek'}
+						<ThisWeekRow />
+					{:else if entry.type === 'content' && entry.item.id === 'mostPlayed'}
+						<MostPlayed />
+					{:else if entry.type === 'content' && entry.item.id === 'friendCircle'}
+						<FriendGroupFavorites />
+					{:else if entry.type === 'content' && entry.item.id === 'friendsUnowned'}
+						<FriendNotOwned />
+					{:else if entry.type === 'content' && entry.item.id === 'steamCharts'}
+						<TrendingForYou />
+					{:else if entry.type === 'content' && entry.item.id === 'gameNews'}
+						<GameNewsPanel game={mostRecentGame ?? null} />
+					{:else if entry.type === 'panel' && entry.item.id === 'recommendedActions'}
+						<DashboardBriefing />
+					{:else if entry.type === 'panel' && entry.item.id === 'librarySnapshot'}
+						<QuickStats />
+					{:else if entry.type === 'panel' && entry.item.id === 'liveFriendPulse'}
+						<FriendInsights />
+					{:else if entry.type === 'panel' && entry.item.id === 'unplayedGenre'}
+						<GenreSpotlightPanel />
+					{:else if entry.type === 'panel' && entry.item.id === 'recentSessions'}
+						<RecentSessions compact />
+					{:else if entry.type === 'panel' && entry.item.id === 'friendActivityPulse'}
+						<PopularWithFriends />
+					{/if}
+				{/each}
 			</aside>
 		</div>
 	</div>

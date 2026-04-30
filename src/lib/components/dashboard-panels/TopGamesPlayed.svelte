@@ -3,6 +3,7 @@
     import { goto }    from '$app/navigation'
     import { resolve } from '$app/paths'
 
+    let { compact = false } = $props()
     let playtime = $derived($db?.cache?.library?.playtime ?? {})
     let details  = $derived($db?.cache?.library?.details  ?? {})
 
@@ -22,10 +23,17 @@
 </script>
 
 {#if topGames().length > 0}
-<section class="panel">
-    <div class="row-header">
-        <div class="row-title">Top Games Played</div>
-    </div>
+<section class:compact class="panel">
+    {#if compact}
+        <div class="panel-title">
+            <i class="fa-solid fa-trophy"></i>
+            Top Games Played
+        </div>
+    {:else}
+        <div class="row-header">
+            <div class="row-title">Top Games Played</div>
+        </div>
+    {/if}
     <div class="top-list">
         {#each topGames() as game, i}
             <div
@@ -174,5 +182,34 @@
         text-transform: uppercase;
         letter-spacing: 0.06em;
         opacity: 0.35;
+    }
+
+    .compact .top-row {
+        grid-template-columns: 1.2rem minmax(0, 1fr) auto;
+        gap: 0.55rem;
+        padding: 0.5rem;
+    }
+
+    .compact .top-art,
+    .compact .top-genres,
+    .compact .top-bar-wrap,
+    .compact .top-eyebrow {
+        display: none;
+    }
+
+    .compact .top-name {
+        font-size: 0.82rem;
+    }
+
+    .compact .top-stat {
+        min-width: 2.8rem;
+    }
+
+    .compact .top-hrs {
+        font-size: 1rem;
+    }
+
+    .compact .top-unit {
+        font-size: 0.72rem;
     }
 </style>

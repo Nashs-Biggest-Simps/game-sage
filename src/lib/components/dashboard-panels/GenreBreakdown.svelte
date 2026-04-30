@@ -2,6 +2,8 @@
     import { db } from '$lib/data'
     import { buildLibraryGames, buildGenreWeights } from '$lib/suggestions'
 
+    let { compact = false } = $props()
+
     let details   = $derived($db?.cache?.library?.details  ?? {})
     let playtime  = $derived($db?.cache?.library?.playtime ?? {})
     let blacklist = $derived(new Set(($db?.cache?.library?.blacklist ?? []).map(String)))
@@ -20,13 +22,20 @@
 </script>
 
 {#if genreRows().length > 0}
-<section class="panel">
-    <div class="row-header">
-        <div class="row-title">
+<section class:compact class="panel">
+    {#if compact}
+        <div class="panel-title">
             <i class="fa-solid fa-chart-bar"></i>
             Genre Breakdown
         </div>
-    </div>
+    {:else}
+        <div class="row-header">
+            <div class="row-title">
+                <i class="fa-solid fa-chart-bar"></i>
+                Genre Breakdown
+            </div>
+        </div>
+    {/if}
     <div class="genre-list">
         {#each genreRows() as row}
             <div class="genre-row">
@@ -84,5 +93,26 @@
         opacity: 0.55;
         text-align: right;
         white-space: nowrap;
+    }
+
+    .compact .genre-list {
+        gap: 0.45rem;
+    }
+
+    .compact .genre-row {
+        grid-template-columns: minmax(0, 1fr) 3.25rem;
+        gap: 0.55rem;
+    }
+
+    .compact .g-track {
+        display: none;
+    }
+
+    .compact .g-name {
+        font-size: 0.82rem;
+    }
+
+    .compact .g-hours {
+        font-size: 0.74rem;
     }
 </style>

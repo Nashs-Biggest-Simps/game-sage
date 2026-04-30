@@ -6,6 +6,8 @@
 
     const MIN_IN_GAME = 2
 
+    let { compact = false } = $props()
+
     let friends = $derived($db?.cache?.friends?.data ?? [])
     let details = $derived($db?.cache?.library?.details ?? {})
     let owned   = $derived(new Set(($db?.cache?.library?.appIdList ?? []).map(String)))
@@ -37,22 +39,30 @@
 </script>
 
 {#if show}
-<section class="panel">
-    <div class="row-header">
-        <div class="row-title">
+<section class:compact class="panel">
+    {#if compact}
+        <div class="panel-title">
             <i class="fa-solid fa-gamepad"></i>
             Friends In-Game
         </div>
-        <span class="pill accent">
-            <i class="fa-solid fa-circle live-dot"></i>
-            live
-        </span>
-    </div>
+    {:else}
+        <div class="row-header">
+            <div class="row-title">
+                <i class="fa-solid fa-gamepad"></i>
+                Friends In-Game
+            </div>
+            <span class="pill accent">
+                <i class="fa-solid fa-circle live-dot"></i>
+                live
+            </span>
+        </div>
+    {/if}
 
     <div class="feed-grid">
         {#each gameGroups() as g (g.gameid)}
             <div
                 class="feed-card"
+                class:no-art={hiddenArtIds.has(String(g.gameid))}
                 role="button"
                 tabindex="0"
                 onclick={() => goto(resolve(`/view?id=${g.gameid}`))}
@@ -183,4 +193,44 @@
     .fc-av:last-child { margin-left: 0; }
 
     .fc-count { font-size: 0.68rem; opacity: 0.55; }
+
+    .compact .feed-grid {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.45rem;
+    }
+
+    .compact .feed-card {
+        display: grid;
+        grid-template-columns: 4rem minmax(0, 1fr);
+        align-items: stretch;
+    }
+
+    .compact .feed-card.no-art {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .compact .fc-art-wrap {
+        aspect-ratio: auto;
+        min-height: 3.3rem;
+    }
+
+    .compact .fc-overlay {
+        display: none;
+    }
+
+    .compact .fc-info {
+        justify-content: center;
+        padding: 0.45rem 0.55rem;
+        min-width: 0;
+    }
+
+    .compact .fc-name {
+        font-size: 0.82rem;
+    }
+
+    .compact .fc-av {
+        width: 1.15rem;
+        height: 1.15rem;
+        margin-left: -0.25rem;
+    }
 </style>

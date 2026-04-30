@@ -2,6 +2,8 @@
 	import { onMount, onDestroy } from 'svelte'
 	import { db }                from '$lib/data'
 	import { refreshFriends }    from '$lib/cache'
+	import { normalizeActivityLayout } from '$lib/dashboardLayout'
+	import ActivityHero          from '$lib/components/hero/ActivityHero.svelte'
 
 	// Left column
 	import RecentSessions        from '$lib/components/dashboard-panels/RecentSessions.svelte'
@@ -21,6 +23,9 @@
 	let weekHours   = $derived(
 		recentGames.reduce((sum, g) => sum + Math.round((g.playtime_2weeks ?? 0) / 60), 0)
 	)
+	let activityLayout = $derived(normalizeActivityLayout($db?.prefs?.activity?.layout))
+	let leftModules = $derived(activityLayout.left.filter(module => module.enabled))
+	let rightModules = $derived(activityLayout.right.filter(module => module.enabled))
 
 	let refreshInterval
 
@@ -51,20 +56,58 @@
 		</div>
 	</div>
 
+	<ActivityHero />
+
 	<div class="page-content">
 		<div class="left">
-			<RecentSessions />
-			<TopGamesPlayed />
-			<JoinFriends />
-			<GenreBreakdown />
-			<FriendGameFeed />
+			{#each leftModules as module (module.id)}
+				{#if module.id === 'recentSessions'}
+					<RecentSessions />
+				{:else if module.id === 'topGamesPlayed'}
+					<TopGamesPlayed />
+				{:else if module.id === 'joinFriends'}
+					<JoinFriends />
+				{:else if module.id === 'genreBreakdown'}
+					<GenreBreakdown />
+				{:else if module.id === 'friendsInGame'}
+					<FriendGameFeed />
+				{:else if module.id === 'liveFriendPulse'}
+					<FriendInsights />
+				{:else if module.id === 'lastSeen'}
+					<FriendActivityRecency />
+				{:else if module.id === 'libraryProfile'}
+					<LibraryProfile />
+				{:else if module.id === 'friendsList'}
+					<FriendsList />
+				{:else if module.id === 'advancedFriendInsights'}
+					<AdvancedFriendInsights />
+				{/if}
+			{/each}
 		</div>
 		<div class="right">
-			<FriendInsights />
-			<FriendActivityRecency />
-			<LibraryProfile />
-			<FriendsList />
-			<AdvancedFriendInsights />
+			{#each rightModules as module (module.id)}
+				{#if module.id === 'recentSessions'}
+					<RecentSessions compact />
+				{:else if module.id === 'topGamesPlayed'}
+					<TopGamesPlayed compact />
+				{:else if module.id === 'joinFriends'}
+					<JoinFriends compact />
+				{:else if module.id === 'genreBreakdown'}
+					<GenreBreakdown compact />
+				{:else if module.id === 'friendsInGame'}
+					<FriendGameFeed compact />
+				{:else if module.id === 'liveFriendPulse'}
+					<FriendInsights />
+				{:else if module.id === 'lastSeen'}
+					<FriendActivityRecency />
+				{:else if module.id === 'libraryProfile'}
+					<LibraryProfile />
+				{:else if module.id === 'friendsList'}
+					<FriendsList />
+				{:else if module.id === 'advancedFriendInsights'}
+					<AdvancedFriendInsights />
+				{/if}
+			{/each}
 		</div>
 	</div>
 </div>

@@ -13,6 +13,7 @@
     import FriendsPanel from '$lib/components/profile/FriendsPanel.svelte'
     import DataCacheSection from '$lib/components/profile/DataCacheSection.svelte'
     import PreferencesSection from '$lib/components/profile/PreferencesSection.svelte'
+    import ContentLayoutSection from '$lib/components/profile/ContentLayoutSection.svelte'
 
     const ID_REGEX = /^\d{17}$/
     const PERSONA_STATES = ['Offline', 'Online', 'Busy', 'Away', 'Snooze', 'Looking to Trade', 'Looking to Play']
@@ -21,6 +22,7 @@
         { id: 'account', label: 'Your Account', icon: 'user' },
         { id: 'friends', label: 'Friends List', icon: 'user-group' },
         { id: 'data', label: 'Data & Cache', icon: 'database' },
+        { id: 'layout', label: 'Content Layout', icon: 'table-columns' },
         { id: 'preferences', label: 'Preferences', icon: 'sliders' },
     ]
 
@@ -362,6 +364,11 @@
                 onClearSteamConnection={clearSteamConnection}
                 onHardReset={hardReset}
             />
+        {:else if activeNav === 'layout'}
+            <ContentLayoutSection
+                dashboardAllowColumnChanges={false}
+                activityAllowColumnChanges={true}
+            />
         {:else if activeNav === 'preferences'}
             <PreferencesSection />
         {/if}
@@ -372,7 +379,7 @@
     .profile-page {
         display: grid;
         grid-template-columns: min-content minmax(0, 1fr);
-        gap: 2rem;
+        gap: 1.2rem;
         align-items: start;
     }
 

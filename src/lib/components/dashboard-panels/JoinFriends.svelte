@@ -4,6 +4,7 @@
     import { resolve } from '$app/paths'
     import SteamGameImage from '$lib/components/shared/SteamGameImage.svelte'
 
+    let { compact = false } = $props()
     let friends  = $derived($db?.cache?.friends?.data ?? [])
     let playtime = $derived($db?.cache?.library?.playtime ?? {})
     let details  = $derived($db?.cache?.library?.details  ?? {})
@@ -75,23 +76,30 @@
 </script>
 
 {#if show}
-<section class="panel">
-    <div class="row-header">
-        <div class="row-title">
+<section class:compact class="panel">
+    {#if compact}
+        <div class="panel-title">
             <i class="fa-solid fa-users"></i>
             Play With Friends
         </div>
+    {:else}
+        <div class="row-header">
+            <div class="row-title">
+                <i class="fa-solid fa-users"></i>
+                Play With Friends
+            </div>
 
-        <div class="join-pills">
-            {#if ownedGroups().length > 1}
-                <span class="pill shadow">{ownedGroups().length} shared games</span>
-            {/if}
-            <span class="pill accent">
-                <i class="fa-solid fa-circle live-dot"></i>
-                LIVE
-            </span>
+            <div class="join-pills">
+                {#if ownedGroups().length > 1}
+                    <span class="pill shadow">{ownedGroups().length} shared games</span>
+                {/if}
+                <span class="pill accent">
+                    <i class="fa-solid fa-circle live-dot"></i>
+                    LIVE
+                </span>
+            </div>
         </div>
-    </div>
+    {/if}
 
     <div class="join-list">
         {#each ownedGroups() as game (game.gameid)}
@@ -331,6 +339,35 @@
         background: var(--la2);
         color: var(--bright-accent);
         opacity: 1;
+    }
+
+    .compact .join-row {
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 0.6rem;
+        padding: 0.55rem 0.5rem;
+    }
+
+    .compact :global(.j-art),
+    .compact .j-meta,
+    .compact .j-hours,
+    .compact .j-launch span {
+        display: none;
+    }
+
+    .compact .j-name {
+        font-size: 0.82rem;
+    }
+
+    .compact .j-side {
+        min-width: 2rem;
+    }
+
+    .compact .j-launch {
+        min-width: 2rem;
+        width: 2rem;
+        height: 2rem;
+        padding: 0;
+        opacity: 0.7;
     }
 
     @media (max-width: 640px) {
