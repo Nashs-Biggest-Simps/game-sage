@@ -41,7 +41,7 @@
 <div class="panel">
     <div class="panel-title">
         <i class="fa-solid fa-fire"></i>
-        Popular with Friends
+        Friend Activity Pulse
         {#if !hasHistory}
             <span class="live-tag">live</span>
         {:else}

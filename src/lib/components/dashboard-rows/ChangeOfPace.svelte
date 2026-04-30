@@ -2,6 +2,7 @@
 	import GameRecommendationSection from '$lib/components/game-cards/GameRecommendationSection.svelte'
 	import { db } from '$lib/data'
 	import {
+		buildChangeOfPaceSuggestions,
 		buildLibraryGames,
 		buildLocalLibrarySuggestions,
 	} from '$lib/suggestions'
@@ -16,9 +17,10 @@
 	let blacklist = $derived(new Set(($db?.cache?.library?.blacklist ?? []).map(String)))
 
 	let libraryGames = $derived(buildLibraryGames(libraryDetails, libraryPlaytime, blacklist))
-	let localSuggestions = $derived(buildLocalLibrarySuggestions(libraryGames, preferredGenres, excludedGenres))
+	let matchedSuggestions = $derived(buildLocalLibrarySuggestions(libraryGames, preferredGenres, excludedGenres))
+	let paceSuggestions = $derived(buildChangeOfPaceSuggestions(libraryGames, preferredGenres, excludedGenres, matchedSuggestions))
 
-	let games = $derived(localSuggestions.map(({ game, reason }) => ({
+	let games = $derived(paceSuggestions.map(({ game, reason }) => ({
 		appid: game.steam_appid,
 		name: game.name,
 		thumbnail: game.thumbnail ?? null,
@@ -30,9 +32,11 @@
 
 <GameRecommendationSection
 	{games}
-	icon="fa-solid fa-book-open-reader"
-	title="Library Backlog Picks"
-	subtitle="owned games matched to your play habits"
+	icon="fa-solid fa-compass"
+	title="Library Wildcards"
+	subtitle="owned games outside your usual rotation"
+	badgeLabel="Variety"
+	badgeIcon="fa-solid fa-shuffle"
 	loading={hasSteamID && !games.length && !Object.keys(libraryDetails).length}
 	skeletonCount={MIN_ROW_ITEMS}
 	{ghostCount}

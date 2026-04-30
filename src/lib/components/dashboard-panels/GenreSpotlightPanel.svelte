@@ -18,7 +18,7 @@
 <div class="panel">
     <div class="panel-title">
         <i class="fa-solid fa-layer-group"></i>
-        More {topGenre}
+        Unplayed {topGenre}
         <span class="genre-tag">unplayed</span>
     </div>
 

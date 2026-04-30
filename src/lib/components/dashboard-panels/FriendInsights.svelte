@@ -25,7 +25,7 @@
 <div class="panel">
     <div class="panel-title">
         <i class="fa-solid fa-users-viewfinder"></i>
-        Friend Insights
+        Live Friend Pulse
     </div>
 
     <div class="fi-grid">
