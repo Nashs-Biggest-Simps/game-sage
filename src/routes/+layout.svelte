@@ -18,12 +18,14 @@
 	const profileHref = resolve('/profile')
 	const CACHE_UPDATE_INTERVAL_MS = 60_000
 	const BACKGROUND_ORBS = [
-		{ id: 'a', size: 66, x: 5,  y: 4,  driftX: 28, driftY: 22, scale: 1.04, hue: 212, sat: 82, light: 54, alpha: 0.28, blur: 68, duration: 38, delay: -12 },
-		{ id: 'b', size: 58, x: 80, y: 12, driftX: 24, driftY: 30, scale: 0.94, hue: 188, sat: 74, light: 50, alpha: 0.22, blur: 72, duration: 46, delay: -26 },
-		{ id: 'c', size: 76, x: 36, y: 52, driftX: 32, driftY: 24, scale: 1.08, hue: 265, sat: 70, light: 50, alpha: 0.18, blur: 84, duration: 54, delay: -34 },
-		{ id: 'd', size: 52, x: 4,  y: 76, driftX: 30, driftY: 20, scale: 0.9,  hue: 146, sat: 70, light: 46, alpha: 0.18, blur: 76, duration: 48, delay: -18 },
-		{ id: 'e', size: 62, x: 82, y: 70, driftX: 22, driftY: 28, scale: 0.98, hue: 204, sat: 68, light: 48, alpha: 0.19, blur: 82, duration: 58, delay: -42 },
-		{ id: 'f', size: 46, x: 56, y: 2,  driftX: 20, driftY: 24, scale: 0.86, hue: 38,  sat: 84, light: 54, alpha: 0.14, blur: 70, duration: 44, delay: -28 }
+		{ id: 'a', size: 66, x: 5,  y: 4,  driftX: 28, driftY: 22, scale: 1.04, hue: 210, sat: 78, light: 50, alpha: 0.24, blur: 72, duration: 38, delay: -12 },
+		{ id: 'b', size: 58, x: 80, y: 12, driftX: 24, driftY: 30, scale: 0.94, hue: 188, sat: 76, light: 48, alpha: 0.18, blur: 76, duration: 46, delay: -26 },
+		{ id: 'c', size: 76, x: 36, y: 52, driftX: 32, driftY: 24, scale: 1.08, hue: 238, sat: 74, light: 46, alpha: 0.14, blur: 90, duration: 54, delay: -34 },
+		{ id: 'd', size: 52, x: 4,  y: 76, driftX: 30, driftY: 20, scale: 0.9,  hue: 220, sat: 76, light: 44, alpha: 0.16, blur: 82, duration: 48, delay: -18 },
+		{ id: 'e', size: 62, x: 82, y: 70, driftX: 22, driftY: 28, scale: 0.98, hue: 266, sat: 66, light: 44, alpha: 0.12, blur: 90, duration: 58, delay: -42 },
+		{ id: 'f', size: 46, x: 56, y: 2,  driftX: 20, driftY: 24, scale: 0.86, hue: 198, sat: 72, light: 48, alpha: 0.13, blur: 78, duration: 44, delay: -28 },
+		{ id: 'g', size: 42, x: 30, y: 16, driftX: 18, driftY: 18, scale: 0.82, hue: 316, sat: 58, light: 46, alpha: 0.055, blur: 84, duration: 52, delay: -22 },
+		{ id: 'h', size: 50, x: 68, y: 38, driftX: 18, driftY: 24, scale: 0.92, hue: 176, sat: 74, light: 46, alpha: 0.09, blur: 86, duration: 62, delay: -46 }
 	]
 
 	let path             = $derived(page.url.pathname)
@@ -139,10 +141,12 @@
 		isolation: isolate;
 		min-height: 100vh;
 		background:
-			radial-gradient(circle at 12% 4rem, hsl(212, 78%, 48%, 0.22), transparent 34rem),
-			radial-gradient(circle at 88% 12rem, hsl(188, 78%, 48%, 0.16), transparent 34rem),
-			radial-gradient(circle at 50% 46rem, hsl(265, 70%, 56%, 0.1), transparent 46rem),
-			linear-gradient(145deg, hsl(212, 31%, 7%) 0%, var(--bg) 38%, hsl(214, 28%, 6%) 100%);
+			radial-gradient(circle at 12% 4rem, hsl(210, 76%, 46%, 0.16), transparent 36rem),
+			radial-gradient(circle at 88% 12rem, hsl(188, 76%, 45%, 0.1), transparent 36rem),
+			radial-gradient(circle at 50% 46rem, hsl(232, 62%, 42%, 0.075), transparent 48rem),
+			radial-gradient(circle at 76% 54rem, hsl(266, 62%, 42%, 0.06), transparent 44rem),
+			radial-gradient(circle at 24% 28rem, hsl(176, 72%, 42%, 0.055), transparent 34rem),
+			linear-gradient(145deg, hsl(212, 28%, 5%) 0%, var(--bg) 34%, hsl(214, 26%, 5%) 100%);
 		overflow-x: hidden;
 	}
 
@@ -181,13 +185,13 @@
 		background:
 			radial-gradient(
 				circle,
-				hsl(var(--orb-hue), var(--orb-sat), var(--orb-light), 0.72) 0%,
-				hsl(var(--orb-hue), var(--orb-sat), var(--orb-light), 0.42) 28%,
-				hsl(var(--orb-hue), var(--orb-sat), var(--orb-light), 0.2) 56%,
-				hsl(var(--orb-hue), var(--orb-sat), var(--orb-light), 0.065) 78%,
+				hsl(var(--orb-hue), var(--orb-sat), var(--orb-light), 0.62) 0%,
+				hsl(var(--orb-hue), var(--orb-sat), var(--orb-light), 0.34) 28%,
+				hsl(var(--orb-hue), var(--orb-sat), var(--orb-light), 0.14) 56%,
+				hsl(var(--orb-hue), var(--orb-sat), var(--orb-light), 0.045) 78%,
 				transparent 100%
 			);
-		filter: blur(var(--orb-blur)) saturate(1.22);
+		filter: blur(var(--orb-blur)) saturate(1.08);
 		mix-blend-mode: screen;
 		will-change: transform;
 		animation: orb-drift var(--orb-duration) ease-in-out var(--orb-delay) infinite alternate;
@@ -232,8 +236,10 @@
 		z-index: 0;
 			pointer-events: none;
 			background:
-				radial-gradient(ellipse at 72% 18rem, hsl(212, 88%, 63%, 0.15), transparent 30rem),
-				radial-gradient(ellipse at 20% 42rem, hsl(146, 72%, 48%, 0.09), transparent 32rem),
+				radial-gradient(ellipse at 72% 18rem, hsl(214, 82%, 58%, 0.1), transparent 32rem),
+				radial-gradient(ellipse at 20% 42rem, hsl(188, 76%, 46%, 0.06), transparent 34rem),
+				radial-gradient(ellipse at 64% 66rem, hsl(238, 64%, 42%, 0.05), transparent 40rem),
+				radial-gradient(ellipse at 84% 48rem, hsl(282, 58%, 42%, 0.04), transparent 34rem),
 				linear-gradient(115deg, transparent 0%, hsl(0, 0%, 100%, 0.025) 42%, transparent 64%);
 			mask-image: linear-gradient(to bottom, black 0%, black 78%, transparent 100%);
 			-webkit-mask-image: linear-gradient(to bottom, black 0%, black 78%, transparent 100%);
@@ -248,7 +254,7 @@
 		pointer-events: none;
 		background:
 			radial-gradient(ellipse at 50% 0%, transparent 0%, hsl(0, 0%, 0%, 0.16) 70%),
-			linear-gradient(to bottom, transparent 0%, hsl(212, 30%, 6%, 0.18) 55%, hsl(212, 30%, 6%, 0.42) 100%);
+			linear-gradient(to bottom, hsl(212, 28%, 5%, 0.12) 0%, hsl(212, 30%, 5%, 0.34) 55%, hsl(212, 30%, 5%, 0.58) 100%);
 	}
 
 	.app > * {
