@@ -1,4 +1,8 @@
 <script>
+    // 
+    // Error Page
+    // created by Aaron Meche
+    //
     import { page } from '$app/stores';
     import { resolve } from '$app/paths';
 </script>

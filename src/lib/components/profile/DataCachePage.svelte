@@ -1,16 +1,67 @@
 <script>
-    import { db } from '$lib/data'
+    import { goto } from '$app/navigation'
+    import { resolve } from '$app/paths'
+    import { signOut } from 'firebase/auth'
+    import { auth } from '$lib/auth'
+    import { refreshFriends, startCacheUpdateCycle } from '$lib/cache'
+    import { clearCache, db, hardResetDB } from '$lib/data'
     import JsonTreeNode from '$lib/components/profile/JsonTreeNode.svelte'
 
-    let {
-        saveStatus = null,
-        confirmHardReset = false,
-        dbExpanded = $bindable(false),
-        onRefreshLibrary = () => {},
-        onClearSuggestions = () => {},
-        onClearSteamConnection = () => {},
-        onHardReset = () => {},
-    } = $props()
+    const ID_REGEX = /^\d{17}$/
+
+    let saveStatus = $state(null)
+    let confirmHardReset = $state(false)
+    let dbExpanded = $state(false)
+    let fireUser = $derived($db?.user)
+    let savedID = $derived($db?.steamID ?? '')
+
+    function flashStatus(status, duration = 2500) {
+        saveStatus = status
+        setTimeout(() => saveStatus = null, duration)
+    }
+
+    function refreshLibrary() {
+        if (!fireUser?.uid || !ID_REGEX.test(savedID)) {
+            flashStatus('error', 3000)
+            return
+        }
+
+        clearCache()
+        startCacheUpdateCycle()
+        refreshFriends({ force: true }).catch(() => {})
+        flashStatus('refreshed')
+    }
+
+    function clearSuggestions() {
+        db.update(data => {
+            if (data.cache?.suggestions) data.cache.suggestions = {}
+            if (data.algr) data.algr = {}
+            return data
+        })
+        flashStatus('suggestions-cleared')
+    }
+
+    function clearSteamConnection() {
+        db.update(data => {
+            data.steamID = ''
+            data.cache = {}
+            data.algr = {}
+            return data
+        })
+        flashStatus('steam-cleared')
+    }
+
+    async function hardReset() {
+        if (!confirmHardReset) {
+            confirmHardReset = true
+            setTimeout(() => confirmHardReset = false, 5000)
+            return
+        }
+
+        await signOut(auth).catch(() => {})
+        hardResetDB()
+        goto(resolve('/'))
+    }
 </script>
 
 <section class="panel panel-lg">
@@ -21,22 +72,22 @@
         <div class="data-card">
             <div class="data-title"><i class="fa-solid fa-rotate"></i> Refresh Library</div>
             <p class="data-desc">Clear cached Steam library data and re-fetch it. Use this after changing Steam privacy settings to public.</p>
-            <button class="btn-ghost" onclick={onRefreshLibrary}>Refresh Now</button>
+            <button class="btn-ghost" onclick={refreshLibrary}>Refresh Now</button>
         </div>
         <div class="data-card">
             <div class="data-title"><i class="fa-solid fa-wand-magic-sparkles"></i> Reset Suggestions</div>
             <p class="data-desc">Clears AI suggestion cache and feedback memory so recommendations can regenerate from current preferences.</p>
-            <button class="btn-ghost" onclick={onClearSuggestions}>Clear Suggestions</button>
+            <button class="btn-ghost" onclick={clearSuggestions}>Clear Suggestions</button>
         </div>
         <div class="data-card">
             <div class="data-title"><i class="fa-brands fa-steam"></i> Unlink Steam</div>
             <p class="data-desc">Remove the saved Steam ID and all Steam-derived cache without signing out of Google.</p>
-            <button class="btn-ghost" onclick={onClearSteamConnection}>Unlink Steam</button>
+            <button class="btn-ghost" onclick={clearSteamConnection}>Unlink Steam</button>
         </div>
         <div class="data-card danger-card">
             <div class="data-title"><i class="fa-solid fa-bomb"></i> Hard Reset</div>
             <p class="data-desc">Clears the entire browser local storage store, signs out, and returns GameSage to a fresh first-run state.</p>
-            <button class="btn-danger" onclick={onHardReset}>
+            <button class="btn-danger" onclick={hardReset}>
                 {confirmHardReset ? 'Confirm Reset' : 'Hard Reset'}
             </button>
         </div>

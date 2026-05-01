@@ -9,6 +9,8 @@
     } = $props()
 </script>
 
+<!--  -->
+
 <aside class="sidebar">
     <div class="identity">
         {#if avatar}
@@ -39,6 +41,8 @@
         </button>
     </div>
 </aside>
+
+<!--  -->
 
 <style>
     .sidebar {

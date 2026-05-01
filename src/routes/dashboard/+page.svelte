@@ -1,4 +1,8 @@
 <script>
+	//
+	// Dashboard Page
+	// created by Aaron Meche
+	//
 	import { db }                  from '$lib/data'
 	import { goto }                from '$app/navigation'
 	import { resolve }             from '$app/paths'
@@ -7,7 +11,6 @@
 		normalizeDashboardContentLayout,
 		normalizeDashboardLayout,
 	} from '$lib/dashboardLayout'
-	// Hero
 	import ContinuePlayingHero     from '$lib/components/hero/ContinuePlayingHero.svelte'
 	// Row sections — ordered by user value / recency / discovery
 	import RecentlyPlayed          from '$lib/components/dashboard-rows/RecentlyPlayed.svelte'
@@ -28,9 +31,9 @@
 	import RecentSessions          from '$lib/components/dashboard-panels/RecentSessions.svelte'
 	import PopularWithFriends      from '$lib/components/dashboard-panels/PopularWithFriends.svelte'
 
+	let pfp = $derived($db?.cache?.user?.data?.avatarfull  ?? $db?.user?.photoURL    ?? null)
+	let name = $derived($db?.cache?.user?.data?.personaname ?? $db?.user?.displayName ?? null)
 	let mostRecentGame = $derived($db?.cache?.recentlyPlayed?.data[0] ?? null)
-	let name           = $derived($db?.cache?.user?.data?.personaname ?? $db?.user?.displayName ?? null)
-	let pfp            = $derived($db?.cache?.user?.data?.avatarfull  ?? $db?.user?.photoURL    ?? null)
 	let dashboardContentLayout = $derived(normalizeDashboardContentLayout($db?.prefs?.dashboard?.contentLayout))
 	let leftContentModules = $derived(dashboardContentLayout.left.filter(module => module.enabled))
 	let rightColumnItems = $derived(
@@ -47,6 +50,8 @@
 		goto(profileHref)
 	}
 </script>
+
+<!--  -->
 
 <div class="page">
 	<div class="page-header">
@@ -131,6 +136,8 @@
 		</div>
 	</div>
 </div>
+
+<!--  -->
 
 <style>
 	.page {

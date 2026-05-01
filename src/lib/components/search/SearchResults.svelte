@@ -1,4 +1,13 @@
 <script>
+	import {
+		discount,
+		formatPrice,
+		hoursLabel,
+		ownedThumbnail,
+		storeFallbackThumbnail,
+		storeThumbnail,
+	} from '$lib/components/search/searchPageUtils'
+
 	let {
 		query = '',
 		submittedQuery = '',
@@ -9,13 +18,7 @@
 		ownedResults = [],
 		storeResults = [],
 		ownedAppIdSet = new Set(),
-		hoursLabel,
-		ownedThumbnail,
-		storeThumbnail,
-		formatPrice,
-		discount,
 		openGame,
-		resolveThumbnail,
 	} = $props()
 </script>
 
@@ -83,7 +86,7 @@
 						decoding="async"
 						onerror={(e) => {
 							const el = e.currentTarget
-							const fallback = item.tiny_image ?? resolveThumbnail(item.id)
+							const fallback = storeFallbackThumbnail(item)
 							if (fallback && el.src !== fallback) {
 								el.src = fallback
 								el.dataset.fallback = '1'

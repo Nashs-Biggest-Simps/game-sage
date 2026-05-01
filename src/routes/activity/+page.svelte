@@ -1,17 +1,19 @@
 <script>
+	//
+	// Activity Page
+	// created by Aaron Meche
+	//
 	import { onMount, onDestroy } from 'svelte'
 	import { db }                from '$lib/data'
 	import { refreshFriends }    from '$lib/cache'
 	import { normalizeActivityLayout } from '$lib/dashboardLayout'
 	import ActivityHero          from '$lib/components/hero/ActivityHero.svelte'
-
 	// Left column
 	import RecentSessions        from '$lib/components/dashboard-panels/RecentSessions.svelte'
 	import TopGamesPlayed        from '$lib/components/dashboard-panels/TopGamesPlayed.svelte'
 	import JoinFriends           from '$lib/components/dashboard-panels/JoinFriends.svelte'
 	import GenreBreakdown        from '$lib/components/dashboard-panels/GenreBreakdown.svelte'
 	import FriendGameFeed        from '$lib/components/dashboard-panels/FriendGameFeed.svelte'
-
 	// Right column
 	import FriendInsights        from '$lib/components/dashboard-panels/FriendInsights.svelte'
 	import FriendActivityRecency from '$lib/components/dashboard-panels/FriendActivityRecency.svelte'

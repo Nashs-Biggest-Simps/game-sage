@@ -1,10 +1,4 @@
-// data.js
-// Local browser store for GameSage.
-//
-// Keep this file boring and readable:
-// - `db` is the single app state store.
-// - The store is persisted to localStorage.
-// - Persistence is delayed so large Steam cache updates do not block the UI.
+// Single local app-state store for GameSage.
 
 import { writable } from 'svelte/store'
 import {
@@ -14,315 +8,235 @@ import {
 	DEFAULT_DASHBOARD_RIGHT_ORDER,
 } from '$lib/dashboardLayout'
 
-const APP_TITLE = 'gamesage_0.4'
-const STORAGE_KEY = `ldb-${APP_TITLE}`
-
-// localStorage writes are synchronous, so do not write after every db.update.
+const STORAGE_KEY = 'ldb-gamesage_0.4'
 const SAVE_DELAY_MS = 700
+const DETAIL_LIMIT = 160
+const EMERGENCY_DETAIL_LIMIT = 80
+const VIEW_LIMIT = 40
+const FRIEND_BUCKET_LIMIT = 14 * 24
 
-// Game details are the largest part of the store. Keeping a recent subset
-// makes reloads fast and prevents older sessions from ballooning memory usage.
-const MAX_PERSISTED_GAME_DETAILS = 160
-const EMERGENCY_GAME_DETAIL_LIMIT = 80
-const MAX_PERSISTED_VIEW_GAMES = 40
-const MAX_PERSISTED_FRIEND_BUCKETS = 14 * 24
-
-const DEFAULT_FILTERS = {
-    Display: 'All',
-    Genre: 'All',
-    Platform: 'All',
-    Sort: 'None',
+export const DEFAULT_FILTERS = {
+	Display: 'All',
+	Genre: 'All',
+	Platform: 'All',
+	Sort: 'None',
 }
 
-const DEFAULT_DB = {
-    user: {},
-    cache: {},
-    filters: DEFAULT_FILTERS,
-    steamID: '',
-    prefs: {
-        genres: { preferred: [], excluded: [] },
-		suggestions: { refreshHours: 24, aiTone: 'brief', maxResults: 10, hideMatureContent: false },
+export const DEFAULT_DB = {
+	user: {},
+	cache: {},
+	filters: DEFAULT_FILTERS,
+	steamID: '',
+	prefs: {
+		genres: { preferred: [], excluded: [] },
+		suggestions: {
+			refreshHours: 24,
+			aiTone: 'brief',
+			maxResults: 10,
+			hideMatureContent: false,
+		},
 		display: {
 			compactLibrary: false,
 			fullWidthMode: false,
 			boringBackground: false,
 		},
-		library: { defaultSort: 'None', defaultFilter: 'All' },
+		library: {
+			defaultSort: 'None',
+			defaultFilter: 'All',
+		},
 		dashboard: {
 			layout: DEFAULT_DASHBOARD_LAYOUT,
 			contentLayout: DEFAULT_DASHBOARD_CONTENT_LAYOUT,
 			rightOrder: DEFAULT_DASHBOARD_RIGHT_ORDER,
 		},
-		activity: { layout: DEFAULT_ACTIVITY_LAYOUT },
+		activity: {
+			layout: DEFAULT_ACTIVITY_LAYOUT,
+		},
 	},
 }
-
-function clone(value) {
-    return JSON.parse(JSON.stringify(value))
-}
-
-function createDefaultDB() {
-    return clone(DEFAULT_DB)
-}
-
-function readLocalStorage(key) {
-    if (typeof window === 'undefined') return null
-    return localStorage.getItem(key)
-}
-
-function writeLocalStorage(key, value) {
-    if (typeof window === 'undefined') return
-    localStorage.setItem(key, value)
-}
-
-function clearLocalStorage() {
-    if (typeof window === 'undefined') return
-    localStorage.removeItem(STORAGE_KEY)
-}
-
-function keepKnownFilters(filters = {}) {
-    const next = { ...DEFAULT_FILTERS }
-    for (const key of Object.keys(DEFAULT_FILTERS)) {
-        if (filters[key] !== undefined) next[key] = filters[key]
-    }
-    return next
-}
-
-function applyDefaults(savedValue) {
-    const saved = savedValue && typeof savedValue === 'object' ? savedValue : {}
-    const defaults = createDefaultDB()
-
-    return {
-        ...defaults,
-        ...saved,
-        filters: keepKnownFilters(saved.filters),
-        prefs: {
-            ...defaults.prefs,
-            genres: {
-                ...defaults.prefs.genres,
-                ...(saved.prefs?.genres ?? {}),
-            },
-            suggestions: {
-                ...defaults.prefs.suggestions,
-                ...(saved.prefs?.suggestions ?? {}),
-            },
-			display: {
-				...defaults.prefs.display,
-				...(saved.prefs?.display ?? {}),
-			},
-            library: {
-                ...defaults.prefs.library,
-                ...(saved.prefs?.library ?? {}),
-            },
-			dashboard: {
-				...defaults.prefs.dashboard,
-				...(saved.prefs?.dashboard ?? {}),
-				layout: saved.prefs?.dashboard?.layout ?? defaults.prefs.dashboard.layout,
-				contentLayout: saved.prefs?.dashboard?.contentLayout ?? defaults.prefs.dashboard.contentLayout,
-				rightOrder: saved.prefs?.dashboard?.rightOrder ?? defaults.prefs.dashboard.rightOrder,
-			},
-			activity: {
-				...defaults.prefs.activity,
-				...(saved.prefs?.activity ?? {}),
-				layout: saved.prefs?.activity?.layout ?? defaults.prefs.activity.layout,
-			},
-        },
-    }
-}
-
-function keepRecentGameDetails(details = {}, limit = MAX_PERSISTED_GAME_DETAILS) {
-    const entries = Object.entries(details)
-    if (entries.length <= limit) return details
-
-    return Object.fromEntries(
-        entries
-            .sort(([, a], [, b]) => (b.fetchedAt ?? 0) - (a.fetchedAt ?? 0))
-            .slice(0, limit)
-    )
-}
-
-function mostRecentNestedFetchedAt(value = {}) {
-    return Math.max(
-        0,
-        ...Object.values(value)
-            .map(entry => entry?.fetchedAt ?? 0)
-            .filter(Number.isFinite)
-    )
-}
-
-function keepRecentViewCache(view = {}, limit = MAX_PERSISTED_VIEW_GAMES) {
-    const entries = Object.entries(view)
-    if (entries.length <= limit) return view
-
-    return Object.fromEntries(
-        entries
-            .sort(([, a], [, b]) => mostRecentNestedFetchedAt(b) - mostRecentNestedFetchedAt(a))
-            .slice(0, limit)
-    )
-}
-
-function keepRecentFriendPopularityBuckets(byHour = {}, limit = MAX_PERSISTED_FRIEND_BUCKETS) {
-    const entries = Object.entries(byHour)
-    if (entries.length <= limit) return byHour
-
-    return Object.fromEntries(
-        entries
-            .sort(([a], [b]) => b.localeCompare(a))
-            .slice(0, limit)
-    )
-}
-
-function shrinkForStorage(state, detailLimit = MAX_PERSISTED_GAME_DETAILS) {
-    const cache = state.cache
-    if (!cache) return state
-
-    const details = cache.library?.details
-    const view = cache.view
-    const friendPopularity = cache.friendPopularity
-
-    const trimmedDetails = details ? keepRecentGameDetails(details, detailLimit) : details
-    const trimmedView = view ? keepRecentViewCache(view) : view
-    const trimmedFriendPopularity = friendPopularity
-        ? keepRecentFriendPopularityBuckets(friendPopularity)
-        : friendPopularity
-
-    if (
-        trimmedDetails === details &&
-        trimmedView === view &&
-        trimmedFriendPopularity === friendPopularity
-    ) return state
-
-    return {
-        ...state,
-        cache: {
-            ...cache,
-            ...(trimmedView !== view ? { view: trimmedView } : {}),
-            ...(trimmedFriendPopularity !== friendPopularity ? { friendPopularity: trimmedFriendPopularity } : {}),
-            library: {
-                ...cache.library,
-                details: trimmedDetails,
-            },
-        },
-    }
-}
-
-function loadInitialDB() {
-    const raw = readLocalStorage(STORAGE_KEY)
-    if (!raw) return createDefaultDB()
-
-    try {
-        const saved = JSON.parse(raw)
-        return shrinkForStorage(applyDefaults(saved))
-    } catch {
-        console.warn('[data] Stored DB was invalid; starting fresh')
-        return createDefaultDB()
-    }
-}
-
-export const db = writable(loadInitialDB())
 
 let saveTimer = null
 let pendingState = null
 let lastSavedJSON = null
-let hasSeenInitialState = false
+let initialized = false
 
-function writeDBNow(state, detailLimit = MAX_PERSISTED_GAME_DETAILS) {
-    const stateToSave = shrinkForStorage(state, detailLimit)
-    const json = JSON.stringify(stateToSave)
-
-    if (json === lastSavedJSON) return
-
-    writeLocalStorage(STORAGE_KEY, json)
-    lastSavedJSON = json
+export function createDefaultDB() {
+	return clone(DEFAULT_DB)
 }
 
-function saveWithQuotaFallback(state) {
-    try {
-        writeDBNow(state)
-    } catch (error) {
-        if (error?.name !== 'QuotaExceededError') return
-
-        console.warn('[data] localStorage quota exceeded; saving a smaller game detail cache')
-        try {
-            writeDBNow(state, EMERGENCY_GAME_DETAIL_LIMIT)
-        } catch {
-            console.error('[data] localStorage is still full; session data will not persist')
-        }
-    }
-}
-
-function runWhenBrowserIsIdle(callback) {
-    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
-        requestIdleCallback(callback, { timeout: 1500 })
-    } else {
-        callback()
-    }
-}
-
-function scheduleSave(state) {
-    pendingState = state
-    if (saveTimer) clearTimeout(saveTimer)
-
-    saveTimer = setTimeout(() => {
-        saveTimer = null
-        runWhenBrowserIsIdle(() => {
-            if (!pendingState) return
-            saveWithQuotaFallback(pendingState)
-            pendingState = null
-        })
-    }, SAVE_DELAY_MS)
-}
-
-function flushSave() {
-    if (saveTimer) clearTimeout(saveTimer)
-    saveTimer = null
-
-    if (!pendingState) return
-    saveWithQuotaFallback(pendingState)
-    pendingState = null
-}
+export const db = writable(loadDB())
 
 if (typeof window !== 'undefined') {
-    window.addEventListener('pagehide', flushSave)
-    document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'hidden') flushSave()
-    })
-}
-
-export function clearCache() {
-    db.update(data => {
-        const sameSteamID = data.cache?.user?.data?.steamid === data.steamID
-        const confirmedSteamProfile = sameSteamID
-            ? {
-                user: data.cache.user,
-                status: {
-                    ...(data.cache?.status?.steam ? { steam: data.cache.status.steam } : {}),
-                },
-            }
-            : {}
-
-        data.cache = confirmedSteamProfile
-        data.algr = {}
-        return data
-    })
-}
-
-export function hardResetDB() {
-    clearLocalStorage()
-    lastSavedJSON = null
-    pendingState = null
-    if (saveTimer) clearTimeout(saveTimer)
-    saveTimer = null
-
-    db.set(createDefaultDB())
+	window.addEventListener('pagehide', flushSave)
+	document.addEventListener('visibilitychange', () => {
+		if (document.visibilityState === 'hidden') flushSave()
+	})
 }
 
 db.subscribe(state => {
-    if (!hasSeenInitialState) {
-        hasSeenInitialState = true
-        lastSavedJSON = JSON.stringify(shrinkForStorage(state))
-        return
-    }
+	if (!initialized) {
+		initialized = true
+		lastSavedJSON = JSON.stringify(trimForStorage(state))
+		return
+	}
 
-    scheduleSave(state)
+	scheduleSave(state)
 })
+
+export function clearCache() {
+	db.update(data => {
+		const steamStatus = data.cache?.status?.steam
+		const keepSteamProfile = data.cache?.user?.data?.steamid === data.steamID
+
+		return {
+			...data,
+			cache: keepSteamProfile
+				? {
+					user: data.cache.user,
+					status: steamStatus ? { steam: steamStatus } : {},
+				}
+				: {},
+			algr: {},
+		}
+	})
+}
+
+export function hardResetDB() {
+	if (typeof window !== 'undefined') localStorage.removeItem(STORAGE_KEY)
+	if (saveTimer) clearTimeout(saveTimer)
+
+	saveTimer = null
+	pendingState = null
+	lastSavedJSON = null
+	db.set(createDefaultDB())
+}
+
+function loadDB() {
+	if (typeof window === 'undefined') return createDefaultDB()
+
+	try {
+		const raw = localStorage.getItem(STORAGE_KEY)
+		return raw ? trimForStorage(withDefaults(JSON.parse(raw))) : createDefaultDB()
+	} catch {
+		console.warn('[data] Stored DB was invalid; starting fresh')
+		return createDefaultDB()
+	}
+}
+
+function withDefaults(savedValue) {
+	const saved = isPlainObject(savedValue) ? savedValue : {}
+	return deepMerge(createDefaultDB(), saved)
+}
+
+function scheduleSave(state) {
+	pendingState = state
+	if (saveTimer) clearTimeout(saveTimer)
+
+	saveTimer = setTimeout(() => {
+		saveTimer = null
+		runWhenIdle(flushSave)
+	}, SAVE_DELAY_MS)
+}
+
+function flushSave() {
+	if (saveTimer) clearTimeout(saveTimer)
+	saveTimer = null
+
+	if (!pendingState || typeof window === 'undefined') return
+	saveWithFallback(pendingState)
+	pendingState = null
+}
+
+function saveWithFallback(state) {
+	try {
+		writeState(state)
+	} catch (error) {
+		if (error?.name !== 'QuotaExceededError') return
+
+		console.warn('[data] localStorage quota exceeded; saving a smaller cache')
+		try {
+			writeState(state, EMERGENCY_DETAIL_LIMIT)
+		} catch {
+			console.error('[data] localStorage is still full; session data will not persist')
+		}
+	}
+}
+
+function writeState(state, detailLimit = DETAIL_LIMIT) {
+	const json = JSON.stringify(trimForStorage(state, detailLimit))
+	if (json === lastSavedJSON) return
+
+	localStorage.setItem(STORAGE_KEY, json)
+	lastSavedJSON = json
+}
+
+function trimForStorage(state, detailLimit = DETAIL_LIMIT) {
+	const cache = state.cache
+	if (!cache) return state
+
+	return {
+		...state,
+		cache: {
+			...cache,
+			...(cache.view ? { view: keepRecent(cache.view, VIEW_LIMIT, byNestedFetch) } : {}),
+			...(cache.friendPopularity ? { friendPopularity: keepRecent(cache.friendPopularity, FRIEND_BUCKET_LIMIT, byKeyDesc) } : {}),
+			...(cache.library?.details ? {
+				library: {
+					...cache.library,
+					details: keepRecent(cache.library.details, detailLimit, byFetchedAt),
+				},
+			} : {}),
+		},
+	}
+}
+
+function keepRecent(value = {}, limit, compare) {
+	const entries = Object.entries(value)
+	if (entries.length <= limit) return value
+
+	return Object.fromEntries(entries.sort(compare).slice(0, limit))
+}
+
+function byFetchedAt([, a], [, b]) {
+	return (b.fetchedAt ?? 0) - (a.fetchedAt ?? 0)
+}
+
+function byNestedFetch([, a], [, b]) {
+	return newestNestedFetch(b) - newestNestedFetch(a)
+}
+
+function byKeyDesc([a], [b]) {
+	return b.localeCompare(a)
+}
+
+function newestNestedFetch(value = {}) {
+	return Math.max(0, ...Object.values(value).map(entry => entry?.fetchedAt ?? 0).filter(Number.isFinite))
+}
+
+function runWhenIdle(callback) {
+	if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+		requestIdleCallback(callback, { timeout: 1500 })
+	} else {
+		callback()
+	}
+}
+
+function clone(value) {
+	return JSON.parse(JSON.stringify(value))
+}
+
+function deepMerge(base, saved) {
+	const next = { ...base }
+
+	for (const [key, value] of Object.entries(saved)) {
+		next[key] = isPlainObject(value) && isPlainObject(base[key])
+			? deepMerge(base[key], value)
+			: value
+	}
+
+	return next
+}
+
+function isPlainObject(value) {
+	return value && typeof value === 'object' && !Array.isArray(value)
+}

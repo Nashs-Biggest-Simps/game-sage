@@ -1,19 +1,20 @@
 <script>
+	//
+	// Search Page
+	// created by Aaron Meche
+	//
 	import { db } from '$lib/data'
 	import { steamAPI } from '$lib/steam'
-	import { resolveThumbnail } from '$lib/cache'
 	import { goto } from '$app/navigation'
 	import { resolve } from '$app/paths'
+	import {
+		SEARCH_GENRE_OPTIONS,
+		buildOwnedSearchResults,
+	} from '$lib/components/search/searchPageUtils'
+	import "$lib/components/search/search.css"
 	import SearchHeader from '$lib/components/search/SearchHeader.svelte'
 	import SearchControls from '$lib/components/search/SearchControls.svelte'
 	import SearchResults from '$lib/components/search/SearchResults.svelte'
-	import '$lib/components/search/search.css'
-
-	const GENRE_OPTIONS = [
-		'Action', 'Adventure', 'RPG', 'Strategy', 'Simulation',
-		'Sports', 'Racing', 'Puzzle', 'Horror', 'Indie',
-		'Casual', 'Shooter', 'Multiplayer', 'Open World', 'Survival',
-	]
 
 	let query        = $state('')
 	let mode         = $state('owned')   // 'owned' | 'store'
@@ -30,19 +31,13 @@
 	let ownedAppIds    = $derived($db?.cache?.library?.appIdList ?? [])
 	let ownedAppIdSet  = $derived(new Set(ownedAppIds.map(id => Number(id))))
 
-	let ownedResults = $derived(() => {
-		if (!query.trim()) return []
-		const q = query.trim().toLowerCase()
-		return ownedAppIds
-			.map(id => ({ appid: id, detail: libraryDetails[id]?.data ?? null, playtime: libraryPlaytime[id] ?? 0 }))
-			.filter(g => {
-				if (!g.detail?.name) return false
-				if (!g.detail.name.toLowerCase().includes(q)) return false
-				if (genreFilter && !g.detail.genres?.some(gen => gen.description === genreFilter)) return false
-				return true
-			})
-			.slice(0, 60)
-	})
+	let ownedResults = $derived(buildOwnedSearchResults({
+		query,
+		appIds: ownedAppIds,
+		details: libraryDetails,
+		playtime: libraryPlaytime,
+		genreFilter,
+	}))
 
 	function searchSteamStore(term) {
 		const normalized = term.trim()
@@ -73,34 +68,6 @@
 			mode = 'store'
 			searchSteamStore(term)
 		}
-	}
-
-	function formatPrice(item) {
-		if (!item.price) return 'Free'
-		if (item.price.final === 0) return 'Free'
-		return `$${(item.price.final / 100).toFixed(2)}`
-	}
-
-	function discount(item) {
-		return item.price?.discount_percent > 0 ? item.price.discount_percent : null
-	}
-
-	function hoursLabel(minutes) {
-		const h = Math.round(minutes / 60)
-		if (h === 0) return 'Unplayed'
-		if (h >= 1000) return `${(h / 1000).toFixed(1)}k h`
-		return `${h.toLocaleString()}h`
-	}
-
-	function ownedThumbnail(detail, appid) {
-		return detail?.thumbnail ?? detail?.header_image ?? resolveThumbnail(appid)
-	}
-
-	function storeThumbnail(item) {
-		return item.large_capsule_image
-			?? item.header_image
-			?? item.tiny_image
-			?? resolveThumbnail(item.id)
 	}
 
 	function resetSearch() {
@@ -146,7 +113,7 @@
 		bind:query
 		bind:mode
 		bind:genreFilter
-		genreOptions={GENRE_OPTIONS}
+		genreOptions={SEARCH_GENRE_OPTIONS}
 		{searched}
 		{storeLoading}
 		activeCount={activeResults.length}
@@ -166,12 +133,6 @@
 		ownedResults={ownedResults()}
 		{storeResults}
 		{ownedAppIdSet}
-		{hoursLabel}
-		{ownedThumbnail}
-		{storeThumbnail}
-		{formatPrice}
-		{discount}
 		openGame={openGame}
-		{resolveThumbnail}
 	/>
 </div>

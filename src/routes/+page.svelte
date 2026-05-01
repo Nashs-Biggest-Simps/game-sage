@@ -1,4 +1,8 @@
 <script>
+    // 
+    // Landing Page
+    // created by Aaron Meche
+    //
     import { goto } from '$app/navigation'
     import { resolve } from '$app/paths'
     import { auth } from '$lib/auth'

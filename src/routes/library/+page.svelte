@@ -1,24 +1,38 @@
 <script>
+	//
+	// Library Page
+	// created by Aaron Meche
+	//
     import { db } from '$lib/data'
     import GameCardGrid from '$lib/components/game-cards/GameCardGrid.svelte'
 
     const DISPLAY_OPTIONS = ['All', 'Never Played']
     const SORT_OPTIONS    = ['None', 'Most Played', 'A → Z', 'Z → A', 'Never Played']
-
-    let appIdList   = $derived($db?.cache?.library?.appIdList ?? null)
-    let playtime    = $derived($db?.cache?.library?.playtime  ?? {})
-    let details     = $derived($db?.cache?.library?.details   ?? {})
-    let blacklist   = $derived(new Set(($db?.cache?.library?.blacklist ?? []).map(String)))
-    let defaultSort    = $derived($db?.prefs?.library?.defaultSort ?? 'None')
-    let defaultDisplay = $derived($db?.prefs?.library?.defaultFilter ?? 'All')
+    
+    // Status
+    let libraryStatus = $derived($db?.cache?.status?.library ?? null)
+    let steamStatus = $derived($db?.cache?.status?.steam ?? null)
+    // Preferences
+    let defaultSort = $derived($db?.prefs?.library?.defaultSort ?? 'None')
+    let filterMode = $derived(DISPLAY_OPTIONS.includes($db?.filters?.Display) ? $db.filters.Display : defaultDisplay)
     let compactLibrary = $derived($db?.prefs?.display?.compactLibrary ?? false)
-    let sortKey        = $derived(SORT_OPTIONS.includes($db?.filters?.Sort) ? $db.filters.Sort : defaultSort)
-    let filterMode     = $derived(DISPLAY_OPTIONS.includes($db?.filters?.Display) ? $db.filters.Display : defaultDisplay)
-    let steamStatus    = $derived($db?.cache?.status?.steam ?? null)
-    let libraryStatus  = $derived($db?.cache?.status?.library ?? null)
+    let defaultDisplay = $derived($db?.prefs?.library?.defaultFilter ?? 'All')
+    // Game Data
+    let appIdList = $derived($db?.cache?.library?.appIdList ?? null)
+    let blacklist = $derived(new Set(($db?.cache?.library?.blacklist ?? []).map(String)))
+    let playtime = $derived($db?.cache?.library?.playtime  ?? {})
+    let details = $derived($db?.cache?.library?.details   ?? {})
+    let sortKey = $derived(SORT_OPTIONS.includes($db?.filters?.Sort) ? $db.filters.Sort : defaultSort)
 
     function setFilter(key, value) {
-        db.update(d => ({ ...d, filters: { ...d.filters, [key]: value } }))
+        db.update(val => {
+            try {
+                val.filters[key] = value
+            } catch (err) {
+                console.error(error)
+            }
+            return val
+        })
     }
 
     let sorted = $derived(() => {
@@ -51,8 +65,9 @@
     let unplayedCount = $derived(total - playedCount)
 </script>
 
-<div class="page" class:compact={compactLibrary}>
+<!--  -->
 
+<div class="page" class:compact={compactLibrary}>
     <!-- ── Header + controls ── -->
     <div class="page-header">
         <div class="toolbar-left">
@@ -114,18 +129,18 @@
             <i class="fa-solid fa-gamepad"></i>
             <span>No games found — make sure your Steam ID is set in your profile</span>
         </div>
+    {:else if shownCount === 0}
+        <div class="empty-state">
+            <i class="fa-solid fa-filter"></i>
+            <span>No games match the current filters</span>
+        </div>
     {:else}
-        {#if shownCount === 0}
-            <div class="empty-state">
-                <i class="fa-solid fa-filter"></i>
-                <span>No games match the current filters</span>
-            </div>
-        {:else}
-            <GameCardGrid items={sorted()} />
-        {/if}
+        <GameCardGrid items={sorted()} />
     {/if}
 
 </div>
+
+<!--  -->
 
 <style>
     .toolbar-left {
