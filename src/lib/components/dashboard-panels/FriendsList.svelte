@@ -1,7 +1,7 @@
 <!-- created by Aaron Meche -->
 <script>
     import { db } from "$lib/data"
-    import SteamGameImage from '$lib/components/shared/SteamGameImage.svelte'
+    import SteamGameArtwork from '$lib/components/game-cards/SteamGameArtwork.svelte'
  
  
     const STATE_LABEL = ['Offline', 'Online', 'Busy', 'Away', 'Snooze', 'Trade', 'Play']
@@ -80,7 +80,7 @@
                         </div>
                     </div>
                     <div class="f-side">
-                        <SteamGameImage
+                        <SteamGameArtwork
                             appid={friend.gameid}
                             alt={friend.gameextrainfo ?? 'Game art'}
                             className="f-game-thumb"

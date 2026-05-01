@@ -95,6 +95,49 @@
     -webkit-backdrop-filter: blur(12px) saturate(1.12);
 }
 
+/* Row hover — blue glass lift */
+:where(
+    .session-row:hover,
+    .top-row:hover,
+    .join-row:hover,
+    .friend:hover,
+    .friend-row:hover,
+    .news-item:hover,
+    .detail-row:hover,
+    .hltb-row:hover,
+    .ach-item:hover,
+    .pop-row:hover,
+    .spot-row:hover,
+    .offline-toggle:hover,
+    .nav-item:hover
+) {
+    background: hsl(212, 42%, 24%, 0.56) !important;
+    outline: solid 1pt hsl(212, 72%, 62%, 0.24) !important;
+    box-shadow: inset 0 1px 0 hsl(0, 0%, 100%, 0.06);
+}
+
+/* Card hover — bright outline + shadow */
+:where(.feed-card:hover, .card:hover, .ss-btn:hover) {
+    outline-color: hsl(212, 75%, 65%, 0.72) !important;
+    box-shadow: 0 14px 34px hsl(0, 0%, 0%, 0.34);
+}
+
+/* Alert / warning shared base */
+:where(.alert, .warning) {
+    padding: 0.8rem 1.2rem;
+    margin-bottom: 1.2rem;
+    border-radius: 0.4rem;
+    line-height: 1.5;
+}
+.alert {
+    background: hsl(0, 50%, 20%, 50%);
+    outline: solid 2pt hsl(0, 50%, 40%);
+}
+.warning {
+    background: hsl(30, 50%, 20%, 50%);
+    outline: solid 2pt hsl(30, 50%, 40%);
+}
+
 /* List rows should stay quiet until hover. */
 :where(
     .friend:not(:hover),

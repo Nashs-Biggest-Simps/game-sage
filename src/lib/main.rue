@@ -87,25 +87,6 @@ input{
 }
 
 
-/* Red Alert */
-.alert{
-    padding: 0.8rem 1.2rem;
-    margin-bottom: 1.2rem;
-    background: hsl(0, 50%, 20%, 50%);
-    outline: solid 2pt hsl(0, 50%, 40%);
-    border-radius: 0.4rem;
-    line-height: 1.5;
-}
-
-/* Orange Warning */
-.warning{
-    padding: 0.8rem 1.2rem;
-    margin-bottom: 1.2rem;
-    background: hsl(30, 50%, 20%, 50%);
-    outline: solid 2pt hsl(30, 50%, 40%);
-    border-radius: 0.4rem;
-    line-height: 1.5;
-}
 
 .page{
     display: grid;
@@ -140,98 +121,6 @@ input{
         inset 0 1px 0 hsl(0, 0%, 100%, 0.075);
 }
 
-.session-row:hover {
-    background: hsl(212, 42%, 24%, 0.56) !important;
-    outline: solid 1pt hsl(212, 72%, 62%, 0.24) !important;
-    box-shadow: inset 0 1px 0 hsl(0, 0%, 100%, 0.06);
-}
-
-.top-row:hover {
-    background: hsl(212, 42%, 24%, 0.56) !important;
-    outline: solid 1pt hsl(212, 72%, 62%, 0.24) !important;
-    box-shadow: inset 0 1px 0 hsl(0, 0%, 100%, 0.06);
-}
-
-.join-row:hover {
-    background: hsl(212, 42%, 24%, 0.56) !important;
-    outline: solid 1pt hsl(212, 72%, 62%, 0.24) !important;
-    box-shadow: inset 0 1px 0 hsl(0, 0%, 100%, 0.06);
-}
-
-.friend:hover {
-    background: hsl(212, 42%, 24%, 0.56) !important;
-    outline: solid 1pt hsl(212, 72%, 62%, 0.24) !important;
-    box-shadow: inset 0 1px 0 hsl(0, 0%, 100%, 0.06);
-}
-
-.friend-row:hover {
-    background: hsl(212, 42%, 24%, 0.56) !important;
-    outline: solid 1pt hsl(212, 72%, 62%, 0.24) !important;
-    box-shadow: inset 0 1px 0 hsl(0, 0%, 100%, 0.06);
-}
-
-.news-item:hover {
-    background: hsl(212, 42%, 24%, 0.56) !important;
-    outline: solid 1pt hsl(212, 72%, 62%, 0.24) !important;
-    box-shadow: inset 0 1px 0 hsl(0, 0%, 100%, 0.06);
-}
-
-.detail-row:hover {
-    background: hsl(212, 42%, 24%, 0.56) !important;
-    outline: solid 1pt hsl(212, 72%, 62%, 0.24) !important;
-    box-shadow: inset 0 1px 0 hsl(0, 0%, 100%, 0.06);
-}
-
-.hltb-row:hover {
-    background: hsl(212, 42%, 24%, 0.56) !important;
-    outline: solid 1pt hsl(212, 72%, 62%, 0.24) !important;
-    box-shadow: inset 0 1px 0 hsl(0, 0%, 100%, 0.06);
-}
-
-.ach-item:hover {
-    background: hsl(212, 42%, 24%, 0.56) !important;
-    outline: solid 1pt hsl(212, 72%, 62%, 0.24) !important;
-    box-shadow: inset 0 1px 0 hsl(0, 0%, 100%, 0.06);
-}
-
-.pop-row:hover {
-    background: hsl(212, 42%, 24%, 0.56) !important;
-    outline: solid 1pt hsl(212, 72%, 62%, 0.24) !important;
-    box-shadow: inset 0 1px 0 hsl(0, 0%, 100%, 0.06);
-}
-
-.spot-row:hover {
-    background: hsl(212, 42%, 24%, 0.56) !important;
-    outline: solid 1pt hsl(212, 72%, 62%, 0.24) !important;
-    box-shadow: inset 0 1px 0 hsl(0, 0%, 100%, 0.06);
-}
-
-.offline-toggle:hover {
-    background: hsl(212, 42%, 24%, 0.56) !important;
-    outline: solid 1pt hsl(212, 72%, 62%, 0.24) !important;
-    box-shadow: inset 0 1px 0 hsl(0, 0%, 100%, 0.06);
-}
-
-.nav-item:hover {
-    background: hsl(212, 42%, 24%, 0.56) !important;
-    outline: solid 1pt hsl(212, 72%, 62%, 0.24) !important;
-    box-shadow: inset 0 1px 0 hsl(0, 0%, 100%, 0.06);
-}
-
-.feed-card:hover {
-    outline-color: hsl(212, 75%, 65%, 0.72) !important;
-    box-shadow: 0 14px 34px hsl(0, 0%, 0%, 0.34);
-}
-
-.card:hover {
-    outline-color: hsl(212, 75%, 65%, 0.72) !important;
-    box-shadow: 0 14px 34px hsl(0, 0%, 0%, 0.34);
-}
-
-.ss-btn:hover {
-    outline-color: hsl(212, 75%, 65%, 0.72) !important;
-    box-shadow: 0 14px 34px hsl(0, 0%, 0%, 0.34);
-}
 
 .panel-title {
     display: flex;

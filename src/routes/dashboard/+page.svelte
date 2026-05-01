@@ -11,13 +11,13 @@
 	import ContinuePlayingHero     from '$lib/components/hero/ContinuePlayingHero.svelte'
 	// Row sections — ordered by user value / recency / discovery
 	import RecentlyPlayed          from '$lib/components/dashboard-rows/RecentlyPlayed.svelte'
-	import AISuggestions           from '$lib/components/dashboard-rows/AISuggestions.svelte'
-	import LibrarySuggestions      from '$lib/components/dashboard-rows/LibrarySuggestions.svelte'
+	import AIStoreSuggestionRows   from '$lib/components/dashboard-rows/AIStoreSuggestionRows.svelte'
+	import OwnedLibrarySuggestions from '$lib/components/dashboard-rows/OwnedLibrarySuggestions.svelte'
 	import ChangeOfPace            from '$lib/components/dashboard-rows/ChangeOfPace.svelte'
-	import ThisWeekRow             from '$lib/components/dashboard-rows/ThisWeekRow.svelte'
+	import WeeklyLibraryRotation   from '$lib/components/dashboard-rows/WeeklyLibraryRotation.svelte'
 	import MostPlayed              from '$lib/components/dashboard-rows/MostPlayed.svelte'
 	import FriendGroupFavorites    from '$lib/components/dashboard-rows/FriendGroupFavorites.svelte'
-	import FriendNotOwned          from '$lib/components/dashboard-rows/FriendNotOwned.svelte'
+	import FriendsUnownedGames     from '$lib/components/dashboard-rows/FriendsUnownedGames.svelte'
 	import TrendingForYou          from '$lib/components/dashboard-rows/TrendingForYou.svelte'
 	import GameNewsPanel           from '$lib/components/game-cards/GameNewsPanel.svelte'
 	// Right panel modules
@@ -72,17 +72,17 @@
 					{#if module.id === 'recentlyPlayed'}
 						<RecentlyPlayed />
 					{:else if module.id === 'aiStorePicks'}
-						<AISuggestions />
+						<AIStoreSuggestionRows />
 					{:else if module.id === 'libraryBacklog'}
-						<LibrarySuggestions />
+						<OwnedLibrarySuggestions />
 					{:else if module.id === 'changeOfPace'}
 						<ChangeOfPace />
 					{:else if module.id === 'thisWeek'}
-						<ThisWeekRow />
+						<WeeklyLibraryRotation />
 					{:else if module.id === 'mostPlayed'}
 						<MostPlayed />
 					{:else if module.id === 'friendsUnowned'}
-						<FriendNotOwned />
+						<FriendsUnownedGames />
 					{:else if module.id === 'steamCharts'}
 						<TrendingForYou />
 					{:else if module.id === 'gameNews'}
@@ -96,19 +96,19 @@
 					{#if entry.type === 'content' && entry.item.id === 'recentlyPlayed'}
 						<RecentlyPlayed />
 					{:else if entry.type === 'content' && entry.item.id === 'aiStorePicks'}
-						<AISuggestions />
+						<AIStoreSuggestionRows />
 					{:else if entry.type === 'content' && entry.item.id === 'libraryBacklog'}
-						<LibrarySuggestions />
+						<OwnedLibrarySuggestions />
 					{:else if entry.type === 'content' && entry.item.id === 'changeOfPace'}
 						<ChangeOfPace />
 					{:else if entry.type === 'content' && entry.item.id === 'thisWeek'}
-						<ThisWeekRow />
+						<WeeklyLibraryRotation />
 					{:else if entry.type === 'content' && entry.item.id === 'mostPlayed'}
 						<MostPlayed />
 					{:else if entry.type === 'content' && entry.item.id === 'friendCircle'}
 						<FriendGroupFavorites />
 					{:else if entry.type === 'content' && entry.item.id === 'friendsUnowned'}
-						<FriendNotOwned />
+						<FriendsUnownedGames />
 					{:else if entry.type === 'content' && entry.item.id === 'steamCharts'}
 						<TrendingForYou />
 					{:else if entry.type === 'content' && entry.item.id === 'gameNews'}

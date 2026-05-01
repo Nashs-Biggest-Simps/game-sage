@@ -193,7 +193,7 @@ export class Algorithm {
         const controller = new AbortController()
         const timeout = setTimeout(() => controller.abort(), AI_REQUEST_TIMEOUT_MS)
 
-        const res = await fetch('/api/ai-suggestions', {
+        const res = await fetch('/api/suggestions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -204,7 +204,7 @@ export class Algorithm {
             signal: controller.signal,
         }).finally(() => clearTimeout(timeout))
 
-        if (!res.ok) throw new Error(`/api/ai-suggestions returned ${res.status}`)
+        if (!res.ok) throw new Error(`/api/suggestions returned ${res.status}`)
         return res.json()
     }
 

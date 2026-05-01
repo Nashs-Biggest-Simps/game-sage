@@ -1,6 +1,6 @@
 <script>
     import { db } from "$lib/data"
-    import SteamGameImage from '$lib/components/shared/SteamGameImage.svelte'
+    import SteamGameArtwork from '$lib/components/game-cards/SteamGameArtwork.svelte'
 
     let byHour  = $derived($db?.cache?.friendPopularity ?? {})
     let friends = $derived($db?.cache?.friends?.data ?? [])
@@ -53,7 +53,7 @@
         {#if popularGames().length > 0}
             {#each popularGames() as game (game.gameid)}
                 <div class="pop-row">
-                    <SteamGameImage
+                    <SteamGameArtwork
                         appid={game.gameid}
                         alt={game.name}
                         className="pop-art"

@@ -95,7 +95,7 @@ export async function POST({ request }) {
             throw error(504, 'AI suggestion request timed out.')
         }
         if (err?.status) throw err
-        console.error('[/api/ai-suggestions] AI suggestion request failed:', err)
+        console.error('[/api/suggestions] AI suggestion request failed:', err)
         throw error(502, 'AI suggestion request failed.')
     }
 }

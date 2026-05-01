@@ -464,7 +464,7 @@ async function refreshTrending(cache) {
     if (!isStale(cache?.trending?.fetchedAt, 6 * 60 * 60 * 1000)) return
     try {
         const endpoint = encodeURIComponent('https://store.steampowered.com/api/featuredcategories')
-        const res  = await fetch(`/api/steam-proxy?endpoint=${endpoint}`)
+        const res  = await fetch(`/api/steam?endpoint=${endpoint}`)
         if (!res.ok) return
         const data = await res.json()
         const pull = (key, tag) => (data?.[key]?.items ?? []).map(g => ({ ...g, _tag: tag }))

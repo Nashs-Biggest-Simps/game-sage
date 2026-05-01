@@ -27,7 +27,7 @@ async function makeApiCall(url, callback, { requiresSteamId = false, label = 'St
         const controller = new AbortController()
         const timeout = setTimeout(() => controller.abort(), API_TIMEOUT_MS)
 
-        const res = await fetch(`/api/steam-proxy?endpoint=${encodeURIComponent(url)}`, {
+        const res = await fetch(`/api/steam?endpoint=${encodeURIComponent(url)}`, {
             signal: controller.signal,
         }).finally(() => clearTimeout(timeout))
         if (!res.ok) throw new Error(`${label} returned ${res.status}`)

@@ -2,7 +2,7 @@
     import { db }      from '$lib/data'
     import { goto }    from '$app/navigation'
     import { resolve } from '$app/paths'
-    import SteamGameImage from '$lib/components/shared/SteamGameImage.svelte'
+    import SteamGameArtwork from '$lib/components/game-cards/SteamGameArtwork.svelte'
 
     let { compact = false } = $props()
     let friends  = $derived($db?.cache?.friends?.data ?? [])
@@ -111,7 +111,7 @@
                 onclick={() => openGameDetails(game.gameid)}
                 onkeydown={(event) => handleRowKeydown(event, game.gameid)}
             >
-                <SteamGameImage
+                <SteamGameArtwork
                     appid={game.gameid}
                     alt={game.name}
                     className="j-art"

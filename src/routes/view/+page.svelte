@@ -4,6 +4,18 @@
 	import { db } from "$lib/data";
 	import { steamAPI } from "$lib/steam";
 	import { fetchGameDetail, resolveThumbnail } from "$lib/cache";
+	import {
+		VIEW_TTL,
+		fallbackHeroImages,
+		hltbFmt,
+		needsRichGameDetail,
+		newsDate,
+		normalizeWebsiteUrl,
+		readViewCache,
+		stripHtml,
+		titleCase,
+		writeViewCache,
+	} from "$lib/components/view/viewPageUtils";
 	import ScreenshotModal from "$lib/components/view/ScreenshotModal.svelte";
 	import ViewHero from "$lib/components/view/ViewHero.svelte";
 	import ViewMainColumn from "$lib/components/view/ViewMainColumn.svelte";
@@ -26,32 +38,6 @@
 	let globalPcts = $state(null);
 	let loadingAch = $state(true);
 	let friends = $derived($db?.cache?.friends?.data ?? []);
-
-	const VIEW_TTL = {
-		hltb: 7 * 24 * 60 * 60 * 1000,
-		news: 6 * 60 * 60 * 1000,
-		achievements: 15 * 60 * 1000,
-		globalPcts: 7 * 24 * 60 * 60 * 1000,
-	};
-
-	function isFresh(entry, ttl) {
-		return !!entry?.fetchedAt && Date.now() - entry.fetchedAt < ttl;
-	}
-
-	function readViewCache(id, key, ttl) {
-		const entry = get(db)?.cache?.view?.[id]?.[key] ?? null;
-		return isFresh(entry, ttl) ? entry.data : null;
-	}
-
-	function writeViewCache(id, key, data) {
-		db.update((state) => {
-		state.cache ??= {};
-		state.cache.view ??= {};
-		state.cache.view[id] ??= {};
-		state.cache.view[id][key] = { data, fetchedAt: Date.now() };
-		return state;
-		});
-	}
 
 	let myPlaytime = $derived($db?.cache?.library?.playtime?.[appid] ?? 0);
 	let myHours = $derived(Math.round(myPlaytime / 60));
@@ -163,14 +149,6 @@
 		return rows;
 	});
 
-	function fallbackHeroImages(id) {
-		return [
-		`https://cdn.akamai.steamstatic.com/steam/apps/${id}/library_hero.jpg`,
-		`https://cdn.akamai.steamstatic.com/steam/apps/${id}/header.jpg`,
-		];
-	}
-
-	// Hero image with JS preload fallback chain
 	let heroIdx = $state(0);
 	let heroCandidates = $derived([
 		...new Set(
@@ -242,96 +220,12 @@
 		if (e.key === "ArrowRight") modalNext();
 	}
 
-	// Achievements
 	let totalAch = $derived(achievements?.achievements?.length ?? 0);
 	let earnedAch = $derived(
 		achievements?.achievements?.filter((a) => a.achieved)?.length ?? 0,
 	);
 	let achPct = $derived(
 		totalAch > 0 ? Math.round((earnedAch / totalAch) * 100) : 0,
-	);
-	let achFilter = $state("all");
-	const achievementFilters = [
-		["all", "All"],
-		["earned", "Earned"],
-		["locked", "Locked"],
-		["rare", "Rarest"],
-	];
-
-	function normalizePct(value) {
-		const pct = Number(value);
-		return Number.isFinite(pct) ? pct : null;
-	}
-
-	let rarestAch = $derived(() => {
-		if (!achievements?.achievements?.length) return [];
-		const pctMap = {};
-		(globalPcts?.achievementpercentages?.achievements ?? []).forEach((a) => {
-		pctMap[a.name] = normalizePct(a.percent);
-		});
-		return achievements.achievements
-		.filter((a) => a.achieved)
-		.map((a) => ({ ...a, globalPct: pctMap[a.apiname] ?? null }))
-		.sort((a, b) => (a.globalPct ?? 100) - (b.globalPct ?? 100))
-		.slice(0, 6);
-	});
-
-	let achievementRows = $derived(() => {
-		if (!achievements?.achievements?.length) return [];
-		const pctMap = {};
-		(globalPcts?.achievementpercentages?.achievements ?? []).forEach((a) => {
-		pctMap[a.name] = normalizePct(a.percent);
-		});
-
-		const rows = achievements.achievements.map((a) => {
-		const earned = Number(a.achieved) === 1;
-		return {
-			...a,
-			earned,
-			displayName: formatAchievementName(
-			a.name || a.apiname || "Hidden achievement",
-			),
-			displayDescription:
-			a.description ||
-			(earned ? "Unlocked achievement" : "Details hidden until unlocked."),
-			globalPct: pctMap[a.apiname] ?? null,
-			iconUrl: earned ? a.icon || a.icongray : a.icongray || a.icon,
-			unlockedAt:
-			earned && a.unlocktime ? achievementDate(a.unlocktime) : null,
-		};
-		});
-
-		if (achFilter === "earned") {
-		return rows
-			.filter((a) => a.earned)
-			.sort(
-			(a, b) => (Number(b.unlocktime) || 0) - (Number(a.unlocktime) || 0),
-			);
-		}
-
-		if (achFilter === "locked") {
-		return rows
-			.filter((a) => !a.earned)
-			.sort((a, b) => (a.globalPct ?? 100) - (b.globalPct ?? 100));
-		}
-
-		if (achFilter === "rare") {
-		return rows
-			.filter((a) => a.earned)
-			.sort((a, b) => (a.globalPct ?? 100) - (b.globalPct ?? 100));
-		}
-
-		return rows.sort((a, b) => {
-		if (a.earned !== b.earned) return a.earned ? -1 : 1;
-		if (a.earned)
-			return (Number(b.unlocktime) || 0) - (Number(a.unlocktime) || 0);
-		return (a.globalPct ?? 100) - (b.globalPct ?? 100);
-		});
-	});
-
-	let visibleAchievements = $derived(achievementRows().slice(0, 12));
-	let hiddenAchievementCount = $derived(
-		Math.max(achievementRows().length - visibleAchievements.length, 0),
 	);
 
 	let activeViewLoad = 0;
@@ -363,16 +257,7 @@
 		state?.cache?.library?.playtime ?? {},
 		id,
 		);
-		const needsRichDetail =
-		!Array.isArray(currentCachedGame?.screenshots) ||
-		!Array.isArray(currentCachedGame?.movies) ||
-		currentCachedGame?.platforms == null ||
-		currentCachedGame?.supported_languages === undefined ||
-		currentCachedGame?.website === undefined ||
-		currentCachedGame?.required_age === undefined ||
-		currentCachedGame?.controller_support === undefined ||
-		currentCachedGame?.dlc_count === undefined ||
-		currentCachedGame?.hero_image === undefined;
+		const needsRichDetail = needsRichGameDetail(currentCachedGame);
 
 		fetchedGame = null;
 		loadingGame = true;
@@ -452,77 +337,11 @@
 		}
 	});
 
-	function hltbFmt(val) {
-		if (!val) return null;
-		const h = Math.trunc(val);
-		const m = Math.round((val % 1) * 60);
-		return m > 0 ? `${h}h ${m}m` : `${h}h`;
-	}
-
 	let hltbPrimary = $derived(
 		hltbFmt(
 		hltb?.mainStory ?? hltb?.mainStoryWithExtras ?? hltb?.completionist,
 		),
 	);
-
-	function newsDate(unix) {
-		return new Date(unix * 1000).toLocaleDateString("en-US", {
-		month: "short",
-		day: "numeric",
-		year: "numeric",
-		});
-	}
-
-	function achievementDate(unix) {
-		return new Date(Number(unix) * 1000).toLocaleDateString("en-US", {
-		month: "short",
-		day: "numeric",
-		year: "numeric",
-		});
-	}
-
-	function formatAchievementName(value) {
-		const cleaned = String(value ?? "")
-		.replace(/^achievement[_\s-]*/i, "")
-		.replace(/_/g, " ")
-		.replace(/\s+/g, " ")
-		.trim();
-
-		if (!cleaned) return "Achievement";
-
-		return cleaned
-		.split(" ")
-		.map((word) => {
-			if (!word) return "";
-			if (word === word.toUpperCase() || word === word.toLowerCase()) {
-			return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-			}
-			return word;
-		})
-		.join(" ");
-	}
-
-	function stripHtml(html) {
-		return (html ?? "")
-		.replace(/<[^>]+>/g, " ")
-		.replace(/\s+/g, " ")
-		.trim()
-		.slice(0, 220);
-	}
-
-	function titleCase(value = "") {
-		return String(value)
-		.split(/[\s_-]+/)
-		.filter(Boolean)
-		.map((word) => word[0].toUpperCase() + word.slice(1))
-		.join(" ");
-	}
-
-	function normalizeWebsiteUrl(value) {
-		const url = String(value ?? "").trim();
-		if (!url) return null;
-		return /^https?:\/\//i.test(url) ? url : `https://${url}`;
-	}
 </script>
 
 <svelte:window onkeydown={handleKeydown} />

@@ -1,6 +1,6 @@
 <script>
     import { db } from '$lib/data'
-    import SteamGameImage from '$lib/components/shared/SteamGameImage.svelte'
+    import SteamGameArtwork from '$lib/components/game-cards/SteamGameArtwork.svelte'
 
     const MIN_FRIENDS = 5
 
@@ -52,7 +52,7 @@
         <div class="trending">
             <div class="trending-lbl">Trending right now</div>
             <div class="tr-row">
-                <SteamGameImage
+                <SteamGameArtwork
                     appid={t.gameid}
                     alt={t.name}
                     className="tr-art"

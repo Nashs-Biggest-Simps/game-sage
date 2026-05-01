@@ -2,7 +2,7 @@
     import { onDestroy, onMount } from 'svelte'
     import { db } from '$lib/data'
     import { refreshFriends } from '$lib/cache'
-    import SteamGameImage from '$lib/components/shared/SteamGameImage.svelte'
+    import SteamGameArtwork from '$lib/components/game-cards/SteamGameArtwork.svelte'
 
     const STATE_LABEL = ['Offline', 'Online', 'Busy', 'Away', 'Snooze', 'Looking to Trade', 'Looking to Play']
 
@@ -139,7 +139,7 @@
 
                     {#if friend.gameid}
                         <div class="game-strip">
-                            <SteamGameImage
+                            <SteamGameArtwork
                                 appid={friend.gameid}
                                 alt={friend.gameextrainfo ?? 'Game art'}
                                 className="game-art"

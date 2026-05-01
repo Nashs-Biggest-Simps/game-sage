@@ -2,7 +2,7 @@
     import { db }      from '$lib/data'
     import { goto }    from '$app/navigation'
     import { resolve } from '$app/paths'
-    import SteamGameImage from '$lib/components/shared/SteamGameImage.svelte'
+    import SteamGameArtwork from '$lib/components/game-cards/SteamGameArtwork.svelte'
 
     const MIN_IN_GAME = 2
 
@@ -70,7 +70,7 @@
             >
                 {#if !hiddenArtIds.has(String(g.gameid))}
                     <div class="fc-art-wrap">
-                        <SteamGameImage
+                        <SteamGameArtwork
                             appid={g.gameid}
                             alt={g.name}
                             className="fc-art"
